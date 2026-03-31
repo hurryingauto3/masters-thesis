@@ -30,8 +30,10 @@
 
 
 %% Page layout (customized to letter paper and NYU requirements):
-\setlength{\oddsidemargin}{.6in}
-\setlength{\textwidth}{5.8in}
+%% Left margin = 1" (default) + \oddsidemargin = 1.5" (binding edge)
+%% Right margin = 8.5" - 1.5" - 6.0" = 1.0"
+\setlength{\oddsidemargin}{.5in}
+\setlength{\textwidth}{6.0in}
 \setlength{\topmargin}{0.5in}
 \setlength{\headheight}{0in}
 \setlength{\headsep}{0in}
@@ -49,6 +51,9 @@
 %
 %% \usepackage{amsmath}
 %% \usepackage{amssymb}
+%% Font: NYU Tandon guidelines require 12pt Arial or Times Roman
+\usepackage{mathptmx} % Times Roman font for text and math
+
 \usepackage{xspace}
 \usepackage{algorithmic}
 \usepackage{algorithm}
@@ -111,10 +116,13 @@
 \pagenumbering{roman}
 \thispagestyle{empty}
 \begin{center}
-{\bfseries 
+{\bfseries
   {\large\thesistitle}
-  \vspace{1in}
-  
+  \vspace{0.5in}
+
+  \rule{2.5in}{0.4pt}
+  \vspace{0.5in}
+
  {\large {\bf THESIS}}\\
   \vspace{.5in}
   
@@ -164,7 +172,8 @@
 \begin{center}
 {\bfseries
   {\large\thesistitle}
-  \vspace{.25in}
+
+  \rule{2.5in}{0.4pt}
 
   THESIS\\
   \vspace{.25in}
@@ -220,14 +229,17 @@
 \makebox[\textwidth]{\hfill\makebox[2.5in]{\hfill Date \hfill}}
 
 \noindent
-University ID: {N\#}\\ % TODO: Add your University ID
-Net ID: \hspace{.415in} {ah7072}\\
+\underline{University ID}: \underline{N\#}\\ % TODO: Add your University ID
+\underline{Net ID}: \hspace{.415in} \underline{ah7072}\\
 
-%\newpage
+\newpage
 
-%%%%%%%%%%%%%% Copyright Page %%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%% Copyright Page (optional — typically not recommended) %%%%%%%%%%%%%%%%%
 
 %%%%%%%%%%%%%% Guidance Committee Signature Page %%%%%%%%%%%%%%%%%
+%% Per NYU guidelines: this is the FIRST numbered page, numbered "ii"
+\setcounter{page}{2}
+\noindent
 Approved by the Guidance Committee:
 \singlespacing
 
@@ -244,6 +256,22 @@ Approved by the Guidance Committee:
 \vspace{0.5in}
 
 \doublespacing
+\newpage
+
+%%%%%%%%%%%%%% Microfilm/Publishing Page %%%%%%%%%%%%%%%%%
+%% Required by NYU Tandon guidelines
+\thispagestyle{plain}
+\vspace*{\fill}
+\begin{center}
+Microfilm or other copies of this thesis are obtainable from\\
+\vspace{1in}
+UMI Dissertation Publishing\\
+ProQuest CSA\\
+789 E. Eisenhower Parkway\\
+P.O. Box 1346\\
+Ann Arbor, MI 48106-1346
+\end{center}
+\vspace*{\fill}
 \newpage
 
 %%%%%%%%%%%%%% Vita %%%%%%%%%%%%%%%%%
