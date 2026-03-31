@@ -7,10 +7,10 @@
 
 %% Replace the title, name, advisor name, graduation date and dedication below with
 %% your own. Graduation months must be January, May or September.
-\newcommand{\thesistitle}{Three Degrees-of-Freedom Cable-Driven Wrist Rehabilitation Exoskeleton}
-\newcommand{\thesisauthor}{YOUR NAME}
-\newcommand{\thesisadvisor}{S. Farokh Atashzar}
-\newcommand{\graddate}{May 2024} 
+\newcommand{\thesistitle}{Self-Supervised Visual Representations for Cross-City Generalization in End-to-End Autonomous Driving}
+\newcommand{\thesisauthor}{Ali Hamza}
+\newcommand{\thesisadvisor}{Anna Choromanska}
+\newcommand{\graddate}{May 2026}
 
 %% If you do not want a dedication, scroll down and comment out
 %% the appropriate lines in this file.
@@ -128,19 +128,19 @@
   \end{doublespace}
   \vspace{.5in}
   
-  {\large MASTER OF SCIENCE (Mechatronics \& Robotics)}\\
+  {\large MASTER OF SCIENCE (Electrical Engineering)}\\
   \vspace{.5in}
-  
+
   at the \\
   \vspace{.2in}
-  
+
   {\large
   NEW YORK UNIVERSITY\\
   \vspace{-0.05in}
   TANDON SCHOOL OF ENGINEERING\\
   }
   \vspace{.2in}
-  
+
   by
   \vspace{.5in}
 
@@ -162,13 +162,13 @@
 \thispagestyle{empty}
 %
 \begin{center}
-{\bfseries 
+{\bfseries
   {\large\thesistitle}
   \vspace{.25in}
-  
+
   THESIS\\
   \vspace{.25in}
-  
+
   \begin{doublespace}
   Submitted in Partial Fulfillment of\\
   % \vspace{.1in}
@@ -177,8 +177,8 @@
   the Degree of\\
   \end{doublespace}
   \vspace{.25in}
-  
-  MASTER OF SCIENCE (Mechatronics \& Robotics)\\
+
+  MASTER OF SCIENCE (Electrical Engineering)\\
   \vspace{.25in}
   
   at the \\
@@ -220,8 +220,8 @@
 \makebox[\textwidth]{\hfill\makebox[2.5in]{\hfill Date \hfill}}
 
 \noindent
-University ID: {N\#}\\ % Add your University ID
-Net ID: \hspace{.415in} {NetID}\\ % Add your Net ID
+University ID: {N\#}\\ % TODO: Add your University ID
+Net ID: \hspace{.415in} {ah7072}\\
 
 %\newpage
 
@@ -231,14 +231,14 @@ Net ID: \hspace{.415in} {NetID}\\ % Add your Net ID
 Approved by the Guidance Committee:
 \singlespacing
 
-\underline{Major}: Mechatronics and Robotics
+\underline{Major}: Electrical Engineering
 \vspace{0.7in}
 
 \noindent
 \makebox[\textwidth]{\hfill\makebox[3in]{\hrulefill}}\\
-\makebox[\textwidth]{\hfill\makebox[3in]{\hfill \textbf{Advisor's Name}\hfill}}
-\makebox[\textwidth]{\hfill\makebox[3in]{\hfill Assistant Professor of \hfill}}
-\makebox[\textwidth]{\hfill\makebox[3in]{\hfill Mechanical and Aerospace Engineering \hfill}}
+\makebox[\textwidth]{\hfill\makebox[3in]{\hfill \textbf{Anna Choromanska}\hfill}}
+\makebox[\textwidth]{\hfill\makebox[3in]{\hfill Professor of \hfill}}
+\makebox[\textwidth]{\hfill\makebox[3in]{\hfill Electrical and Computer Engineering \hfill}}
 \makebox[\textwidth]{\hfill\makebox[3in]{\rule[-4pt]{2in}{1pt}}}\\
 \makebox[\textwidth]{\hfill\makebox[3in]{\hfill Date \hfill}}\\
 \vspace{0.5in}
@@ -286,9 +286,9 @@ Approved by the Guidance Committee:
   {\bf \thesistitle}\\  
   {\bf by}\\  
   {\bf \thesisauthor}\\
-  {\bf Advisor: Assistant Prof. \thesisadvisor, Ph.D.}\\
+  {\bf Advisor: Prof. \thesisadvisor, Ph.D.}\\
   {\bf Submitted in Partial Fulfillment of the Requirements for}\\
-  {\bf the Degree of Master of Science (Mechatronics \& Robotics) }\\
+  {\bf the Degree of Master of Science (Electrical Engineering) }\\
   \vspace{.25in}
   {\bf \graddate}  
   \vspace{.25in}
@@ -321,6 +321,15 @@ Approved by the Guidance Committee:
 \input{background/background}
 
 %
+\input{relatedwork/relatedwork}
+
+%
+\input{methodology/methodology}
+
+%
+\input{experiments/experiments}
+
+%
 \input{conclusions/conclusions}
 
 %%%%% Appendices start %%%%%%%%%%%%%%%%
@@ -333,6 +342,6 @@ Approved by the Guidance Committee:
 %%%% Input bibliography file %%%%%%%%%%%%%%%
 % \input{thesis}
 \bibliographystyle{IEEEtran}
-\bibliography{thesis,introduction/introduction,background/background,conclusions/conclusions} 
+\bibliography{thesis,introduction/introduction,background/background,relatedwork/relatedwork,methodology/methodology,experiments/experiments,conclusions/conclusions}
 
 \end{document}

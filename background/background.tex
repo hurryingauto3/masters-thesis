@@ -2,4 +2,101 @@
 \chapter{Background}
 \label{chap:background}
 
-\lipsum[1-3]
+%% This chapter provides the technical foundations a reader needs before
+%% understanding the methodology. No original contributions here --- just
+%% clear exposition of existing work and concepts.
+
+% ============================================================================
+\section{End-to-End Autonomous Driving}
+\label{sec:bg-e2e}
+
+\textit{Overview of the end-to-end paradigm: mapping raw sensor input directly to planning output (trajectory waypoints), bypassing hand-crafted intermediate representations. Contrast with modular pipelines (perception $\to$ prediction $\to$ planning). Discuss advantages (joint optimization, simplicity) and challenges (interpretability, data hunger, generalization).}
+
+\subsection{Imitation Learning for Trajectory Prediction}
+\label{sec:bg-il}
+
+\textit{Behavioral cloning setup: given expert demonstrations $\{(o_t, a_t^*)\}$, learn $\pi_\theta(a|o)$. Discuss open-loop vs.\ closed-loop evaluation. Explain why open-loop PDMS is a useful proxy metric but has known limitations.}
+
+\subsection{The NAVSIM Benchmark}
+\label{sec:bg-navsim}
+
+\textit{Describe NAVSIM: built on nuPlan logs, provides multi-camera images + LiDAR + ego state. Splits: navtrain, navtest. Sensors available. Evaluation via PDM Score (PDMS) and Extended PDM Score (EPDMS). Explain PDMS sub-metrics:}
+\begin{itemize}
+    \item No-at-fault Collision (NC)
+    \item Drivable Area Compliance (DAC)
+    \item Ego Progress (EP)
+    \item Time-to-Collision (TTC)
+    \item Comfort
+\end{itemize}
+
+\textit{Note that NAVSIM does not natively provide per-city splits --- this is a gap our work addresses.}
+
+% ============================================================================
+\section{Visual Backbone Architectures}
+\label{sec:bg-backbones}
+
+\subsection{Convolutional Backbones (ResNet)}
+\label{sec:bg-resnet}
+
+\textit{Brief review of ResNet-34/50 as the standard supervised ImageNet backbone used in TransFuser, LAW, DiffusionDrive. Discuss why supervised ImageNet features have been the default in driving.}
+
+\subsection{Vision Transformers (ViT)}
+\label{sec:bg-vit}
+
+\textit{ViT architecture: patch embedding, positional encoding, self-attention layers, CLS token vs.\ mean pooling. Relevant because all SSL backbones we evaluate (I-JEPA, DINOv2, MAE) are ViT-based.}
+
+% ============================================================================
+\section{Self-Supervised Learning for Vision}
+\label{sec:bg-ssl}
+
+\textit{Taxonomy of SSL methods relevant to this thesis. For each, describe the pre-training objective, what invariances it learns, and why it may help generalization.}
+
+\subsection{Joint-Embedding Predictive Architectures (I-JEPA)}
+\label{sec:bg-ijepa}
+
+\textit{Describe I-JEPA: predicts representations of masked image patches from visible context, without pixel reconstruction. Context encoder + predictor architecture. Key property: learns semantic features without relying on hand-crafted augmentations. We use ViT-H/14 (630M params) and ViT-S/14 variants.}
+
+\subsection{DINOv2}
+\label{sec:bg-dinov2}
+
+\textit{Self-distillation with no labels. Student--teacher framework with centering and sharpening. Trained on LVD-142M curated dataset. ViT-L/14 variant. Discriminative SSL.}
+
+\subsection{Masked Autoencoders (MAE)}
+\label{sec:bg-mae}
+
+\textit{Generative SSL: mask 75\% of patches, reconstruct pixels via asymmetric encoder--decoder. ViT-L/16 variant. Discuss the hypothesis that pixel-level reconstruction may not yield the most transferable planning features.}
+
+\subsection{Comparison of SSL Paradigms}
+\label{sec:bg-ssl-compare}
+
+\textit{Table or discussion comparing predictive (I-JEPA), discriminative (DINOv2), and generative (MAE) SSL along axes of: augmentation dependence, output representation type, pre-training data, parameter count, and hypothesized transfer properties.}
+
+% ============================================================================
+\section{Planning Architectures}
+\label{sec:bg-planning}
+
+\subsection{TransFuser}
+\label{sec:bg-transfuser}
+
+\textit{Multi-modal fusion architecture: ResNet-34 camera backbone + ResNet-34 LiDAR backbone + GPT-style auto-regressive fusion. Outputs waypoints via MLP regression head. Baseline in our cross-city benchmark.}
+
+\subsection{Latent World Model (LAW)}
+\label{sec:bg-law}
+
+\textit{LAW (ICLR 2025): adds a latent world model as an auxiliary training loss to TransFuser. LID depth encoding for 3D-aware features. Single-trajectory waypoint prediction. Achieves ~84.6 PDMS on NAVSIM. Our primary test bed for SSL backbone swapping.}
+
+\subsection{Truncated Diffusion Planning (DiffusionDrive)}
+\label{sec:bg-diffusiondrive}
+
+\textit{DiffusionDrive (CVPR 2025): instead of denoising from Gaussian noise, starts from K-means anchor trajectories and applies only 2 denoising steps. 45+ FPS inference. 88.1 PDMS. Base architecture for our JEPA-Diffusion planner. Describe the anchor generation, noise schedule, and multi-scale cross-attention decoder.}
+
+\subsection{DiffusionDriveV2 and RL Post-Training}
+\label{sec:bg-ddv2}
+
+\textit{DiffusionDriveV2 (Dec 2025): adds GRPO (Group Relative Policy Optimization) post-training to DiffusionDrive. Intra- and inter-anchor reward shaping prevents mode collapse. 91.2 PDMS / 85.5 EPDMS. Relevant to RQ6 on RL transfer.}
+
+% ============================================================================
+\section{Domain Generalization in Autonomous Driving}
+\label{sec:bg-domain-gen}
+
+\textit{Brief review of domain adaptation vs.\ domain generalization. Discuss prior work on weather/lighting robustness but note the gap: cross-city (geographic) generalization is under-studied, especially in the end-to-end planning setting. Most prior work focuses on perception-only tasks (object detection, segmentation), not on planning metrics.}

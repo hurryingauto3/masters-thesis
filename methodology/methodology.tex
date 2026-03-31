@@ -1,0 +1,150 @@
+%!TEX root = ../thesis.tex
+\chapter{Methodology}
+\label{chap:methodology}
+
+%% This chapter describes what we built and how we set up experiments.
+%% Two main thrusts: (1) Cross-city SSL benchmark, (2) JEPA-Diffusion planner.
+
+% ============================================================================
+\section{NAVSIM City Splits}
+\label{sec:meth-city-splits}
+
+\subsection{City Extraction from nuPlan Metadata}
+\label{sec:meth-city-extraction}
+
+\textit{Describe how city labels are extracted from nuPlan log filenames (prefixes: \texttt{us-ma-boston}, \texttt{us-nv-las-vegas}, \texttt{us-pa-pittsburgh}, \texttt{sg-one-north}). Explain the script \texttt{city\_splits/create\_splits.py} and the resulting JSON token lists.}
+
+\subsection{Split Statistics and Distribution}
+\label{sec:meth-split-stats}
+
+\textit{Table showing number of training and test scenarios per city. Discuss class balance and any stratified sampling applied. Show that each city has sufficient data for meaningful training and evaluation.}
+
+\subsection{Evaluation Protocols}
+\label{sec:meth-eval-protocols}
+
+\textit{Define the three evaluation settings:}
+\begin{itemize}
+    \item \textbf{In-distribution}: Train and test on the same city.
+    \item \textbf{Cross-city (zero-shot)}: Train on city A, test on cities B, C, D.
+    \item \textbf{Leave-one-city-out (LOCO)}: Train on 3 cities, test on the held-out city.
+\end{itemize}
+
+\textit{Define the generalization gap metric: $\Delta_\text{gen} = \text{PDMS}_\text{in-dist} - \text{PDMS}_\text{OOD}$.}
+
+% ============================================================================
+\section{SSL Backbone Integration}
+\label{sec:meth-backbones}
+
+\subsection{Backbone Adapter Interface}
+\label{sec:meth-backbone-adapter}
+
+\textit{Describe the abstract \texttt{SSLBackbone} interface in \texttt{navsim/agents/law/backbones/base.py}. All backbones expose a uniform API: \texttt{forward(images) $\to$ features}. The adapter handles model-specific preprocessing (resolution, normalization) and output reshaping.}
+
+\subsection{Backbone Configurations}
+\label{sec:meth-backbone-configs}
+
+\textit{Table of backbones used:}
+
+\begin{itemize}
+    \item \textbf{ResNet-34} (supervised ImageNet-1K, 512-dim output) --- baseline
+    \item \textbf{I-JEPA ViT-H/14} (predictive SSL, ImageNet-1K, 1280-dim)
+    \item \textbf{DINOv2 ViT-L/14} (discriminative SSL, LVD-142M, 1024-dim)
+    \item \textbf{MAE ViT-L/16} (generative SSL, ImageNet-1K, 1024-dim)
+\end{itemize}
+
+\textit{All SSL backbones are frozen during training. Only the planning head parameters are updated. Backbone receives 0.1$\times$ learning rate multiplier if fine-tuning is enabled (ablation only).}
+
+\subsection{Feature Projection}
+\label{sec:meth-feature-proj}
+
+\textit{Since backbones have different output dimensions, describe the linear projection layer that maps all backbone outputs to a common dimension before the planning head. This ensures fair comparison.}
+
+% ============================================================================
+\section{Planning Architecture I: LAW with Swappable Backbones}
+\label{sec:meth-law}
+
+\textit{Describe the LAW (Latent World Model) architecture as the test bed for the cross-city SSL study (RQ1--RQ3). Key components:}
+
+\subsection{Architecture Overview}
+\textit{Per-view spatial decoders, LID depth encoding, delta waypoint prediction, TransformerDecoder world model. The backbone is the only component we swap; everything else remains fixed.}
+
+\subsection{Training Configuration}
+\textit{Adam optimizer, lr=1e-4, no weight decay, no scheduler, 20 epochs, batch\_size=32. Backbone lr\_mult=0.1 when fine-tuning. No gradient clipping. Mixed precision (fp16).}
+
+\subsection{TransFuser Baseline}
+\textit{We also evaluate on the simpler TransFuser architecture (ResNet-34 camera + ResNet-34 LiDAR + GPT fusion) to test whether cross-city findings are architecture-dependent.}
+
+% ============================================================================
+\section{Planning Architecture II: JEPA-Diffusion}
+\label{sec:meth-jepa-diffusion}
+
+\textit{Describe the novel camera-only planner combining I-JEPA with truncated diffusion (based on DiffusionDrive). This addresses RQ4 and RQ5.}
+
+\subsection{Architecture Design}
+\label{sec:meth-jd-arch}
+
+\textit{Key modifications to DiffusionDrive:}
+\begin{enumerate}
+    \item \textbf{Strip LiDAR branch}: Remove all \texttt{lidar\_pc} and \texttt{bev\_raster} dependencies.
+    \item \textbf{Replace ResNet-34 with I-JEPA ViT-S/14}: Frozen encoder, outputs $(B, N, C)$ patch tokens.
+    \item \textbf{Feature adapter}: Reshape ViT tokens to spatial feature maps $(B, C, H, W)$ with lightweight FPN for DiffusionDrive's \texttt{MultiScaleCrossAttention}.
+    \item \textbf{Retain}: K-means anchor trajectories (256 clusters), 2-step truncated diffusion, trajectory decoder.
+\end{enumerate}
+
+\subsection{Anchor Trajectory Generation}
+\label{sec:meth-anchors}
+
+\textit{Describe K-means clustering on training trajectories to produce 256 anchor trajectories (\texttt{trajectory\_anchors\_256.npy}). These serve as the denoising starting point instead of Gaussian noise, enabling just 2 diffusion steps at inference.}
+
+\subsection{Training and Inference}
+\label{sec:meth-jd-training}
+
+\textit{Training: full navtrain, 20 epochs, batch 128, Adam lr=1e-4. Inference: 2 denoising steps, targeting 45+ FPS. Compare with ResNet-34 + same diffusion head as ablation to isolate SSL contribution.}
+
+\subsection{RL Post-Training (Exploratory)}
+\label{sec:meth-rl}
+
+\textit{If conducted: describe GRPO or DPO applied to the trained JEPA-Diffusion model. Test whether RL gains transfer across cities (RQ6). Based on DiffusionDriveV2's approach.}
+
+% ============================================================================
+\section{Experimental Design}
+\label{sec:meth-exp-design}
+
+\subsection{Phase 1: Single-City Training (16 runs)}
+\label{sec:meth-phase1}
+
+\textit{Train each of 4 backbones on each of 4 cities = 16 runs. Evaluate each checkpoint on all 4 city test sets = 64 evaluations. Produces a $4 \times 4$ generalization matrix per backbone. Addresses RQ1 and RQ2.}
+
+\subsection{Phase 2: Leave-One-City-Out (16 runs)}
+\label{sec:meth-phase2}
+
+\textit{Train each backbone on 3 cities, test on the held-out city. 4 backbones $\times$ 4 held-out cities = 16 runs. Validates Phase 1 findings under a more realistic multi-city training regime.}
+
+\subsection{Phase 3: Data Efficiency (20 runs)}
+\label{sec:meth-phase3}
+
+\textit{Train at \{10\%, 25\%, 50\%, 75\%, 100\%\} of data for the best and worst backbone from Phase 1. Tests graceful degradation (RQ3).}
+
+\subsection{Phase 4: JEPA-Diffusion Evaluation}
+\label{sec:meth-phase4}
+
+\textit{Train JEPA-Diffusion and ResNet-Diffusion on full navtrain. Report PDMS and EPDMS. Then run the cross-city protocol (single-city training + LOCO) with both to test RQ5.}
+
+% ============================================================================
+\section{Metrics}
+\label{sec:meth-metrics}
+
+\textit{For every experiment, we report:}
+\begin{itemize}
+    \item \textbf{PDMS} (overall) and sub-scores: NC, DAC, EP, TTC, Comfort
+    \item \textbf{EPDMS} (extended evaluation, where applicable)
+    \item \textbf{Generalization gap} $\Delta_\text{gen}$
+    \item \textbf{Inference speed} (FPS) for JEPA-Diffusion
+    \item All results tracked via Weights \& Biases
+\end{itemize}
+
+% ============================================================================
+\section{Implementation Details}
+\label{sec:meth-implementation}
+
+\textit{Software: PyTorch, PyTorch Lightning, Hydra configuration. Hardware: NYU Greene HPC cluster (L40S and H100 GPUs). Distributed training via DDP. Experiment management via custom \texttt{navsim\_manager.py} CLI. All code open-sourced.}

@@ -1,0 +1,72 @@
+%!TEX root = ../thesis.tex
+\chapter{Related Work}
+\label{chap:relatedwork}
+
+%% This chapter positions our contributions relative to existing literature.
+%% Organized thematically, not chronologically.
+
+% ============================================================================
+\section{Self-Supervised Learning for Autonomous Driving}
+\label{sec:rw-ssl-driving}
+
+\textit{Survey SSL methods that have been applied to driving tasks. Note that most work applies SSL to perception (object detection, segmentation, depth estimation) rather than end-to-end planning. Discuss:}
+\begin{itemize}
+    \item \textit{Pre-training on ImageNet vs.\ driving-specific data (nuScenes, Waymo)}
+    \item \textit{Contrastive methods (MoCo, SimCLR) applied to driving}
+    \item \textit{JEPA-family methods in driving: Drive-JEPA (Jan 2026) uses V-JEPA for planning, achieving 93.3 PDMS / 87.8 EPDMS, but requires LiDAR and does not evaluate cross-city transfer}
+    \item \textit{Gap: no systematic comparison of SSL backbones for planning generalization}
+\end{itemize}
+
+% ============================================================================
+\section{End-to-End Planning on NAVSIM}
+\label{sec:rw-navsim-planners}
+
+\textit{Review the NAVSIM leaderboard landscape and key methods:}
+
+\subsection{Regression-Based Planners}
+\textit{TransFuser, LAW, Ego-MLP baselines. Discuss their architectures and PDMS results. Note reliance on supervised ResNet backbones.}
+
+\subsection{Diffusion-Based Planners}
+\textit{DiffusionDrive, DiffusionDriveV2, CTG++. Discuss the shift from regression to generative planning and its advantages (multi-modality, better coverage of trajectory space).}
+
+\subsection{Camera-Only Planners}
+\textit{PRIX (87.8 PDMS / 84.2 EPDMS) as the best camera-only method with EPDMS. CaRT architecture. Discuss the camera-only constraint for edge deployment and cost reduction. Note: no camera-only method combines SSL + diffusion + EPDMS.}
+
+\subsection{State-of-the-Art Multi-Modal Methods}
+\textit{Drive-JEPA, PRIX (full), and other top entries. Contextualize where our work fits in the performance landscape.}
+
+% ============================================================================
+\section{Cross-Domain Generalization in Driving}
+\label{sec:rw-cross-domain}
+
+\subsection{Weather and Lighting Robustness}
+\textit{Prior work on sim-to-real, day-to-night, clear-to-rain transfer. These are important but orthogonal to geographic shift.}
+
+\subsection{Geographic / Cross-City Transfer}
+\textit{Limited prior work. Some studies in object detection (e.g., training on US data, testing on Singapore). To our knowledge, no prior work studies cross-city transfer for end-to-end planning on NAVSIM. Our NAVSIM city splits are the first benchmark contribution in this space.}
+
+\subsection{Domain Generalization Techniques}
+\textit{Brief overview of DG methods (data augmentation, domain randomization, meta-learning, invariant risk minimization). Discuss why we take a simpler approach: changing the representation (SSL) rather than the training procedure, and show it is surprisingly effective.}
+
+% ============================================================================
+\section{Reinforcement Learning for Planning Refinement}
+\label{sec:rw-rl-planning}
+
+\textit{Discuss RL post-training for driving planners:}
+\begin{itemize}
+    \item \textit{DiffusionDriveV2's GRPO: +3.1 PDMS improvement over supervised baseline}
+    \item \textit{DPO (Direct Preference Optimization) applied to trajectory ranking}
+    \item \textit{Gap: nobody has tested whether RL fine-tuning gains transfer across cities (our RQ6)}
+\end{itemize}
+
+% ============================================================================
+\section{Summary and Positioning}
+\label{sec:rw-summary}
+
+\textit{Summarize the gaps this thesis fills:}
+\begin{enumerate}
+    \item No method combines JEPA SSL + truncated diffusion + camera-only + EPDMS evaluation.
+    \item No cross-city generalization benchmark exists for NAVSIM.
+    \item No study compares SSL backbone impact on planning generalization (only perception tasks).
+    \item No study tests whether RL post-training gains transfer across geographic domains.
+\end{enumerate}

@@ -1,0 +1,139 @@
+%!TEX root = ../thesis.tex
+\chapter{Experiments and Results}
+\label{chap:experiments}
+
+%% This chapter presents all experimental results.
+%% Structure mirrors the phases defined in the Methodology chapter.
+
+% ============================================================================
+\section{Baseline Validation}
+\label{sec:exp-baselines}
+
+\textit{Report baseline results on the standard (non-city-split) NAVSIM benchmark to validate our implementations match published numbers:}
+
+\begin{itemize}
+    \item Constant Velocity baseline: 0.289 PDMS
+    \item Ego Status MLP: 0.809 PDMS
+    \item TransFuser (ResNet-34): 0.854 PDMS
+    \item LAW (ResNet-34): target $\sim$0.846 PDMS
+\end{itemize}
+
+\textit{Table comparing our reproduced numbers vs.\ published results.}
+
+% ============================================================================
+\section{Phase 1: Single-City SSL Generalization}
+\label{sec:exp-phase1}
+
+\subsection{In-Distribution Performance}
+\label{sec:exp-phase1-indist}
+
+\textit{Table: PDMS for each backbone $\times$ city when training and testing on the same city. Discuss whether SSL backbones match or exceed supervised ResNet in-distribution.}
+
+\subsection{Cross-City Generalization Matrix}
+\label{sec:exp-phase1-matrix}
+
+\textit{Present the $4 \times 4$ train-city $\times$ test-city PDMS matrix for each backbone. Heatmap visualization. Key findings:}
+\begin{itemize}
+    \item \textit{Which backbone has the smallest generalization gap?}
+    \item \textit{Which city is the best training ground? (RQ2)}
+    \item \textit{Is the generalization gap reduction consistent across all city pairs?}
+\end{itemize}
+
+\subsection{Generalization Gap Analysis}
+\label{sec:exp-phase1-gap}
+
+\textit{Bar chart: average generalization gap per backbone. Statistical significance tests if applicable. Core finding from IROS submission: cross-city failure is a representation problem, not a planning architecture problem. SSL reduces generalization gaps by an order of magnitude.}
+
+\subsection{Per-Metric Breakdown}
+\label{sec:exp-phase1-metrics}
+
+\textit{Break down PDMS into sub-metrics (NC, DAC, EP, TTC, Comfort). Which sub-metrics suffer most under cross-city transfer? Do SSL backbones uniformly improve all sub-metrics or only certain ones?}
+
+% ============================================================================
+\section{Phase 2: Leave-One-City-Out}
+\label{sec:exp-phase2}
+
+\textit{Present LOCO results: training on 3 cities, testing on the held-out city. Compare with Phase 1 single-city results.}
+
+\subsection{Multi-City Training Benefit}
+\textit{Does training on multiple cities close the generalization gap? Is the benefit uniform across backbones, or do SSL backbones benefit more/less from multi-city training?}
+
+\subsection{Hardest and Easiest Transfer Targets}
+\textit{Which city is hardest to generalize to when held out? Relate to visual/structural properties of each city.}
+
+% ============================================================================
+\section{Phase 3: Data Efficiency}
+\label{sec:exp-phase3}
+
+\textit{Plot: PDMS vs.\ training data fraction (10\%, 25\%, 50\%, 75\%, 100\%) for best and worst backbone. Evaluate both in-distribution and cross-city.}
+
+\subsection{SSL Label Efficiency}
+\textit{At what data fraction does the best SSL backbone match 100\% supervised ResNet performance? (Prior result from ijepa-planning-agent: I-JEPA achieved 0.847 PDMS with only 10\% data.) Discuss implications for data-efficient deployment in new cities.}
+
+\subsection{Graceful Degradation under Domain Shift}
+\textit{Do SSL features degrade more gracefully than supervised features as both training data and domain shift increase? (RQ3)}
+
+% ============================================================================
+\section{Phase 4: JEPA-Diffusion Planner}
+\label{sec:exp-phase4}
+
+\subsection{Overall PDMS and EPDMS}
+\label{sec:exp-phase4-overall}
+
+\textit{Report JEPA-Diffusion results on standard NAVSIM:}
+\begin{itemize}
+    \item Target: 84--86 PDMS (competitive with PRIX camera-only at 87.8 PDMS / 84.2 EPDMS)
+    \item Compare: JEPA-Diffusion vs.\ ResNet-Diffusion vs.\ JEPA-Regression (ablation)
+    \item Report EPDMS (first camera-only SSL method to do so)
+\end{itemize}
+
+\subsection{Cross-City Results: Diffusion vs.\ Regression Head}
+\label{sec:exp-phase4-crosscity}
+
+\textit{Run the single-city training protocol with JEPA-Diffusion and JEPA-Regression (MLP head). Compare generalization gaps. Does the diffusion head reduce cross-city degradation? (RQ5)}
+
+\subsection{Inference Speed}
+\label{sec:exp-phase4-speed}
+
+\textit{Report FPS on target hardware. DiffusionDrive achieves 45+ FPS; our JEPA-Diffusion target is similar. Discuss edge-deployment feasibility.}
+
+\subsection{RL Post-Training Transfer (Exploratory)}
+\label{sec:exp-phase4-rl}
+
+\textit{If conducted: apply GRPO/DPO, measure PDMS improvement on training city, then test on held-out cities. Does the RL improvement transfer? (RQ6)}
+
+% ============================================================================
+\section{Ablation Studies}
+\label{sec:exp-ablations}
+
+\subsection{Frozen vs.\ Fine-Tuned Backbone}
+\textit{Compare frozen I-JEPA vs.\ partially fine-tuned (0.1$\times$ lr) on both in-distribution and cross-city metrics. Does fine-tuning help in-distribution but hurt generalization?}
+
+\subsection{ViT Scale: ViT-S vs.\ ViT-H}
+\textit{Compare I-JEPA ViT-S/14 (used in JEPA-Diffusion for speed) vs.\ ViT-H/14 (used in cross-city study for quality). Trade-off between accuracy and inference cost.}
+
+\subsection{Number of Camera Views}
+\textit{Single front camera vs.\ 3-camera (left, front, right) setup. How much does multi-view help for planning?}
+
+% ============================================================================
+\section{Qualitative Analysis}
+\label{sec:exp-qualitative}
+
+\textit{Visualize predicted trajectories for selected scenarios:}
+\begin{itemize}
+    \item \textit{Success cases: where SSL backbone succeeds and supervised fails under cross-city transfer}
+    \item \textit{Failure cases: where all backbones struggle (e.g., unusual intersections)}
+    \item \textit{Diffusion trajectory diversity: show multi-modal trajectory samples from JEPA-Diffusion}
+\end{itemize}
+
+% ============================================================================
+\section{Discussion}
+\label{sec:exp-discussion}
+
+\textit{Synthesize findings across all phases:}
+\begin{itemize}
+    \item \textit{Is cross-city failure primarily a representation problem? (Confirmed/refuted by Phases 1--2)}
+    \item \textit{Does the planning head architecture matter for generalization? (Phases 1 vs.\ 4)}
+    \item \textit{Practical recommendations: which SSL backbone + planning head combination to use for maximum generalization with minimum compute?}
+    \item \textit{Limitations and threats to validity}
+\end{itemize}
