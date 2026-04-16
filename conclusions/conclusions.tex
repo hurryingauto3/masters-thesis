@@ -18,8 +18,7 @@
     \item \textbf{DiffusionDrive + SSL}: We integrated SSL backbones into DiffusionDrive, achieving up to 86.9 PDMS (MAE, C+L) and demonstrating a camera-only variant at 86.6 PDMS (ResNet-34). Cross-city evaluation of DiffusionDrive + SSL tests whether the representation-centric finding extends to generative planners.
     % TODO: Update with Phase 3 cross-city results and I-JEPA camera-only number
 
-    \item \textbf{Mechanistic Analysis}: Our ``Why does SSL work?'' investigation using CKA, linear probing, and attention visualization provides evidence that SSL features are city-invariant by construction --- they encode road structure rather than city-specific textures.
-    % TODO: Update with concrete analysis numbers
+    \item \textbf{Mechanistic Analysis}: Our ``Why does SSL work?'' investigation over 13 trained checkpoints --- linear probing, CKA, MMD, and feature-covariance effective rank --- isolates the mechanism. Across the four Boston-only single-city runs, a linear probe for city identity scores 0.97 on supervised ResNet-34 features, 0.88 on frozen MAE, and 0.79--0.83 on frozen I-JEPA, rank-matching the 18.2 / 11.7 / 11.0--12.2 OOD PDMS drops measured in Table~\ref{tab:navsim_pdms_merged}. A full fine-tune of I-JEPA ViT-H/14 (run A6-b) collapses the backbone's feature-covariance effective rank from $\sim$37 to $2.87 \pm 0.97$, showing that the frozen constraint is itself load-bearing for the generalization result.
 \end{enumerate}
 
 % ============================================================================

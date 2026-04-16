@@ -13,7 +13,14 @@
 \subsection{City Extraction from nuPlan Metadata}
 \label{sec:meth-city-extraction}
 
-\textit{Describe how city labels are extracted from nuPlan log filenames (prefixes: \texttt{us-ma-boston}, \texttt{us-nv-las-vegas}, \texttt{us-pa-pittsburgh}, \texttt{sg-one-north}). Explain the script \texttt{city\_splits/create\_splits.py} and the resulting JSON token lists. Each token uniquely identifies a driving scenario and is mapped to exactly one city.}
+\textit{Describe how city labels are extracted from nuPlan log filenames.
+City prefixes include} \texttt{us-ma-boston}\textit{,}
+\texttt{us-nv-las-vegas}\textit{,}
+\texttt{us-pa-pittsburgh}\textit{, and}
+\texttt{sg-one-north}\textit{.
+Explain the extraction script and the resulting JSON token lists.
+Each token uniquely identifies a driving scenario
+and is mapped to exactly one city.}
 
 \subsection{Split Statistics and Distribution}
 \label{sec:meth-split-stats}
@@ -65,14 +72,20 @@
 \subsection{Backbone Adapter Interface}
 \label{sec:meth-backbone-adapter}
 
-\textit{Describe the abstract \texttt{SSLBackbone} interface in \texttt{navsim/agents/law/backbones/base.py}. All backbones expose a uniform API: \texttt{forward(images) $\to$ features}. The adapter handles model-specific preprocessing (resolution, normalization) and output reshaping. This design allows swapping backbones with a single config change.}
+\textit{Describe the abstract \texttt{SSLBackbone} interface in
+\path{navsim/agents/law/backbones/base.py}.
+All backbones expose a uniform API:
+\texttt{forward(images)} $\to$ \texttt{features}.
+The adapter handles model-specific preprocessing
+(resolution, normalization) and output reshaping.
+This design allows swapping backbones with a single config change.}
 
 \subsection{Backbone Configurations}
 \label{sec:meth-backbone-configs}
 
 \textit{Table of all backbones used across the thesis:}
 
-\begin{table}[h]
+\begin{table}[ht]
 \centering
 \caption{SSL backbone configurations.}
 \label{tab:backbones}
@@ -206,4 +219,10 @@ MAE ViT-L/16     & Generative      & ImageNet-1K & 1024 & LAW, TF, DD \\
 \section{Implementation Details}
 \label{sec:meth-implementation}
 
-\textit{Software: PyTorch 2.x, PyTorch Lightning, Hydra configuration framework. Hardware: NYU Greene HPC cluster (NVIDIA L40S and H200 GPUs). Distributed training via DDP. Experiment management via custom \texttt{navsim\_manager.py} CLI. Pre-trained checkpoints from HuggingFace (\texttt{facebook/ijepa\_vith14\_1k}, \texttt{facebook/dinov2-large}, \texttt{facebook/vit-mae-large}). All code available at [repo URL].}
+\textit{Software: PyTorch 2.x, PyTorch Lightning, Hydra configuration framework.
+Hardware: NYU Greene HPC cluster (NVIDIA L40S and H200 GPUs).
+Distributed training via DDP.
+Experiment management via custom}
+\texttt{navsim\_manager.py} \textit{CLI.
+Pre-trained checkpoints from HuggingFace.
+All code available at} [repo URL]\textit{.}
