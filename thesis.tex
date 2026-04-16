@@ -68,12 +68,8 @@
 \pagestyle{fancy}
 \fancyhf{}
 \renewcommand{\headrulewidth}{0pt}
-\fancyhead[LE]{}
-\fancyhead[RO]{}
-\fancyhead[RE]{}
-\fancyhead[LO]{}
+\fancyhead[R]{\thepage}
 \fancyfoot[C]{}
-\rhead{\thepage}
 
 \fancypagestyle{plain}{%
 \fancyhf{}
@@ -211,26 +207,28 @@
 }
 
 \end{center}
-% \vfill
 
+\vspace{0.3in}
+
+\begin{flushright}
+\begin{minipage}{2.5in}
+Approved: \vspace{0.1in}
+
+\hrule\vspace{4pt}
+\centerline{\small Department Chair Signature}
 \vspace{0.2in}
 
+\hrule\vspace{4pt}
+\centerline{\small Date}
+\end{minipage}
+\end{flushright}
+
+\vspace{0.3in}
 \noindent
-\makebox[\textwidth]{\hfill\makebox[2.5in]{Approved: \hfill}}
-\vspace{0.1in}
+\underline{University ID}: \underline{N\#} % TODO: Add your University ID
 
 \noindent
-\makebox[\textwidth]{\hfill\makebox[2.5in]{\hrulefill}}\\
-\makebox[\textwidth]{\hfill\makebox[2.5in]{\hfill Department Chair Signature\hfill}}
-\vspace{0.05in}
-
-\noindent
-\makebox[\textwidth]{\hfill\makebox[2.5in]{\hrulefill}}\\
-\makebox[\textwidth]{\hfill\makebox[2.5in]{\hfill Date \hfill}}
-
-\noindent
-\underline{University ID}: \underline{N\#}\\ % TODO: Add your University ID
-\underline{Net ID}: \hspace{.415in} \underline{ah7072}\\
+\underline{Net ID}: \hspace{.415in} \underline{ah7072}
 
 \newpage
 
@@ -246,13 +244,15 @@ Approved by the Guidance Committee:
 \underline{Major}: Computer Engineering
 \vspace{0.7in}
 
-\noindent
-\makebox[\textwidth]{\hfill\makebox[3in]{\hrulefill}}\\
-\makebox[\textwidth]{\hfill\makebox[3in]{\hfill \textbf{Anna Choromanska}\hfill}}
-\makebox[\textwidth]{\hfill\makebox[3in]{\hfill Professor of \hfill}}
-\makebox[\textwidth]{\hfill\makebox[3in]{\hfill Electrical and Computer Engineering \hfill}}
-\makebox[\textwidth]{\hfill\makebox[3in]{\rule[-4pt]{2in}{1pt}}}\\
-\makebox[\textwidth]{\hfill\makebox[3in]{\hfill Date \hfill}}\\
+\hfill\parbox{3in}{%
+\hrule\vspace{2pt}
+\centerline{\textbf{Anna Choromanska}}
+\centerline{Professor of}
+\centerline{Electrical and Computer Engineering}
+\vspace{0.3in}
+\hrule\vspace{2pt}
+\centerline{Date}
+}
 \vspace{0.5in}
 
 \doublespacing
@@ -304,17 +304,13 @@ Ann Arbor, MI 48106-1346
 %%%%%%%%%%%%%% Abstract %%%%%%%%%%%%%%%%%
 \section*{}
 \begin{center}
-{\bfseries 
-  %{\large\thesistitle}
-  {\bf ABSTRACT}\\
-\begin{center}
-\line(1,0){120}
-\end{center}  
-\vspace{.25in}  
-  {\bf \thesistitle}\\  
-  {\bf by}\\  
-  {\bf \thesisauthor}\\
-  {\bf Advisor: Prof. \thesisadvisor, Ph.D.}\\
+{\bfseries
+  {\bf ABSTRACT}\\[0.2in]
+  \rule{2in}{0.4pt}\\[0.25in]
+  {\bf \thesistitle}\\[0.1in]
+  {\bf by}\\[0.1in]
+  {\bf \thesisauthor}\\[0.1in]
+  {\bf Advisor: Prof.\ \thesisadvisor, Ph.D.}\\[0.1in]
   {\bf Submitted in Partial Fulfillment of the Requirements for}\\
   {\bf the Degree of Master of Science (Computer Engineering) }\\
   \vspace{.25in}
@@ -370,6 +366,6 @@ Ann Arbor, MI 48106-1346
 %%%% Input bibliography file %%%%%%%%%%%%%%%
 % \input{thesis}
 \bibliographystyle{IEEEtran}
-\bibliography{thesis,introduction/introduction,background/background,relatedwork/relatedwork,methodology/methodology,experiments/experiments,conclusions/conclusions}
+\bibliography{thesis}
 
 \end{document}
