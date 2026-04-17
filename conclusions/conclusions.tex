@@ -8,12 +8,14 @@
 \section{Summary of Contributions}
 \label{sec:concl-summary}
 
-\textit{This thesis investigated the role of visual representations in cross-city generalization for end-to-end autonomous driving. We summarize our contributions:}
+This thesis evolved through three linked questions rather than a single benchmark objective. It began from the hypothesis that SSL backbones should improve even lightweight end-to-end planners. The publication of Drive-JEPA~\cite{wang-drive-jepa} confirmed that JEPA-style pretraining could indeed deliver very strong mixed-city performance, which pushed the thesis toward a sharper and more differentiated question: what does SSL buy beyond standard leaderboard PDMS? The answer developed in this thesis is cross-city robustness and the representational mechanism behind it.
+
+We summarize the resulting contributions:
 
 \begin{enumerate}
-    \item \textbf{NAVSIM City Splits}: We created the first per-city benchmark for NAVSIM, partitioning scenarios across Boston, Pittsburgh, Las Vegas, and Singapore. This benchmark enables systematic evaluation of cross-city transfer that was previously impossible on NAVSIM. Released as a community resource alongside our IROS 2026 submission.
+    \item \textbf{NAVSIM City Splits}: We created the first per-city benchmark for NAVSIM, partitioning scenarios across Boston, Pittsburgh, Las Vegas, and Singapore. This benchmark enables systematic evaluation of cross-city transfer that was previously impossible on NAVSIM, and the first phase of that analysis was reported in~\cite{naeinian-cross-city-2026}.
 
-    \item \textbf{Cross-City SSL Generalization}: Through 19 backbone configurations across TransFuser and LAW architectures, we demonstrated that self-supervised visual representations (I-JEPA, DINOv2, MAE) reduce cross-city generalization gaps by an order of magnitude compared to supervised ResNet-34. This is the central finding of the thesis: \textbf{cross-city failure is a representation problem, not a planning architecture problem}.
+    \item \textbf{Cross-City SSL Generalization}: Through 19 backbone configurations across TransFuser and LAW architectures, we demonstrated that self-supervised visual representations (I-JEPA, DINOv2, MAE) reduce cross-city generalization gaps by an order of magnitude compared to supervised baselines. In the most extreme open-loop setting reported in~\cite{naeinian-cross-city-2026}, Boston$\rightarrow$Singapore transfer falls from 9.77$\times$ L2 inflation and 19.34$\times$ collision inflation under a supervised backbone to 1.20$\times$ and 0.75$\times$ under domain-specific I-JEPA. This is the central finding of the thesis: \textbf{cross-city failure is a representation problem, not a planning architecture problem}.
 
     \item \textbf{DiffusionDrive + SSL}: We integrated SSL backbones into DiffusionDrive, achieving up to 86.9 PDMS (MAE, C+L) and demonstrating a camera-only variant at 86.6 PDMS (ResNet-34). Cross-city evaluation of DiffusionDrive + SSL tests whether the representation-centric finding extends to generative planners.
     % TODO: Update with Phase 3 cross-city results and I-JEPA camera-only number
@@ -25,10 +27,12 @@
 \section{Key Findings}
 \label{sec:concl-findings}
 
-\textit{Actionable takeaways for practitioners:}
+The project-level takeaway is therefore broader than any one phase: lightweight-head experiments motivated the representation hypothesis, Drive-JEPA clarified that SSL can already be powerful in-distribution, and the final thesis identifies zero-shot cross-city transfer as the regime where SSL's distinctive value becomes clearest.
+
+Actionable takeaways for practitioners:
 
 \begin{enumerate}
-    \item \textbf{SSL pre-training is the single most impactful change for cross-city robustness.} Swapping a supervised ResNet backbone for a frozen SSL ViT backbone, with no other changes, reduces generalization gaps by $\sim$10$\times$.
+    \item \textbf{SSL pre-training is the single most impactful change for cross-city robustness.} Swapping a supervised backbone for a frozen SSL ViT, with no planner redesign, can reduce open-loop transfer inflation by nearly an order of magnitude and improve closed-loop OOD PDMS by several points~\cite{naeinian-cross-city-2026}.
 
     \item \textbf{The in-distribution cost is small; the OOD gain is large.} SSL backbones achieve $\sim$1pp lower PDMS in-distribution but maintain performance under cross-city transfer where supervised baselines collapse.
     % TODO: Fill in concrete numbers from Phase 3
@@ -63,19 +67,19 @@
 \label{sec:concl-future}
 
 \subsection{Video SSL Backbones (V-JEPA)}
-\textit{Extend to video-based SSL (V-JEPA 2) that exploits temporal structure across consecutive frames. Hypothesis: temporal prediction pre-training aligns better with the planning task than single-frame SSL, as driving is inherently a temporal prediction problem. Drive-JEPA's strong results (93.3 PDMS) using V-JEPA motivate this direction.}
+The most immediate next step is to move from image-based SSL to video-based SSL. Driving is inherently temporal, so a predictive video objective should align more naturally with planning than single-frame pretraining. Drive-JEPA already suggests that V-JEPA-style pretraining can be especially strong in-distribution, which makes it a natural candidate for the next iteration of the cross-city robustness question.
 
 \subsection{Closed-Loop Evaluation}
-\textit{Evaluate JEPA-Diffusion in closed-loop simulation (CARLA, nuPlan simulator) to validate that open-loop PDMS improvements translate to improved driving behavior. Closed-loop evaluation would also enable direct testing of safety-critical cross-city failure modes.}
+Closed-loop evaluation is the most important methodological extension. Although PDMS and EPDMS are stronger than raw displacement error, they remain proxy metrics. A closed-loop simulator such as CARLA or the nuPlan simulator would make it possible to test whether the same representation trends hold when the ego policy can alter future scene evolution.
 
 \subsection{Driving-Specific Pre-Training at Scale}
-\textit{Pre-train I-JEPA on large-scale driving video datasets (nuScenes, Waymo Open, ONCE) instead of ImageNet. The hypothesis: driving-specific pre-training would learn road-relevant invariances (lane markings, vehicle dynamics) that ImageNet pre-training cannot capture, further improving cross-city transfer.}
+Most backbones in the thesis still inherit generic large-scale pretraining. A larger study of driving-specific pretraining at scale would clarify how much of the cross-city robustness gain comes from the SSL objective itself and how much comes from domain alignment between pretraining and deployment.
 
 \subsection{Scaling to More Cities and Datasets}
-\textit{Extend city splits to Waymo Open Dataset (San Francisco, Phoenix, etc.) and test cross-dataset transfer (train on nuPlan cities, test on Waymo cities). This would test whether SSL features generalize not just across cities within a dataset, but across different data collection pipelines.}
+The current city-split benchmark covers only four cities and one data pipeline. Extending the same protocol to other datasets, and especially to cross-dataset transfer, would test whether the representation findings generalize beyond NAVSIM and nuScenes.
 
 \subsection{RL Post-Training for Cross-City Transfer}
-\textit{Fully investigate whether GRPO/DPO gains transfer across cities (RQ6). If RL overfits to city-specific reward landscapes, develop city-agnostic reward formulations. If gains transfer, SSL + diffusion + RL becomes a complete recipe for robust planning.}
+RQ6 remains open. If reward-guided post-training improves held-out-city behavior, then SSL + diffusion + RL becomes a plausible full recipe for robust planning. If it fails to transfer, then the next problem is reward design: current reward signals may be encoding city-specific structure rather than general driving competence.
 
 \subsection{Multi-Modal JEPA Encoders}
-\textit{Explore JEPA-style pre-training that jointly encodes camera and LiDAR in a shared latent space, potentially capturing complementary information while maintaining the generalization benefits of SSL.}
+Finally, the thesis motivates a multi-modal JEPA direction. A shared latent-space pretraining objective over camera and LiDAR could preserve the robustness benefits of SSL while recovering part of the geometry lost in camera-only deployment settings.

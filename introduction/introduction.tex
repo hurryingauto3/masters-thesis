@@ -11,35 +11,49 @@
 \section{Motivation}
 \label{sec:motivation}
 
-\textit{Open with the promise of end-to-end autonomous driving: a single learned model maps sensor input directly to planned trajectories, bypassing hand-crafted intermediate representations. Recent methods (TransFuser, LAW, DiffusionDrive) achieve strong results on the NAVSIM benchmark, with PDMS scores exceeding 88\%.}
+End-to-end autonomous driving promises a single learned stack that maps raw sensory observations directly to future motion, avoiding brittle hand-engineered interfaces between perception, prediction, and planning. Under standard benchmark protocols, this paradigm appears increasingly mature: modern planners evaluated on NAVSIM report strong aggregate PDMS and can match or exceed classical modular baselines on mixed-city test sets~\cite{dauner-navsim}. The apparent maturity is misleading, however, when the train and test distributions are geographically mixed.
 
-\textit{However, all published numbers are reported on a single aggregate test split that mixes data from multiple cities. When we separate evaluation by city, a critical failure mode emerges: models trained on one city suffer severe performance degradation when tested on another. This cross-city generalization failure is a safety-critical problem --- an autonomous vehicle trained in Las Vegas must also work in Boston --- yet current benchmarks do not expose it.}
+A model that interpolates well across pooled data from Boston, Pittsburgh, Las Vegas, and Singapore is not necessarily robust to deployment in a city it has never seen. Once evaluation is re-framed as zero-shot geographic transfer, performance can collapse. Naeinian et al.~\cite{naeinian-cross-city-2026} show that a supervised backbone trained on Boston and evaluated on Singapore suffers a 9.77$\times$ inflation in average trajectory displacement and a 19.34$\times$ inflation in collision rate in open-loop evaluation, despite remaining competitive on the standard mixed-city split. The same study reports that, in closed-loop NAVSIM evaluation, single-city training with self-supervised features improves average out-of-distribution PDMS by as much as four points relative to supervised baselines. These failure modes are safety-critical: an autonomous vehicle trained in one city must remain competent when moved to another without expensive recollection and relabeling of local data.
 
-\textit{This thesis investigates the root cause and proposes a solution. We argue, and provide extensive evidence, that:}
+This thesis investigates the source of that failure mode and argues that the dominant bottleneck is representational rather than architectural. The central claim is:
 
 \begin{quote}
 \textbf{Cross-city generalization failure in end-to-end autonomous driving is primarily a visual representation problem, not a planning architecture problem. Self-supervised pre-training produces features that are inherently more transferable across cities, reducing generalization gaps by an order of magnitude.}
 \end{quote}
 
 % ============================================================================
+\section{Project Evolution}
+\label{sec:project-evolution}
+
+This thesis did not begin as a cross-city benchmark project. It began as a much narrower question posed in an earlier course-project report~\cite{hamza-sanchez-navsim-report}: if representation quality is genuinely load-bearing, can an off-the-shelf self-supervised visual encoder already improve planning when the downstream head is intentionally simple? The first experiments therefore paired I-JEPA with a small MLP waypoint regressor in a perception-free NAVSIM setting, and later expanded to lightweight multi-camera variants and controlled backbone swaps inside TransFuser.
+
+Those pilot studies established three facts that shaped the rest of the thesis. First, SSL features were already strong enough to make lightweight heads competitive with substantially heavier baselines. Second, modest temporal context helped more reliably than simply making the MLP deeper, suggesting that planner capacity was not the main bottleneck. Third, naive backbone swaps inside multi-modal planners were sensitive to fusion geometry and preprocessing details, which made in-distribution benchmark scores an ambiguous test of representation quality by themselves. These observations turned the early project into a representation question rather than a planner-engineering question.
+
+The research landscape changed again during the thesis itself. Drive-JEPA~\cite{wang-drive-jepa} showed that V-JEPA-style video pretraining is not merely a promising auxiliary idea but can support state-of-the-art mixed-city performance on NAVSIM: the full framework reports 93.3 PDMS on NAVSIM v1 and 87.8 EPDMS on NAVSIM v2, while even the stripped-down perception-free setting reaches 89.0 PDMS with a simple transformer decoder. This result validated the original intuition behind the thesis, but it also changed the novelty frontier. After Drive-JEPA, a thesis centered only on showing that SSL can improve in-distribution NAVSIM performance would no longer answer the most interesting question.
+
+The project therefore pivoted from \emph{whether} SSL helps to \emph{where} and \emph{why} it helps. The final thesis keeps the early lightweight-head experiments as the conceptual starting point, but its main contributions move to a regime that mixed-city leaderboards do not expose: zero-shot cross-city generalization and the mechanism behind the resulting robustness gap.
+
+% ============================================================================
 \section{Problem Statement}
 \label{sec:problem}
 
-\textit{Formalize the cross-city generalization problem. Cities in the NAVSIM benchmark (Boston, Pittsburgh, Las Vegas, Singapore --- inherited from nuPlan) differ in road geometry, vegetation, signage, weather patterns, and infrastructure. These constitute a visual domain shift that degrades learned driving policies.}
+We study geographic domain shift in end-to-end planning. The cities used throughout this thesis differ not only in appearance, but also in structure: road topology, lane geometry, vegetation, infrastructure layout, traffic density, and even driving convention (right-hand traffic in Boston, Pittsburgh, and Las Vegas versus left-hand traffic in Singapore). As emphasized in~\cite{naeinian-cross-city-2026}, these differences create a harder transfer setting than ordinary mixed-city validation because the model cannot rely on city-specific shortcuts learned during training.
 
-\textit{We decompose the problem along two axes:}
+The thesis decomposes the problem along two axes:
 \begin{enumerate}
     \item \textbf{Representation axis}: Does the visual backbone (supervised vs.\ self-supervised) determine transfer quality?
     \item \textbf{Planning axis}: Does the planning head architecture (regression vs.\ generative diffusion) independently affect cross-city robustness?
 \end{enumerate}
 
-\textit{Our experiments isolate each axis. Phase 1 (IROS submission) swaps backbones within a fixed planner. Phase 3 (new work) compares planning heads with a fixed backbone. The ``Why SSL Works'' analysis (Phase 4) provides mechanistic explanations for the observed improvements.}
+The experiments are designed to isolate those axes. An exploratory Phase 0 documents the original lightweight-head hypothesis that seeded the project. Phase 1 then summarizes and extends the controlled protocol introduced in~\cite{naeinian-cross-city-2026}: the planner is held fixed while the backbone is swapped across supervised and self-supervised initializations under explicit geographic transfer. Phase 2 and Phase 3 move to DiffusionDrive to test whether the representation-centric finding survives a different planning head and a camera-only setting. Phase 4 adds a mechanistic analysis of the resulting feature spaces to explain why some representations transfer more gracefully than others.
 
 % ============================================================================
 \section{Research Questions}
 \label{sec:research-questions}
 
 This thesis addresses the following research questions:
+
+The early lightweight-head phase is treated as exploratory motivation rather than a primary research question. The formal questions below begin at the point where mixed-city performance alone is no longer sufficient to differentiate SSL-based planning systems.
 
 \begin{enumerate}
     \item \textbf{RQ1}: Which self-supervised pre-training objective (I-JEPA, DINOv2, MAE) generalizes best across cities for end-to-end planning, compared to supervised ImageNet features? \textit{(Addressed in Chapter~\ref{chap:experiments}, Phase 1)}
@@ -61,10 +75,12 @@ This thesis addresses the following research questions:
 
 This thesis makes the following contributions:
 
-\begin{enumerate}
-    \item \textbf{NAVSIM City Splits Benchmark}: The first per-city train/test partitioning of NAVSIM, enabling systematic cross-city generalization studies. Submitted to IROS 2026 as a community benchmark contribution.
+These contributions emerge through a sequence of project phases rather than a single benchmark study: an initial lightweight-head SSL exploration, a robustness pivot triggered by the changing literature, and a final representation-mechanism analysis.
 
-    \item \textbf{Cross-City SSL Generalization Study}: A comprehensive evaluation of SSL backbones (I-JEPA, DINOv2, MAE) vs.\ supervised ResNet-34 across 19 configurations in TransFuser and LAW architectures. Core finding: SSL reduces cross-city generalization gaps by an order of magnitude. The representation, not the planner, determines transfer quality.
+\begin{enumerate}
+    \item \textbf{NAVSIM City Splits Benchmark}: The first per-city train/test partitioning of NAVSIM, enabling systematic cross-city generalization studies. The initial benchmark protocol and its accompanying open-loop/closed-loop analysis were introduced in our prior cross-city study~\cite{naeinian-cross-city-2026}; this thesis incorporates that protocol into a broader representation-centric investigation.
+
+    \item \textbf{Cross-City SSL Generalization Study}: A comprehensive evaluation of SSL backbones (I-JEPA, DINOv2, MAE) versus supervised backbones across LAW, TransFuser, and Latent TransFuser. Building on~\cite{naeinian-cross-city-2026}, the core empirical finding is that domain-specific self-supervised pretraining sharply reduces the cross-city generalization gap, often by an order of magnitude in open-loop error ratios. This is the point at which the thesis moves beyond the already-established claim that SSL can help mixed-city performance.
 
     \item \textbf{DiffusionDrive + SSL Integration}: Integration of SSL backbones (I-JEPA, MAE) into DiffusionDrive, including a camera-only variant. Achieves 86.9 PDMS (MAE) and 86.6 PDMS (camera-only ResNet), demonstrating SSL features partially compensate for removed LiDAR.
     % TODO: Update with I-JEPA camera-only number when available
@@ -84,11 +100,11 @@ The remainder of this thesis is organized as follows:
 \begin{itemize}
     \item \textbf{Chapter~\ref{chap:background}} provides background on end-to-end autonomous driving, the NAVSIM benchmark, self-supervised learning methods (I-JEPA, DINOv2, MAE), and planning architectures (TransFuser, LAW, DiffusionDrive).
 
-    \item \textbf{Chapter~\ref{chap:relatedwork}} reviews related work in three threads: SSL for autonomous driving, cross-domain generalization, and diffusion-based planning.
+    \item \textbf{Chapter~\ref{chap:relatedwork}} reviews related work in three threads: SSL for autonomous driving, cross-domain generalization, and diffusion-based planning, with particular attention to how Drive-JEPA changed the in-distribution performance landscape.
 
-    \item \textbf{Chapter~\ref{chap:methodology}} describes our methodology: city split creation, SSL backbone integration, DiffusionDrive + SSL architecture, and the 4-phase experimental protocol.
+    \item \textbf{Chapter~\ref{chap:methodology}} describes our methodology: the exploratory lightweight-head phase, city split creation, SSL backbone integration, DiffusionDrive + SSL architecture, and the full Phase 0--4 experimental protocol.
 
-    \item \textbf{Chapter~\ref{chap:experiments}} presents experiments and results across all four phases, including the ``Why does SSL work?'' mechanistic analysis.
+    \item \textbf{Chapter~\ref{chap:experiments}} presents experiments and results across the full project arc, from the initial SSL-backbone + lightweight-head hypothesis to cross-city evaluation and the ``Why does SSL work?'' mechanistic analysis.
 
     \item \textbf{Chapter~\ref{chap:conclusions}} summarizes conclusions and outlines future work directions.
 \end{itemize}
