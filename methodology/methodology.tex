@@ -3,8 +3,17 @@
 \label{chap:methodology}
 
 %% Approx. 15 pages.
-%% Two main thrusts: (1) Cross-city SSL benchmark, (2) DiffusionDrive + SSL.
-%% Ends with the 4-phase experimental protocol.
+%% Main thrusts: exploratory lightweight-head SSL, cross-city SSL benchmark,
+%% DiffusionDrive + SSL, and mechanistic analysis.
+%% Ends with the Phase 0--4 experimental protocol.
+
+% ============================================================================
+\section{Exploratory Lightweight-Head Regime}
+\label{sec:meth-lightweight-head}
+
+The project began with an intentionally simple experimental regime: pair a pretrained visual backbone with a lightweight planning head and ask whether the representation alone already improves end-to-end driving behavior. The earliest version of this regime used a simple MLP waypoint regressor over image features and ego state. Its role was diagnostic rather than competitive. By minimizing planner capacity, it made it easier to attribute downstream changes to the backbone itself.
+
+This regime remains important in the final thesis for two reasons. First, it explains why the thesis is fundamentally about representations rather than planner engineering. Second, it provides the historical starting point for the later pivot in scope. Once Drive-JEPA~\cite{wang-drive-jepa} demonstrated that V-JEPA pretraining plus a lightweight decoder could already be highly competitive on standard NAVSIM, the thesis moved away from asking whether SSL can improve in-distribution PDMS and toward the harder question of where that representational advantage remains uniquely informative.
 
 % ============================================================================
 \section{NAVSIM City Splits}
@@ -13,57 +22,55 @@
 \subsection{City Extraction from nuPlan Metadata}
 \label{sec:meth-city-extraction}
 
-\textit{Describe how city labels are extracted from nuPlan log filenames.
-City prefixes include} \texttt{us-ma-boston}\textit{,}
-\texttt{us-nv-las-vegas}\textit{,}
-\texttt{us-pa-pittsburgh}\textit{, and}
-\texttt{sg-one-north}\textit{.
-Explain the extraction script and the resulting JSON token lists.
-Each token uniquely identifies a driving scenario
-and is mapped to exactly one city.}
+City labels are recovered directly from the underlying nuPlan/OpenScene log metadata. Each scenario token inherits the city prefix of its source log, with prefixes such as \texttt{us-ma-boston}, \texttt{us-nv-las-vegas}, \texttt{us-pa-pittsburgh}, and \texttt{sg-one-north}. A preprocessing script walks the metadata once, assigns every scenario token to exactly one city, and writes city-specific token lists used by the training and evaluation dataloaders. This step is simple but essential: it turns NAVSIM from a pooled benchmark into a reproducible geographic-transfer benchmark whose train/test partitions are defined by city identity rather than random sampling.
 
 \subsection{Split Statistics and Distribution}
 \label{sec:meth-split-stats}
 
-\textit{Table showing number of training and test scenarios per city. Discuss class balance. Show that each city has sufficient data for meaningful training and evaluation. Include data volume (hours of driving, number of frames) per city.}
-
-% TODO: Full statistics table from city_splits/
+The cross-city protocol uses the natural geographic partitions already present in the source datasets. For nuScenes~\cite{caesar-nuscenes}, the Boston split contains 390 training scenes (2.12 hours) and 77 validation scenes (0.42 hours), while Singapore contains 310 training scenes (1.68 hours) and 73 validation scenes (0.40 hours). For NAVSIM~\cite{dauner-navsim}, the city distribution is more imbalanced: Las Vegas contributes 818 training scenes and 50 evaluation scenes, Boston 255 and 62, Pittsburgh 140 and 22, and Singapore 97 and 13. These counts are large enough to expose meaningful transfer behavior while still making the data imbalance itself part of the problem; Singapore is both the smallest domain and the only left-hand-traffic environment, which makes it a particularly stringent test of transfer~\cite{naeinian-cross-city-2026}.
 
 \subsection{Evaluation Protocols}
 \label{sec:meth-eval-protocols}
 
-\textit{Define three evaluation settings used throughout the thesis:}
+The thesis uses a hierarchy of evaluation settings. The standard all-city protocol serves as a reference point: train and evaluate on the benchmark's original mixed-city split. The key stress test is strict single-city transfer, where a model is trained on one city and evaluated on unseen cities without fine-tuning, adaptation, or test-time modification. On nuScenes this yields a two-direction protocol (Boston$\rightarrow$Singapore and Singapore$\rightarrow$Boston); on NAVSIM it yields a full $4 \times 4$ train-city/test-city matrix. We also describe leave-one-city-out evaluation as a useful future extension, but the core empirical results in this thesis come from the first two settings because they match the controlled protocol introduced in~\cite{naeinian-cross-city-2026}.
 \begin{enumerate}
     \item \textbf{All-city (standard)}: Train and test on the full NAVSIM split (all cities mixed). Reproduces published numbers.
     \item \textbf{Single-city (zero-shot transfer)}: Train on city A, test on all cities. Produces a $4 \times 4$ generalization matrix.
     \item \textbf{Leave-one-city-out (LOCO)}: Train on 3 cities, test on the held-out city. More realistic multi-city regime.
 \end{enumerate}
 
-\textit{Define the generalization gap metric:}
+For score-based metrics such as PDMS, we summarize out-of-distribution performance for a training city $c_i$ by averaging over the other cities~\cite{naeinian-cross-city-2026}:
 \begin{equation}
-    \Delta_\text{gen} = \text{PDMS}_\text{in-dist} - \text{PDMS}_\text{OOD}
+    S_\text{OOD}(c_i)=\frac{1}{|C|-1}\sum_{c_j \neq c_i} S(c_i \rightarrow c_j).
 \end{equation}
 
-\textit{And the transfer ratio (from IROS):}
+We additionally report the generalization gap as the difference between in-domain and out-of-domain closed-loop performance:
 \begin{equation}
-    R_\text{transfer} = \frac{\text{PDMS}_\text{OOD}}{\text{PDMS}_\text{in-dist}}
+    \Delta_\text{gen} = \text{PDMS}_\text{in-dist} - \text{PDMS}_\text{OOD}.
 \end{equation}
+
+For open-loop error metrics, where lower is better, the more informative quantity is the error inflation ratio
+\begin{equation}
+    R_\text{err}(c_\text{train}\rightarrow c_\text{test})=\frac{E_\text{cross}(c_\text{train}\rightarrow c_\text{test})}{E_\text{in}(c_\text{train}\rightarrow c_\text{train})},
+\end{equation}
+which equals 1 for perfect preservation and grows as transfer degrades~\cite{naeinian-cross-city-2026}.
 
 % ============================================================================
 \section{SSL Pre-Training Protocol}
 \label{sec:meth-ssl-pretraining}
 
-\textit{Describe the self-supervised pre-training setup for I-JEPA on nuScenes driving data (used for some DiffusionDrive experiments):}
+To isolate the effect of the self-supervised objective from architecture and capacity, the Phase 1 protocol in~\cite{naeinian-cross-city-2026} performs domain-specific pretraining on nuScenes using the same ViT-S/14 backbone for I-JEPA, DINOv2-style distillation, and MAE. The goal is not to maximize absolute benchmark performance during pretraining, but to create matched representation initializations whose downstream behavior can be compared fairly under city transfer.
 
 \begin{itemize}
-    \item \textbf{Architecture}: I-JEPA ViT-S/14
+    \item \textbf{Architecture}: ViT-S/14 for all domain-specific SSL runs
     \item \textbf{Pre-training data}: nuScenes training split (driving images)
-    \item \textbf{Training}: 100 epochs, AdamW optimizer, cosine LR schedule
+    \item \textbf{Views and resolution}: all six camera views, with both square $224 \times 224$ and rectangular $224 \times 392$ inputs
+    \item \textbf{Training}: 100 epochs with AdamW and cosine learning-rate scheduling
     \item \textbf{Hardware}: 2$\times$ H200 GPUs
-    \item \textbf{Input resolutions}: Both rectangular (native aspect ratio) and square (center-crop) variants
+    \item \textbf{Batch size}: 64 per GPU
 \end{itemize}
 
-\textit{For ImageNet-pretrained backbones (I-JEPA ViT-H/14, DINOv2 ViT-L/14, MAE ViT-L/16), we use the official released checkpoints without further pre-training.}
+Rectangular inputs preserve the native geometry of the driving scene, while square inputs align better with common ImageNet-style ViT pretraining. The comparison between those two settings turns out to matter empirically, particularly for I-JEPA under cross-city transfer~\cite{naeinian-cross-city-2026}. For generic large-scale pretraining, we use released ImageNet-scale checkpoints without additional driving-specific adaptation.
 
 % ============================================================================
 \section{SSL Backbone Integration}
@@ -72,18 +79,16 @@ and is mapped to exactly one city.}
 \subsection{Backbone Adapter Interface}
 \label{sec:meth-backbone-adapter}
 
-\textit{Describe the abstract \texttt{SSLBackbone} interface in
-\path{navsim/agents/law/backbones/base.py}.
-All backbones expose a uniform API:
-\texttt{forward(images)} $\to$ \texttt{features}.
-The adapter handles model-specific preprocessing
-(resolution, normalization) and output reshaping.
-This design allows swapping backbones with a single config change.}
+All backbones are wrapped behind a common adapter interface so that planner code does not depend on model-specific preprocessing or tensor shapes. Conceptually, every backbone implements a common mapping
+\[
+\texttt{images} \mapsto \texttt{features},
+\]
+while the adapter handles input normalization, resizing, token pooling, and feature reshaping. This abstraction is important for the thesis because it makes backbone swapping a controlled intervention rather than a code fork. In practice, the same planning stack can be re-run with ResNet, I-JEPA, DINOv2, or MAE by changing configuration rather than rewriting the downstream model.
 
 \subsection{Backbone Configurations}
 \label{sec:meth-backbone-configs}
 
-\textit{Table of all backbones used across the thesis:}
+Table~\ref{tab:backbones} summarizes the backbone families used throughout the thesis. The key control principle is to vary the pretraining objective while keeping downstream planners fixed wherever possible.
 
 \begin{table}[ht]
 \centering
@@ -102,23 +107,23 @@ MAE ViT-L/16     & Generative      & ImageNet-1K & 1024 & LAW, TF, DD \\
 \end{tabular}
 \end{table}
 
-\textit{TF = TransFuser, DD = DiffusionDrive. All SSL backbones are frozen during downstream training unless explicitly noted. Backbone receives 0.1$\times$ learning rate multiplier when fine-tuning is enabled (ablation only).}
+TF denotes TransFuser and DD denotes DiffusionDrive. Unless stated otherwise, SSL backbones are frozen during downstream training. When fine-tuning is enabled for ablations, the backbone receives a smaller learning-rate multiplier than the planning head to reduce catastrophic drift away from the pretrained representation.
 
 \subsection{Feature Projection}
 \label{sec:meth-feature-proj}
 
-\textit{Since backbones have different output dimensions (384--1280), describe the linear projection layer that maps all backbone outputs to a common dimension before the planning head. For DiffusionDrive, the feature adapter projects ViT patch tokens $(B, N, C)$ to spatial feature maps $(B, C', H, W)$ compatible with \texttt{MultiScaleCrossAttention}.}
+Because the backbones emit features with different dimensionality and structure, a lightweight projection module standardizes them before they enter the planner. For global-regression heads, this is a linear projection from the backbone output dimension to the hidden dimension expected by the planner. For token-based backbones integrated into DiffusionDrive, the adapter projects ViT patch tokens $(B, N, C)$ into spatial feature maps $(B, C', H, W)$ compatible with the planner's multi-scale cross-attention blocks. This projection is intentionally lightweight so that the thesis remains focused on the representation rather than on heavy task-specific adaptation.
 
 % ============================================================================
 \section{Planning Architecture I: LAW with Swappable Backbones}
 \label{sec:meth-law}
 
-\textit{LAW (Latent World Model, ICLR 2025) serves as the primary test bed for the cross-city SSL study (RQ1--RQ3). The backbone is the only component we swap; everything else remains fixed for fair comparison.}
+LAW (Latent World Model)~\cite{li-law} serves as the primary open-loop test bed for the cross-city SSL study. Following~\cite{naeinian-cross-city-2026}, the planner and training recipe are held fixed while only the backbone initialization changes. This isolates the representational contribution from downstream architectural confounders.
 
 \subsection{Architecture Overview}
 \label{sec:meth-law-arch}
 
-\textit{Key components:}
+The LAW experiments use the same downstream planner across all backbone variants. Its key components are:
 \begin{itemize}
     \item Per-view spatial decoders (one per camera view)
     \item LID (Lift, Image, Depth) depth encoding for 3D-aware features
@@ -126,28 +131,28 @@ MAE ViT-L/16     & Generative      & ImageNet-1K & 1024 & LAW, TF, DD \\
     \item TransformerDecoder latent world model (auxiliary training loss)
 \end{itemize}
 
-\textit{The world model loss encourages the backbone to produce features useful for predicting future states, which may independently improve generalization.}
+The auxiliary world-model loss is useful here because it regularizes features toward future-state prediction without changing the core planning objective. Even so, the thesis treats LAW primarily as a controlled test bed: because the planner is fixed, differences in cross-city behavior can be attributed mainly to the backbone.
 
 \subsection{Training Configuration}
 \label{sec:meth-law-training}
 
-\textit{Adam optimizer (not AdamW), lr=1e-4, no weight decay, no scheduler, 20 epochs, batch\_size=32. Backbone lr\_mult=0.1 when fine-tuning. No gradient clipping. Mixed precision (fp16). These match the official LAW paper's NAVSIM configuration (Section 5.2).}
+For the nuScenes open-loop experiments, LAW is trained for 12 epochs with AdamW, base learning rate $5\times 10^{-5}$, weight decay 0.01, cosine annealing with minimum ratio $10^{-3}$, and gradient clipping at maximum L2 norm 35~\cite{naeinian-cross-city-2026}. Training uses mixed precision on a single NVIDIA L40S GPU with batch size 2. Frozen and fully fine-tuned backbone variants are both evaluated to distinguish representational quality from adaptation capacity.
 
 \subsection{TransFuser Baseline}
 \label{sec:meth-transfuser}
 
-\textit{TransFuser: ResNet-34 camera + ResNet-34 LiDAR + GPT-style auto-regressive fusion + MLP waypoint regression. Simpler than LAW (no world model loss). Used to test whether cross-city findings are architecture-dependent or backbone-dependent.}
+TransFuser~\cite{chitta-transfuser} provides the closed-loop NAVSIM baseline. Its camera encoder is replaced by SSL-pretrained backbones while the LiDAR branch is either retained (TransFuser) or removed in favor of a positional latent (Latent TransFuser), following the setup in~\cite{naeinian-cross-city-2026}. The NAVSIM runs use Adam with learning rate $10^{-4}$, zero weight decay, no warmup or scheduler, gradient clipping at norm 1.0, 20 epochs of training, and an effective batch size of 128 across four H200 GPUs. This pair of architectures is important because it tests whether the representation effect persists when LiDAR is removed.
 
 % ============================================================================
 \section{Planning Architecture II: DiffusionDrive + SSL}
 \label{sec:meth-diffusiondrive}
 
-\textit{DiffusionDrive (CVPR 2025) is the base for our generative planning experiments. We integrate SSL backbones and create a camera-only variant.}
+DiffusionDrive serves as the generative-planning counterpart to LAW and TransFuser. It allows the thesis to test whether the representation-centric findings from the regression setting survive a substantial change in planning head. In this phase, SSL backbones are integrated into DiffusionDrive, and a camera-only variant is studied as an edge-deployment setting.
 
 \subsection{DiffusionDrive Architecture}
 \label{sec:meth-dd-arch}
 
-\textit{Key components:}
+The relevant ingredients of DiffusionDrive for this thesis are:
 \begin{enumerate}
     \item \textbf{Anchor trajectories}: K-means clustering on training set trajectories produces 256 prototypical trajectories (\texttt{trajectory\_anchors\_256.npy}). These serve as the denoising starting point instead of Gaussian noise.
     \item \textbf{Truncated diffusion}: Only 2 denoising steps at inference (vs.\ 50--1000 in standard diffusion). Starts from nearest anchor trajectory, not pure noise. Enables 45+ FPS.
@@ -158,7 +163,7 @@ MAE ViT-L/16     & Generative      & ImageNet-1K & 1024 & LAW, TF, DD \\
 \subsection{SSL Backbone Integration}
 \label{sec:meth-dd-ssl}
 
-\textit{Modifications for SSL backbone integration:}
+Integrating ViT-style SSL encoders into DiffusionDrive requires a small set of architectural modifications:
 \begin{enumerate}
     \item \textbf{Replace ResNet-34 image encoder} with I-JEPA ViT-S/14 (or MAE ViT-L/16). ViT outputs $(B, N, C)$ patch tokens.
     \item \textbf{Feature adapter}: Reshape ViT tokens to spatial feature maps $(B, C, H, W)$ via learned linear projection + reshape. A lightweight FPN (Feature Pyramid Network) generates multi-scale features compatible with DiffusionDrive's \texttt{MultiScaleCrossAttention}.
@@ -169,48 +174,54 @@ MAE ViT-L/16     & Generative      & ImageNet-1K & 1024 & LAW, TF, DD \\
 \subsection{Camera-Only Variant}
 \label{sec:meth-dd-camera-only}
 
-\textit{Remove all LiDAR dependencies (\texttt{lidar\_pc}, \texttt{bev\_raster}). The model operates purely on multi-camera images + ego state. The LiDAR branch of TransFuserBackbone is replaced with a learned latent vector (A13 configuration). This targets edge deployment where LiDAR is unavailable or too expensive.}
+For the camera-only variant, all LiDAR-dependent inputs and rasterized BEV features are removed from the pipeline. The planner then operates only on camera images and ego state, with the missing LiDAR branch replaced by a lightweight learned latent input. This variant matters for two reasons: it targets lower-cost deployment settings, and it provides a stricter test of whether richer visual representations can compensate for missing geometric sensing.
 
 \subsection{Training Configuration}
 \label{sec:meth-dd-training}
 
-\textit{AdamW optimizer, lr=1e-4, weight decay=1e-4, cosine LR with 3-epoch warmup, 100 epochs (reduced to 20 for some experiments). Batch size 128. DDP across 4 GPUs.}
+The DiffusionDrive runs use AdamW with learning rate $10^{-4}$, weight decay $10^{-4}$, cosine learning-rate decay with a 3-epoch warmup, and distributed data parallel training. Most exploratory all-city experiments were shortened relative to the full recipe in order to compare more backbone variants under fixed compute; when this was done, the shortened runs were interpreted as architectural probes rather than as final leaderboard attempts.
 
 % ============================================================================
 \section{Experimental Protocol}
 \label{sec:meth-exp-protocol}
 
-\textit{Experiments are organized into 4 phases, each building on the previous:}
+Experiments are organized into one exploratory phase followed by four main phases, each building on the previous:
+
+\subsection{Phase 0: SSL Backbone + Lightweight Head (Exploratory)}
+\label{sec:meth-phase0}
+
+Phase 0 captures the original hypothesis behind the thesis. The initial setup, first documented in~\cite{hamza-sanchez-navsim-report}, used a frozen I-JEPA encoder with a small MLP waypoint regressor over front-camera features and ego state. Later pilot runs expanded this to partial fine-tuning, three-camera fusion, and controlled TransFuser backbone swaps. The point of the phase was not to establish a final benchmark number, but to test whether the representation itself was already strong enough to matter when planner capacity was deliberately limited. In the final thesis this phase is interpreted qualitatively: it motivated the representation-first view of the problem, but ceased to be the central contribution once Drive-JEPA~\cite{wang-drive-jepa} established that JEPA-style pretraining could already be highly competitive on mixed-city NAVSIM.
 
 \subsection{Phase 1: Cross-City SSL Benchmark}
 \label{sec:meth-phase1}
 
-\textit{Uses LAW and TransFuser with all backbone configurations. 19 backbone configs evaluated on nuScenes per-city splits. Single-city training + $4 \times 4$ evaluation matrix + transfer ratio analysis. Addresses RQ1, RQ2, RQ3. (IROS 2026 submission.)}
+Phase 1 aggregates the core benchmark first reported in~\cite{naeinian-cross-city-2026}. It combines open-loop LAW experiments on the two-city nuScenes split with closed-loop TransFuser and Latent TransFuser experiments on four-city NAVSIM. The backbone suite includes supervised baselines, ImageNet-pretrained SSL backbones, and domain-specific nuScenes-pretrained I-JEPA, DINOv2, and MAE variants under both frozen and fully fine-tuned downstream settings. The key output is not a single leaderboard score, but the change from in-domain to cross-city behavior.
 
 \subsection{Phase 2: DiffusionDrive All-City}
 \label{sec:meth-phase2}
 
-\textit{DiffusionDrive with SSL backbones on standard NAVSIM (all cities). Establishes in-distribution performance before cross-city evaluation. Tests camera-only feasibility. 9 configurations (Table~\ref{tab:diffusiondrive-allcity}).}
+Phase 2 revisits mixed-city NAVSIM after the appearance of Drive-JEPA. The purpose here is not simply to chase the highest in-distribution PDMS, but to test whether SSL benefits survive in a different generative planning architecture and in a camera-only regime. DiffusionDrive with SSL backbones on the standard NAVSIM split establishes this architectural bridge before any cross-city evaluation. The phase covers 9 configurations (Table~\ref{tab:diffusiondrive-allcity}).
 
 \subsection{Phase 3: DiffusionDrive Cross-City}
 \label{sec:meth-phase3}
 
-\textit{Single-city training with DiffusionDrive + I-JEPA vs.\ ResNet34. 4 cities $\times$ 2 backbones = 8 training runs, each evaluated on all 4 city test sets = 32 evaluations. Tests whether Phase 1 findings extend to generative planners. Addresses RQ5.}
+Phase 3 extends the city-split protocol to DiffusionDrive. The intended comparison is single-city training with DiffusionDrive + I-JEPA versus DiffusionDrive + ResNet-34 across the four NAVSIM cities, yielding eight training runs and a full $4 \times 4$ transfer matrix for each backbone family. This phase is methodologically important even when partially complete, because it is the direct test of RQ5: whether the cross-city SSL advantage observed in regression planners persists when the planning head becomes generative.
 
 \subsection{Phase 4: Mechanistic Analysis}
 \label{sec:meth-phase4}
 
-\textit{``Why does SSL work?'' investigation using feature analysis (CKA, linear probing, attention maps, MMD, effective rank). No additional training required --- uses checkpoints from Phases 1--3. See Section~\ref{sec:exp-why-ssl} for results.}
+Phase 4 asks the question that remains after the earlier phases: why do SSL representations transfer better? This stage uses feature analysis (CKA, linear probing, attention maps, MMD, effective rank) without additional training, drawing on checkpoints from Phases 1--3. See Section~\ref{sec:exp-why-ssl} for results.
 
 % ============================================================================
 \section{Metrics}
 \label{sec:meth-metrics}
 
-\textit{For every experiment, we report:}
+For every experiment, we report:
 \begin{itemize}
     \item \textbf{PDMS} (overall) and sub-scores: NC, DAC, EP, TTC, Comfort
     \item \textbf{EPDMS} (extended evaluation, where applicable --- DiffusionDrive models)
-    \item \textbf{Generalization gap} $\Delta_\text{gen}$ and \textbf{transfer ratio} $R_\text{transfer}$
+    \item \textbf{Generalization gap} $\Delta_\text{gen}$ and mean \textbf{OOD PDMS} $S_\text{OOD}$
+    \item \textbf{Open-loop transfer inflation} $R_\text{err}$ for L2 displacement and collision rate, as defined in~\cite{naeinian-cross-city-2026}
     \item \textbf{Inference speed} (FPS) for DiffusionDrive variants
     \item All results tracked via Weights \& Biases
 \end{itemize}
@@ -219,10 +230,4 @@ MAE ViT-L/16     & Generative      & ImageNet-1K & 1024 & LAW, TF, DD \\
 \section{Implementation Details}
 \label{sec:meth-implementation}
 
-\textit{Software: PyTorch 2.x, PyTorch Lightning, Hydra configuration framework.
-Hardware: NYU Greene HPC cluster (NVIDIA L40S and H200 GPUs).
-Distributed training via DDP.
-Experiment management via custom}
-\texttt{navsim\_manager.py} \textit{CLI.
-Pre-trained checkpoints from HuggingFace.
-All code available at} [repo URL]\textit{.}
+Experiments were implemented in PyTorch and PyTorch Lightning, with Hydra-style configuration used to manage backbone, dataset, and optimizer variants. Training was run on the NYU Greene HPC cluster using NVIDIA L40S and H200 GPUs, with distributed data parallelism where required by model size and batch size. Pretrained checkpoints for public SSL backbones were loaded from their released model weights and wrapped through the common adapter interface described above. Experiment orchestration, checkpoint tracking, and evaluation were handled through the local thesis codebase and associated command-line management scripts.

@@ -9,94 +9,84 @@
 \section{Self-Supervised Learning for Autonomous Driving}
 \label{sec:rw-ssl-driving}
 
-\textit{Survey SSL methods applied to driving tasks. Organize by SSL paradigm:}
+Self-supervised learning has become a compelling alternative to supervised ImageNet pretraining for autonomous driving because it can exploit the scale of unlabelled driving logs while learning invariances that are closer to the downstream planning problem. The three SSL families most relevant to this thesis are predictive JEPA-style models, self-distillation methods such as DINOv2, and generative masked-image models such as MAE. Naeinian et al.~\cite{naeinian-cross-city-2026} provide the first controlled comparison of these paradigms under explicit geographic transfer for end-to-end planning, rather than only perception.
 
 \subsection{Contrastive and Self-Distillation Methods}
-\textit{MoCo, SimCLR, BYOL applied to driving perception (object detection, segmentation). DINO/DINOv2 as general-purpose visual backbones. Note that most applications are perception-only, not end-to-end planning.}
+Contrastive and self-distillation methods have been widely adopted for driving perception, where they improve data efficiency for detection and segmentation but are usually evaluated in perception-only settings. DINOv2 is especially attractive as a generic visual backbone because of its strong transfer across downstream tasks, yet prior to~\cite{naeinian-cross-city-2026} it had not been systematically tested for zero-shot cross-city planning robustness.
 
 \subsection{Masked Image Modeling}
-\textit{MAE, BEiT applied to driving. Limited adoption for planning. Discuss the hypothesis that pixel-level reconstruction may not produce the most planning-useful features.}
+Masked image modeling offers a different trade-off. MAE learns from aggressive patch masking and pixel-space reconstruction, which can yield strong generic features while remaining architecturally simple~\cite{he-mae}. In autonomous driving, however, its use has been more limited on the planning side than on perception benchmarks. The cross-city study of~\cite{naeinian-cross-city-2026} is therefore important because it shows that MAE can remain competitive under geographic shift, especially when domain-specifically pretrained on nuScenes and transferred to the closed-loop NAVSIM setting.
 
 \subsection{Joint-Embedding Predictive Architectures}
-\textit{I-JEPA and V-JEPA. Key recent work:}
+JEPA-style methods are particularly relevant because they predict latent semantics rather than reconstructing pixels, which in principle should reduce sensitivity to superficial appearance cues. I-JEPA provides the image-based formulation used throughout this thesis~\cite{assran-ijepa}, while V-JEPA extends the same intuition to video. In driving, the JEPA direction has quickly become important:
 \begin{itemize}
-    \item \textit{\textbf{AD-L-JEPA}: Applies latent JEPA pre-training to driving data. Focuses on perception tasks.}
-    \item \textit{\textbf{Drive-JEPA} (Jan 2026): V-JEPA pretrained ViT + proposal-centric planner with simulator trajectory distillation. 93.3 PDMS / 87.8 EPDMS on NAVSIM. SOTA. Requires LiDAR in full pipeline. No cross-city evaluation.}
+    \item \textbf{AD-L-JEPA} applies latent JEPA pretraining in the driving domain, but focuses on perception rather than end-to-end planning.
+    \item \textbf{Drive-JEPA} couples a V-JEPA-style backbone with proposal-centric planning and simulator trajectory distillation, reaching 93.3 PDMS on NAVSIM v1 and 87.8 EPDMS on NAVSIM v2 under the standard mixed-city protocol~\cite{wang-drive-jepa}. Its perception-free setting is equally notable: a V-JEPA encoder with a simple transformer decoder reaches 89.0 PDMS, showing that strong video pretraining can already make lightweight planning heads highly competitive.
 \end{itemize}
 
-\textit{\textbf{Gap}: Drive-JEPA validates the JEPA direction but leaves open: (1) camera-only deployment, (2) cross-city generalization, (3) systematic comparison across SSL paradigms. Our work addresses all three.}
+\textbf{Gap}. For this thesis, Drive-JEPA is important not only as related work but as an inflection point. Once JEPA-style methods had already demonstrated strong mixed-city benchmark performance, the unresolved question was no longer whether SSL can improve PDMS at all. The more interesting gap became whether SSL offers a distinctive advantage under geographic shift, how that advantage interacts with planning-head design, and what feature-space mechanism explains it. The closest work to that question is Naeinian et al.~\cite{naeinian-cross-city-2026}, which isolates strict city-disjoint transfer on nuScenes and NAVSIM. The remaining gaps addressed in this thesis are broader mechanistic analysis, diffusion-based planning, and camera-only deployment.
 
 \subsection{Pre-Training Data: ImageNet vs.\ Driving-Specific}
-\textit{Discuss the trade-off between ImageNet pre-training (diverse, large-scale, well-studied) and driving-specific pre-training (domain-relevant but smaller). Our experiments include both (ImageNet-pretrained I-JEPA ViT-H/14 and nuScenes-pretrained I-JEPA ViT-S/14).}
+An important design choice is whether to rely on generic large-scale pretraining or on smaller but domain-aligned driving corpora. The evidence in~\cite{naeinian-cross-city-2026} suggests that this distinction matters more under transfer than it does on mixed-city validation. Large ImageNet-pretrained backbones can remain competitive in-domain, but domain-specific nuScenes pretraining substantially narrows the Boston$\rightarrow$Singapore generalization gap and produces the most stable closed-loop gains on NAVSIM. This thesis uses both regimes because they probe different sources of robustness: scale-induced semantic richness versus driving-specific invariances.
 
 % ============================================================================
 \section{Cross-Domain Generalization in Driving}
 \label{sec:rw-cross-domain}
 
 \subsection{Weather and Lighting Robustness}
-\textit{Prior work on sim-to-real, day-to-night, clear-to-rain transfer. Important but orthogonal to geographic shift. These domain shifts affect appearance but not road layout or driving conventions.}
+Most domain-generalization work in autonomous driving focuses on weather, lighting, or simulation-to-real transfer. Those settings are important, but they primarily perturb appearance. Geographic transfer is harder because it also changes road topology, map priors, lane semantics, and traffic convention. The survey and experiments in~\cite{naeinian-cross-city-2026} argue that these structural shifts are precisely where conventional end-to-end benchmarks are weakest.
 
 \subsection{Geographic / Cross-City Transfer}
-\textit{Limited prior work. Some studies in object detection (e.g., training on US data, testing on Singapore). Cross-city transfer for perception tasks has shown city-specific failure modes. However:}
+Cross-city transfer has been studied only sparsely, and most of that work is still perception-centric. The recent zero-shot protocol of~\cite{naeinian-cross-city-2026} shows why planning requires separate analysis: the direction of transfer matters. Boston$\rightarrow$Singapore is much harder than Singapore$\rightarrow$Boston in open-loop LAW experiments, which indicates that geographic generalization is not symmetric and cannot be captured by a single pooled validation score. This directional effect is especially pronounced when transferring between right-hand and left-hand driving environments.
 \begin{itemize}
-    \item \textit{Most work focuses on perception metrics (mAP), not planning metrics (PDMS).}
-    \item \textit{No prior work studies cross-city transfer for end-to-end planning on NAVSIM.}
-    \item \textit{No per-city splits existed for NAVSIM before our work.}
+    \item Most prior work focuses on perception metrics such as mAP rather than planning metrics such as PDMS.
+    \item Zero-shot geographic transfer for end-to-end planning remained effectively unbenchmarked until the protocol introduced in~\cite{naeinian-cross-city-2026}.
+    \item NAVSIM originally exposes aggregate splits, so per-city analysis required an explicit benchmark construction step.
 \end{itemize}
 
-\textit{\textbf{Gap}: Our NAVSIM City Splits are the first benchmark contribution enabling systematic cross-city generalization studies for end-to-end planning.}
+\textbf{Gap}. The resulting benchmark gap is central to this thesis: once per-city NAVSIM evaluation is available, representation quality becomes visible as the dominant factor behind robustness.
 
 \subsection{Domain Generalization Techniques}
-\textit{Overview of DG methods: data augmentation, domain randomization, meta-learning (MAML, Meta-Reg), invariant risk minimization (IRM). These are training-procedure modifications.}
-
-\textit{Our approach is simpler and complementary: change the visual representation (use SSL instead of supervised features) without modifying the training procedure. The surprising finding is that this single change --- swapping the backbone --- reduces generalization gaps by 10$\times$, outperforming complex DG techniques.}
+Classical domain generalization techniques in driving modify the training procedure through augmentation, domain randomization, meta-learning, or invariance objectives. The approach taken in~\cite{naeinian-cross-city-2026} and extended in this thesis is deliberately simpler: keep the downstream planner and optimization recipe fixed, and change only the representation initialization. The empirical result is striking because this single intervention already collapses much of the cross-city gap, which suggests that the dominant failure mode lies in the backbone rather than in planner-specific training heuristics.
 
 % ============================================================================
 \section{Diffusion-Based Trajectory Planning}
 \label{sec:rw-diffusion-planning}
 
 \subsection{Full Diffusion Planners}
-\textit{CTG++ (Constrained Trajectory Generation), Diffuser, TransDiffuser. These use standard denoising from Gaussian noise (50--1000 steps), making them too slow for real-time deployment.}
+Full diffusion planners model multi-modal trajectory distributions by iteratively denoising from noise. Their main strength is expressive trajectory generation; their main weakness is cost. Running dozens or hundreds of denoising steps is often too slow for realistic real-time driving stacks, which is why this line of work is less directly useful for the thesis than accelerated variants.
 
 \subsection{Truncated and Accelerated Diffusion}
-\textit{DiffusionDrive (CVPR 2025): starts denoising from K-means anchor trajectories, only 2 steps, 45+ FPS. 88.1 PDMS. Key architectural innovation: multi-scale cross-attention conditioned on visual features.}
+DiffusionDrive is the main accelerated-diffusion reference point for this thesis. Instead of starting from pure Gaussian noise, it initializes from clustered anchor trajectories and uses only a small number of denoising steps. This preserves much of the flexibility of diffusion planning while keeping inference practical. That design makes it ideal for the thesis: it is architecturally different enough from LAW and TransFuser to test whether the SSL effect survives a head change, but efficient enough to run at the scale required for backbone ablations.
 
-\textit{DiffusionDriveV2 (Dec 2025): adds GRPO RL post-training. 91.2 PDMS / 85.5 EPDMS. Intra/inter-anchor reward shaping prevents mode collapse during RL.}
+Follow-up work adds RL-style post-training to diffusion planners, improving in-distribution driving quality further. For the purposes of this thesis, these methods matter less as direct baselines than as evidence that planning-head sophistication is advancing rapidly. This strengthens the argument for focusing the thesis on the part of the pipeline that remains under-explained across architectures: the visual representation.
 
 \subsection{Camera-Only Planners}
-\textit{PRIX (2025): CaRT (Camera-to-Road Transformer) + diffusion. 87.8 PDMS / 84.2 EPDMS. Best camera-only method with EPDMS. 37M params, $\sim$45 FPS. Uses supervised backbone.}
-
-\textit{GoalFlow: Goal-conditioned flow matching. Camera-only variant available.}
-
-\textit{\textbf{Gap}: No camera-only planner combines SSL pre-training + truncated diffusion + EPDMS evaluation. No diffusion planner has been evaluated for cross-city generalization. Our JEPA-Diffusion work addresses both gaps.}
+Camera-only planning is especially relevant because it removes the geometric crutch of LiDAR and therefore makes representation quality more visible. Methods such as PRIX and GoalFlow show that camera-only generative planning can be competitive, but the literature still leaves two gaps open for this thesis: camera-only diffusion planners have usually relied on supervised backbones, and diffusion planners have not been systematically evaluated for cross-city transfer. The JEPA-Diffusion phase of the thesis is positioned directly in that gap.
 
 % ============================================================================
 \section{Reinforcement Learning for Planning Refinement}
 \label{sec:rw-rl-planning}
 
-\textit{RL post-training for driving planners is an emerging direction:}
+RL post-training for driving planners is an emerging direction rather than a settled recipe. The common idea is to refine a learned planner with a simulator-derived reward that better reflects downstream driving quality than pure imitation loss.
 \begin{itemize}
-    \item \textit{DiffusionDriveV2's GRPO: +3.1 PDMS improvement over supervised baseline. Uses trajectory scoring from PDM simulator as reward signal.}
-    \item \textit{DPO (Direct Preference Optimization) for trajectory ranking: pairwise preference learning between trajectories, avoiding explicit reward modeling.}
-    \item \textit{PPO-based fine-tuning in CARLA (prior work on closed-loop RL).}
+    \item Diffusion-style planners can be improved with reward-guided post-training that uses simulator scoring rather than only imitation targets.
+    \item Preference-based methods such as DPO offer an alternative in which trajectories are ranked pairwise rather than optimized through an explicit scalar reward.
+    \item Classical policy-gradient fine-tuning remains relevant in closed-loop simulators such as CARLA, though it is usually more expensive and harder to stabilize.
 \end{itemize}
 
-\textit{\textbf{Gap}: Nobody has tested whether RL fine-tuning gains transfer across cities. If RL optimizes city-specific reward landscapes, gains may not transfer. If RL improves general driving competence, gains should transfer. Our RQ6 addresses this.}
+\textbf{Gap}. Existing RL-style refinements are almost always reported on the same mixed distribution used for training. Whether those gains survive transfer to unseen cities is unknown. This motivates RQ6, which asks whether policy-improvement gains are genuinely general or merely city-specific.
 
 % ============================================================================
 \section{Summary and Positioning}
 \label{sec:rw-summary}
 
-\textit{Table or concise summary positioning our work relative to the closest related methods:}
+The literature now supports three claims. First, SSL backbones are effective for end-to-end planning in standard mixed-city evaluation. Second, JEPA-style pretraining is especially promising at scale, as shown most clearly by Drive-JEPA~\cite{wang-drive-jepa}. Third, once explicit geographic splits are introduced, the choice of representation becomes a first-order robustness variable~\cite{naeinian-cross-city-2026}. This thesis is positioned at the intersection of those claims. It begins from the same lightweight-head intuition that motivated early JEPA experiments, acknowledges that Drive-JEPA largely settled the in-distribution performance question, and then moves to the more differentiated problem of cross-city robustness and its mechanism.
 
-% TODO: Comparison table with columns: Method, SSL Backbone, Planning Head,
-% Camera-Only, Cross-City Eval, EPDMS Reported
-% Rows: Drive-JEPA, DiffusionDrive, DiffusionDriveV2, PRIX, Ours (IROS), Ours (JEPA-Diffusion)
-
-\textit{Gaps this thesis fills:}
+Gaps this thesis fills:
 \begin{enumerate}
-    \item No cross-city generalization benchmark exists for NAVSIM $\to$ \textbf{our city splits (Ch.~\ref{chap:methodology})}.
-    \item No systematic comparison of SSL backbones for planning generalization $\to$ \textbf{our 19-config study (Ch.~\ref{chap:experiments}, Phase 1)}.
+    \item No cross-city generalization benchmark exists for NAVSIM $\to$ \textbf{our city splits (Ch.~\ref{chap:methodology})}, first instantiated in~\cite{naeinian-cross-city-2026}.
+    \item No systematic comparison of SSL backbones for planning generalization had been available before~\cite{naeinian-cross-city-2026} $\to$ \textbf{our thesis integrates and extends that 19-configuration study (Ch.~\ref{chap:experiments}, Phase 1)}.
     \item No camera-only planner combines SSL + truncated diffusion + EPDMS $\to$ \textbf{JEPA-Diffusion (Ch.~\ref{chap:experiments}, Phase 2)}.
     \item No mechanistic analysis of \emph{why} SSL improves driving generalization $\to$ \textbf{CKA/linear probing/MMD analysis (Ch.~\ref{chap:experiments}, Phase 4)}.
     \item No study tests whether RL post-training gains transfer across cities $\to$ \textbf{RQ6 (Ch.~\ref{chap:experiments}, exploratory)}.
