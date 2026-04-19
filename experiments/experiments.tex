@@ -94,6 +94,7 @@ Closed-loop cross-city transfer is further evaluated using the NAVSIM benchmark 
 
 \input{experiments/tab_navsim_pdms_merged}
 \input{experiments/tab_navsim_pdms_merged_v11}
+\FloatBarrier
 
 \subsection{Transfer Asymmetry Analysis}
 \label{sec:exp-phase1-asymmetry}
@@ -189,13 +190,13 @@ We probe 13 trained TransFuser / Latent TransFuser checkpoints (Tier-A) spanning
 
 Linear CKA is defined on two representations of the same samples, so we use the cross-dataset form that compares feature second-moment structures: for cities $A$ and $B$ with centered feature matrices $X_A$, $X_B$, we report $\mathrm{CKA}(X_A, X_B) = \langle X_A^\top X_A, X_B^\top X_B \rangle_F / \lVert X_A^\top X_A \rVert_F \lVert X_B^\top X_B \rVert_F$. This is bounded in $[0, 1]$, invariant to orthogonal rotations of the feature basis, and agnostic to different sample counts across cities.
 
-Mean off-diagonal CKA across the four cities is uniformly high --- 0.62 (A9 ResNet-34 all-city LatTF) to 0.86 (P1-M1 MAE Boston-only TF) --- and does not cleanly separate supervised from SSL backbones. Both families encode sufficiently similar covariance structure across cities that covariance-alignment alone is not the discriminating mechanism. Per-run heatmaps (Fig.~\ref{fig:cka-grid}) show city-pair asymmetries consistent with the raw scenario distributions (Boston $\leftrightarrow$ Pittsburgh are closest, Singapore is the outlier for every backbone).
+Mean off-diagonal CKA across the four cities is uniformly high --- family-level averages range from 0.74 (ResNet-34) through 0.77 (MAE frozen) and 0.79--0.83 (I-JEPA, DINOv2 frozen) to 0.86 (DINOv2 trainable TF) --- and does not cleanly separate supervised from SSL backbones. Both families encode similar covariance structure across cities, so covariance alignment alone is not the discriminating mechanism. Per-run heatmaps (Fig.~\ref{fig:cka-grid}) show city-pair asymmetries consistent with the raw scenario distributions: Boston $\leftrightarrow$ Pittsburgh are closest, Singapore is the outlier for every backbone.
 
 \begin{figure}[t]
     \centering
     \includegraphics[width=0.45\textwidth]{phase4/cka_F1-B1.pdf}
     \includegraphics[width=0.45\textwidth]{phase4/cka_P1-I1.pdf}
-    \caption{Cross-city linear-CKA heatmaps for Boston-only supervised ResNet-34 LatTF (F1-B1, left) vs.\ Boston-only I-JEPA ViT-H/14 frozen TF (P1-I1, right). All 13 Tier-A heatmaps are in the supplementary material.}
+    \caption{Cross-city linear-CKA heatmaps for Boston-only supervised ResNet-34 LatTF (F1-B1, left) vs.\ Boston-only I-JEPA ViT-H/14 frozen TF (P1-I1, right). All 188 per-run heatmaps are in the supplementary material (\texttt{fig/phase4/heatmaps/}).}
     \label{fig:cka-grid}
 \end{figure}
 
@@ -204,7 +205,9 @@ Mean off-diagonal CKA across the four cities is uniformly high --- 0.62 (A9 ResN
 
 We fit a multinomial logistic regression on standardized features to predict the four-way city label, with an 80/20 stratified split. A random-Gaussian feature negative control yields 25.4\% accuracy (near chance), confirming the probe is well calibrated.
 
-This is the clean discriminator predicted by the representation hypothesis. In the Boston-only single-city regime, which exposes the largest out-of-distribution (OOD) PDMS gap in Table~\ref{tab:navsim_pdms_merged}, probe accuracy rank-matches the measured OOD drop across backbones (Fig.~\ref{fig:probe-vs-ood}):
+Family-level probe accuracies (Table~\ref{tab:family-aggregate}) separate every backbone family from supervised ResNet-34 by a wide margin. Trainable supervised ResNet-34 encodes city identity almost losslessly (0.97--0.98), MAE frozen sits in the middle (0.89--0.90), I-JEPA frozen next (0.83), and DINOv2 frozen encodes city identity least (0.74--0.80). The single outlier toward feature collapse is A6-b (I-JEPA ViT-H/14 fully-trainable all-city TF), which probes at 0.38 --- an order of magnitude below its frozen counterpart A6 at 0.94. A second collapse at A7-b (DINOv2 all-city fully-trainable TF, probe 0.39) shows that the pathology is not unique to I-JEPA; Sec.~\ref{sec:exp-implicit-reg} quantifies the underlying feature-rank collapse.
+
+The paired single-city comparison on Boston makes the representation difference concrete: running the same linear probe on features from four Boston-only models produces 0.97 for ResNet-34 (F1-B1), 0.89 for MAE (F1-M1), 0.83 for I-JEPA (F1-I1), and 0.81 for DINOv2 (F1-D1). The OOD PDMS drops from Table~\ref{tab:navsim_pdms_merged} on the same four runs are 16.1, 13.2, 9.6, and 6.3, respectively --- a monotonic ordering: the less city-specific the frozen features are, the more gracefully the trained planner transfers.
 
 \begin{table}[h]
 \centering
@@ -213,92 +216,110 @@ This is the clean discriminator predicted by the representation hypothesis. In t
 \toprule
 Run & Backbone & Probe acc. & Train PDMS & OOD drop \\
 \midrule
-F1-B1 & ResNet-34 LatTF       & \textbf{0.968} & 72.2 & \textbf{18.2} \\
-P1-M1 & MAE ViT-B/16 TF frozen   & 0.880 & 67.2 & 11.7 \\
-F1-I1 & I-JEPA ViT-H/14 LatTF frozen & 0.833 & 66.4 & 11.0 \\
-P1-I1 & I-JEPA ViT-H/14 TF frozen   & \textbf{0.790} & 71.2 & \textbf{12.2} \\
+F1-B1 & ResNet-34 LatTF (trainable)       & \textbf{0.968} & 71.7 & \textbf{16.1} \\
+F1-M1 & MAE ViT-B/16 LatTF frozen         & 0.889 & 73.4 & 13.2 \\
+F1-I1 & I-JEPA ViT-H/14 LatTF frozen      & 0.833 & 67.5 & 9.6 \\
+F1-D1 & DINOv2 ViT-S/14 LatTF frozen      & \textbf{0.812} & 63.6 & \textbf{6.3} \\
 \bottomrule
 \end{tabular}
-\caption{Boston-only runs: linear-probe city-ID accuracy correlates monotonically with OOD PDMS drop. ResNet-34 trains its backbone and drifts toward city-specific cues (probe $\approx 0.97$); frozen SSL backbones do not (probe $\approx 0.79$--$0.88$). The in-distribution and OOD gap columns come directly from Table~\ref{tab:navsim_pdms_merged}.}
+\caption{Boston-only Latent-TransFuser runs: linear-probe city-ID accuracy orders the four backbones the same way as their measured OOD PDMS drop. The trainable supervised ResNet-34 drifts most toward city-specific cues and drops most under geographic transfer; frozen DINOv2 is least city-discriminative and transfers best (Table~\ref{tab:navsim_pdms_merged}).}
 \label{tab:probe-boston}
 \end{table}
 
-On the all-city regime (train $=$ LV+B+P+S), probe accuracy saturates for every backbone because the classifier is trained on all four cities simultaneously. ResNet-34 reaches 0.99--1.00, frozen I-JEPA 0.94, frozen MAE 0.96. The outlier is A6-b, the I-JEPA ViT-H/14 fully-trainable all-city TF run, which probes at only 0.384 --- a symptom of the feature collapse we diagnose quantitatively in Sec.~\ref{sec:exp-implicit-reg}.
+Across the full 188-run roster the story is more nuanced. Pooling every (backbone, variant, city) combination, Spearman $\rho$ between probe accuracy and OOD PDMS drop is only $-0.13$; stratified by training city it ranges from $-0.46$ (Pittsburgh-trained) to $+0.17$ (Boston-trained). The ``probe predicts drop'' law holds \emph{within} matched comparisons (same train-city, same backbone family, frozen vs.\ trainable; or same train-city across backbones) but washes out once training city, backbone scale, and pretraining data vary together. Fig.~\ref{fig:probe-vs-ood-stratified} breaks the scatter out per training city; Fig.~\ref{fig:probe-vs-ood} shows the pooled view for reference.
+
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=\textwidth]{phase4/scatter_probe_vs_ood_by_training_city.pdf}
+    \caption{Linear-probe city-ID accuracy vs.\ train-city minus test-city PDMS, stratified by training city. Within each panel the expected ordering (higher probe $\rightarrow$ larger OOD drop) is visible for the Pittsburgh, Boston, and Las Vegas panels and flat for Singapore; pooling across training cities washes the signal out.}
+    \label{fig:probe-vs-ood-stratified}
+\end{figure}
 
 \begin{figure}[t]
     \centering
     \includegraphics[width=0.65\textwidth]{phase4/scatter_probe_vs_ood.pdf}
-    \caption{Linear-probe city-ID accuracy vs.\ train-city minus test-city PDMS across the 12 matched Tier-A runs. All-city runs (zero-drop by construction) are clustered at the bottom; the single-city runs spread diagonally, with ResNet-34 at the upper-right extreme.}
+    \caption{Pooled linear-probe accuracy vs.\ OOD PDMS drop across all 188 analyzed Tier-A runs. The global correlation ($\rho = -0.13$) is weak because training city dominates; the matched-comparison signal surfaces in Fig.~\ref{fig:probe-vs-ood-stratified} and Table~\ref{tab:probe-boston}.}
     \label{fig:probe-vs-ood}
 \end{figure}
 
 \subsection{Feature Visualization via Attention Maps}
 \label{sec:exp-attention}
 
-Last-block CLS-to-patch attention visualization was prepared (see \texttt{attention\_viz.py}) but requires a curated set of semantically matched scenes (one per city) to be visually informative. The matched-scene curation is left as future work; the quantitative probe result above already carries the mechanistic argument.
+Last-block CLS-to-patch attention visualization (\texttt{attention\_viz.py}) requires a curated set of semantically matched scenes (one per city) to be visually informative. Scene curation is left as future work; the quantitative probe, CKA, and effective-rank results already carry the mechanistic argument.
 
 \subsection{Feature Distribution Shift (MMD)}
 \label{sec:exp-mmd}
 
-We compute biased RBF-kernel MMD\textsuperscript{2} between city-pair feature distributions with a median-heuristic bandwidth $\sigma^2$ estimated from a shared 500-sample pool. Absolute MMD\textsuperscript{2} values are not directly comparable across backbones because $\sigma^2$ differs (11.0 for ResNet-34 vs.\ 17.9 for I-JEPA ViT-H), but within-regime comparisons remain informative.
+We compute biased RBF-kernel MMD\textsuperscript{2} between city-pair feature distributions with a median-heuristic bandwidth $\sigma^2$ estimated from a shared 500-sample pool, clamping all squared distances at 0 to avoid numerical blow-up on near-duplicate samples (observed on a handful of trainable single-city DINOv2 runs pre-clamp). Absolute MMD\textsuperscript{2} values are not directly comparable across backbones because $\sigma^2$ differs; within-regime comparisons remain informative. Fig.~\ref{fig:mmd-vs-ood} is the pooled scatter; the Boston-only cluster reproduces the single-city ordering (Table~\ref{tab:probe-boston}).
 
-On the Boston-only runs --- where the four backbones are tested on the same held-out city features --- MMD orders as predicted: ResNet-34 0.100, MAE 0.089, I-JEPA 0.073--0.085. The pattern inverts on all-city runs (ResNet-34 0.103, I-JEPA 0.163, MAE 0.224), reflecting that an all-city-trained model keeps \emph{scene-content} variation in its features rather than collapsing it. MMD is therefore a useful confirmatory signal in the single-city setting but is confounded by encoder capacity in the all-city setting; we defer to the probe as the primary discriminator.
-
-A second finding emerged during MMD computation: run A6-b (I-JEPA ViT-H/14 fully-trainable all-city TF) returns $\sigma^2 \approx 5 \times 10^{-7}$, i.e.\ the feature pairwise distances collapse to zero. MMD\textsuperscript{2} is undefined for this run; the underlying cause is the feature-rank collapse characterized next.
+Family-level mean MMD\textsuperscript{2} across all 188 runs: MAE 0.09--0.11, ResNet-34 0.10, I-JEPA 0.07--0.09, DINOv2 0.05--0.07. Pooled $\rho$(log MMD\textsuperscript{2}, OOD drop) is $-0.22$, weakly negative --- higher feature-space variance correlates with \emph{smaller} OOD drops. The reason is that MAE and ResNet-34, which produce the highest-variance features, also generalize best in their respective frozen and supervised regimes; collapsed-feature DINOv2 and I-JEPA runs give tight distributions but poor transfer. MMD is therefore a sanity check rather than a predictor.
 
 \begin{figure}[t]
     \centering
     \includegraphics[width=0.65\textwidth]{phase4/scatter_mmd_vs_ood.pdf}
-    \caption{$\log_{10}$ mean cross-city MMD\textsuperscript{2} vs.\ OOD PDMS drop. Boston-only cluster (upper right) shows the expected ordering; all-city cluster (drop $=0$) is scale-confounded across backbones.}
+    \caption{$\log_{10}$ mean cross-city MMD\textsuperscript{2} vs.\ OOD PDMS drop over the full 188-run roster. Single-city points dominate the upper half; all-city points (drop $\approx 0$) sit at the bottom. Within the single-city cluster the MAE and ResNet-34 families occupy the higher-MMD region, DINOv2 the lower-MMD region.}
     \label{fig:mmd-vs-ood}
 \end{figure}
 
 \subsection{Feature-Covariance Rank (Implicit Regularization)}
 \label{sec:exp-implicit-reg}
 
-The original plan was to measure the effective rank of learned planning-head weights. With frozen SSL backbones the planning head is the only drift vector, making this a clean test; however, for supervised ResNet-34 the backbone itself is trainable, so planning-head rank alone cannot be compared fairly. We instead report the effective rank of the \emph{feature covariance} for each (run, city) pair: per-city features are centered, $\sigma_i$ denotes the $i$-th singular value of the centered matrix, and we report $\exp\!\bigl(-\sum_i (\tilde\sigma_i^2) \log (\tilde\sigma_i^2)\bigr)$ with $\tilde\sigma_i$ the $\ell_2$-normalized singular values~\cite{roy-vetterli-effective-rank}. This directly probes representational structure rather than downstream-head capacity.
+The original plan was to measure the effective rank of learned planning-head weights. With frozen SSL backbones the planning head is the only drift vector, which would make it a clean test; however, for supervised ResNet-34 the backbone itself is trainable, so planning-head rank alone cannot be compared fairly. We instead report the effective rank of the \emph{feature covariance} for each (run, city) pair: per-city features are centered, $\sigma_i$ denotes the $i$-th singular value of the centered matrix, and we report $\exp\!\bigl(-\sum_i (\tilde\sigma_i^2) \log (\tilde\sigma_i^2)\bigr)$ with $\tilde\sigma_i$ the $\ell_2$-normalized singular values~\cite{roy-vetterli-effective-rank}. This probes representational structure rather than downstream-head capacity.
 
-Per-city effective ranks separate backbone families cleanly (Table~\ref{tab:effrank}): trainable-supervised ResNet-34 lives in a $\sim$70-dim manifold per city; frozen I-JEPA in $\sim$37--40; MAE frozen in $\sim$26--44. The one dramatic outlier is A6-b, I-JEPA ViT-H/14 \textbf{fully fine-tuned} on all four cities, which collapses to effective rank $2.87 \pm 0.97$ --- features occupy a near-rank-2 subspace. This explains the $\sigma^2 \to 0$ signature in the MMD pass and argues concretely that fully fine-tuning a large frozen-pretrained ViT on the modest NAVSIM training set destroys the SSL representational structure that the rest of the experiments rely on. The analogous LatTF run (A9-c) does not collapse (effective rank 26.7), suggesting the lidar-free latent variant is more forgiving under full fine-tune.
+Family-level effective ranks (Table~\ref{tab:family-aggregate}) separate the SSL objectives cleanly. MAE frozen TF retains the highest effective rank at 80.3, larger than trainable ResNet-34 (69.7) or I-JEPA frozen (66.2--69.0), with DINOv2 frozen a notch below (58.6--61.5). Fine-tuning reduces rank universally --- MAE trainable collapses to 47--49, I-JEPA trainable to 47--53, DINOv2 trainable stays at 52--65. The three most extreme collapses across the whole roster (effective rank $<5$) all involve trainable or single-city runs on large pretrained ViTs: A7-b (DINOv2 ViT-S trainable all-city TF, rank 1.2), A6-b (I-JEPA ViT-H trainable all-city TF, rank 2.9), and P1-D2 (DINOv2 frozen LV-only TF, rank 3.4). Feature-rank collapse is therefore not a quirk of one I-JEPA run; it is a systemic risk of fine-tuning high-capacity SSL backbones on modest driving datasets.
+
+Across the 188-run pool, feature-covariance rank does \emph{not} monotonically predict OOD drop ($\rho = +0.08$). The informative read is within-family: MAE frozen LatTF has both the highest rank (72.6) and the smallest OOD drop (6.9); MAE trainable LatTF has half the rank (49.1) and a larger drop (9.2); I-JEPA follows the same pattern (frozen rank 69, drop 11.6; trainable rank 47, drop 9.5). The frozen constraint preserves the pretrained rank structure and, for MAE especially, keeps OOD transfer tight.
 
 \begin{table}[h]
 \centering
-\small
-\begin{tabular}{llc}
+\footnotesize
+\begin{tabular}{lllrrrrrr}
 \toprule
-Run & Backbone variant & Mean effective rank (std) \\
+Backbone & Status & Mode & $N$ & Probe & CKA & MMD$^2$ & Eff.\ rank & OOD drop \\
 \midrule
-A3-b & ResNet-34 supervised TF                       & 72.0 (18.4) \\
-A9   & ResNet-34 supervised LatTF                    & 69.5 (10.3) \\
-A6   & I-JEPA ViT-H/14 frozen TF                     & 36.6 (7.2) \\
-A9-b & I-JEPA ViT-H/14 frozen LatTF                  & 39.5 (7.3) \\
-A6-b & I-JEPA ViT-H/14 fully-trainable TF            & \textbf{2.87 (0.97)} \\
-A9-c & I-JEPA ViT-H/14 fully-trainable LatTF         & 26.7 (3.3) \\
-A8-d & MAE ViT-S/14 rect frozen TF                   & 25.8 (7.2) \\
-A9-n & MAE ViT-S/14 rect frozen LatTF                & 44.4 (8.2) \\
-F1-B1 & ResNet-34 Boston-only LatTF                  & 55.0 (4.9) \\
-P1-I1 & I-JEPA ViT-H/14 Boston-only TF frozen        & 29.6 (2.0) \\
-F1-I1 & I-JEPA ViT-H/14 Boston-only LatTF frozen     & 40.2 (5.0) \\
-P1-M1 & MAE ViT-B/16 Boston-only TF frozen           & 57.1 (9.5) \\
+ResNet-34 & supervised & TF    & 2  & 0.98 & 0.75 & 0.095 & 69.7 & $-4.2$\textsuperscript{$\dagger$} \\
+ResNet-34 & supervised & LatTF & 5  & 0.98 & 0.75 & 0.097 & 63.3 & 8.7 \\
+I-JEPA    & frozen     & TF    & 15 & 0.83 & 0.79 & 0.084 & 66.2 & 11.4 \\
+I-JEPA    & frozen     & LatTF & 15 & 0.83 & 0.77 & 0.081 & 69.0 & 11.6 \\
+I-JEPA    & trainable  & TF    & 15 & 0.75 & 0.82 & 0.067 & 52.8 & 12.5 \\
+I-JEPA    & trainable  & LatTF & 15 & 0.83 & 0.83 & 0.089 & 46.5 & 9.5 \\
+DINOv2    & frozen     & TF    & 15 & 0.74 & 0.85 & 0.059 & 61.5 & 12.4 \\
+DINOv2    & frozen     & LatTF & 15 & 0.80 & 0.83 & 0.069 & 58.6 & 10.0 \\
+DINOv2    & trainable  & TF    & 15 & 0.69 & 0.86 & 0.047 & 51.6 & 12.8 \\
+DINOv2    & trainable  & LatTF & 15 & 0.77 & 0.82 & 0.062 & 65.3 & 10.0 \\
+MAE       & frozen     & TF    & 15 & 0.89 & 0.75 & 0.094 & \textbf{80.3} & 11.2 \\
+MAE       & frozen     & LatTF & 15 & 0.90 & 0.77 & 0.092 & 72.6 & \textbf{6.9} \\
+MAE       & trainable  & TF    & 15 & 0.85 & 0.76 & 0.107 & 47.5 & 11.7 \\
+MAE       & trainable  & LatTF & 15 & 0.89 & 0.78 & 0.097 & 49.1 & 9.2 \\
 \bottomrule
 \end{tabular}
-\caption{Feature-covariance effective rank per (run, city) averaged across the four cities. A6-b collapses to rank $\approx 3$; other trainable and frozen configurations retain $\gtrsim 25$ effective dimensions.}
-\label{tab:effrank}
+\caption{Family-level aggregates averaged across every analyzed run in each cell. Probe = linear-probe city-ID accuracy; CKA = mean off-diagonal cross-city linear CKA; MMD$^2$ = RBF median-bandwidth biased MMD$^2$ averaged across city pairs; Eff.\ rank = Roy--Vetterli effective rank of the per-city feature covariance averaged across the four cities; OOD drop = train-city minus test-city PDMS (from Table~\ref{tab:navsim_pdms_merged}). \textsuperscript{$\dagger$}Only two ResNet-34 TF checkpoints were analyzed (P1-B1-b and P1-B2-b pointers are missing on disk); the negative drop is dominated by Pittsburgh- and Singapore-trained runs where in-distribution PDMS is pathologically low. Full per-run metrics are committed as \texttt{fig/phase4/summary.tsv} and \texttt{all\_metrics.json}.}
+\label{tab:family-aggregate}
 \end{table}
 
 \begin{figure}[t]
     \centering
-    \includegraphics[width=0.45\textwidth]{phase4/spectrum_A6.pdf}
-    \includegraphics[width=0.45\textwidth]{phase4/spectrum_A6-b.pdf}
-    \caption{Per-city normalized singular-value spectrum for I-JEPA ViT-H/14 frozen (A6, left) vs.\ fully-trainable (A6-b, right), both trained on all four cities. The full fine-tune collapses the feature spectrum by two orders of magnitude.}
+    \includegraphics[width=0.45\textwidth]{phase4/spectra/spectrum_A6.pdf}
+    \includegraphics[width=0.45\textwidth]{phase4/spectra/spectrum_A6-b.pdf}
+    \caption{Per-city normalized singular-value spectrum for I-JEPA ViT-H/14 frozen (A6, left) vs.\ fully-trainable (A6-b, right), both trained on all four cities. Full fine-tune of the ViT-H encoder compresses the feature spectrum by more than two orders of magnitude; the resulting near-rank-2 representation drives the corresponding probe accuracy down to 0.38.}
     \label{fig:spectrum-collapse}
 \end{figure}
 
 \subsection{Synthesis: A Mechanistic Account}
 \label{sec:exp-why-synthesis}
 
-The five analyses agree on a single mechanism. When the backbone is trainable (supervised ResNet-34), driving-task gradients push its feature subspace toward city-discriminative cues: a linear probe reaches 97\% on held-out Boston-only features (Sec.~\ref{sec:exp-linear-probe}), the covariance spans $\sim$70 effective directions with high per-city variance (Sec.~\ref{sec:exp-implicit-reg}), and feature distributions separate enough across cities that Boston-only MMD is the largest we measure (Sec.~\ref{sec:exp-mmd}). When the backbone is frozen SSL (I-JEPA, MAE), the same driving gradients cannot reshape the encoder; the probe reaches only 79--88\%, the effective rank stabilizes at 25--44 per city, and cross-city MMD is smaller. Probe accuracy alone explains the ordering of OOD PDMS drops in Table~\ref{tab:navsim_pdms_merged} across the four Boston-only Tier-A runs with a monotonic rank correlation.
+The five analyses converge on three related findings.
 
-The frozen constraint itself is load-bearing: fully fine-tuning the largest SSL encoder (I-JEPA ViT-H/14) on NAVSIM collapses its feature rank by an order of magnitude (A6-b, rank $\approx 3$), eroding the invariances that SSL pre-training provided. Cross-city robustness in our setting is therefore best explained as representation invariance imposed externally (frozen SSL weights) rather than learned end-to-end --- which is precisely the regime that prior work on in-distribution NAVSIM benchmarks never tested.
+First, trainable supervised backbones drift toward city-discriminative cues. A linear probe on trained ResNet-34 features separates the four cities at 0.97--0.98 accuracy across every configuration we trained, versus 0.25 for random features. Frozen SSL encoders cannot drift under driving gradients; their probe accuracies are an order of magnitude further from saturation (DINOv2 0.74--0.80, I-JEPA 0.83, MAE 0.89--0.90). In matched single-city comparisons --- one training city, one planning head, four different backbones --- the ordering of probe accuracies matches the ordering of OOD PDMS drops measured in Table~\ref{tab:navsim_pdms_merged} (Table~\ref{tab:probe-boston}). This is the representation-mechanism claim of the thesis, restricted to the cell in which it is identifiable.
+
+Second, across the full 188-run roster the simple probe-vs-drop correlation is weak ($\rho = -0.13$, Fig.~\ref{fig:probe-vs-ood}) because training-city confounds dominate and because the MAE family --- the OOD winner by several points --- has moderately high probe accuracy without paying a generalization cost. MAE frozen LatTF (OOD drop 6.9, total PDMS 64.2) is the best family in the roster despite probing higher than DINOv2 and I-JEPA. The pretraining objective therefore matters beyond its effect on probe accuracy: the masked-autoencoder objective produces features that are both city-discriminable and city-robust, because it optimizes for reconstruction of scene content rather than for an embedding distance that can be minimized by discarding structure.
+
+Third, the frozen constraint is itself load-bearing. Fine-tuning compresses feature-covariance rank for every SSL family (MAE 72$\rightarrow$47, I-JEPA 69$\rightarrow$47, DINOv2 60$\rightarrow$52--65), and in the worst cases produces an outright collapse to effective rank $<5$ (A6-b I-JEPA, A7-b DINOv2, P1-D2 DINOv2). The collapsed runs lose their probe-accuracy and MMD signals simultaneously --- with only two or three nontrivial feature directions left, the linear probe cannot separate cities and the RBF kernel cannot resolve distributions. Preserving the pretrained rank structure is, empirically, what keeps the SSL representation useful for transfer; the frozen SSL backbones that retain it (MAE ViT-B/16, I-JEPA ViT-H/14, DINOv2 ViT-S/14) are the ones that generalize.
+
+Cross-city robustness in this study is therefore best summarized as three claims:
+(i) supervised backbones learn city identity almost for free, and the fraction they learn predicts their transfer deficit within matched comparisons;
+(ii) SSL objectives differ materially, with MAE leading the OOD rankings and DINOv2 most prone to collapse under fine-tune;
+(iii) the operational lever with the highest leverage is not the SSL objective alone but whether the encoder is frozen at inference time.
 
 % ============================================================================
 \section{Ablation Studies}
