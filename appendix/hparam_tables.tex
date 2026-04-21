@@ -1,0 +1,86 @@
+% Per-phase training recipes. Sources: navsim-ssl-city-generalization/CLAUDE.md canonical recipes,
+% navsim-ssl-city-generalization/experiment_configs/experiments.json, and the TransFuser config-fix
+% notes (A3 landmine, February 2026).
+\begin{table}[ht]
+    \centering
+    \caption{Phase~1 training recipe, LAW agent. Used for every cross-city LAW open-loop run. Single L40S GPU, batch~2, gradient clipping~35.}
+    \label{tab:hparam-phase1-law}
+    \small
+    \begin{tabular}{ll}
+    \toprule
+    Optimizer             & AdamW \\
+    Learning rate         & $5\times10^{-5}$ \\
+    Weight decay          & $0.01$ \\
+    Scheduler             & Cosine, no warm-up \\
+    Batch size            & 2 (effective) \\
+    Epochs                & 12 \\
+    Gradient clip         & 35 \\
+    GPUs                  & 1 $\times$ L40S \\
+    Precision             & 16-mixed \\
+    \bottomrule
+    \end{tabular}
+\end{table}
+
+\begin{table}[ht]
+    \centering
+    \caption{Phase~1 training recipe, TransFuser and Latent TransFuser. Used for every cross-city TF/LatTF run including the full 95-row PDMS matrix in Tables~\ref{tab:navsim_pdms_merged} and \ref{tab:navsim_pdms_merged_v11}. 4\,$\times$\,H200, effective batch 128. The configuration is the TransFuser paper recipe verbatim --- we document the trap explicitly because an earlier run used the wrong lr schedule and silently dropped all-city PDMS from 84~$\rightarrow$~51 before the recipe was restored.}
+    \label{tab:hparam-phase1-tf}
+    \small
+    \begin{tabular}{ll}
+    \toprule
+    Optimizer             & plain Adam (\textbf{not} AdamW) \\
+    Learning rate         & $1\times10^{-4}$ \\
+    Weight decay          & \textbf{0} (no decay) \\
+    Scheduler             & \textbf{None} (constant lr) \\
+    Batch size            & 32/GPU, effective 128 \\
+    Epochs                & 20 (paper baseline) or 100 (full) \\
+    Gradient clip         & 1.0 \\
+    LiDAR backbone        & ResNet-34 (\textbf{not} ResNet-18) \\
+    GPUs                  & 4 $\times$ H200 \\
+    Precision             & 16-mixed \\
+    \bottomrule
+    \end{tabular}
+\end{table}
+
+\begin{table}[ht]
+    \centering
+    \caption{Phase~2 DiffusionDrive + SSL training recipe. Used for experiments A10--A13 on NAVSIM v1 navtrain. The SSL backbone is frozen by default; the trajectory head is initialized from the K-means anchor bank and denoised with two diffusion steps at inference.}
+    \label{tab:hparam-phase2-dd}
+    \small
+    \begin{tabular}{ll}
+    \toprule
+    Optimizer             & Adam \\
+    Learning rate         & $1\times10^{-4}$ \\
+    Weight decay          & $0$ \\
+    Scheduler             & Constant \\
+    Batch size            & 32/GPU, effective 128 \\
+    Epochs                & 20 \\
+    K-means anchor count  & 256 \\
+    Denoising steps       & 2 (truncated) \\
+    GPUs                  & 2 $\times$ H200 \\
+    Precision             & 16-mixed \\
+    \bottomrule
+    \end{tabular}
+\end{table}
+
+\begin{table}[ht]
+    \centering
+    \caption{Domain-specific SSL pre-training recipe (I-JEPA ViT-S/14 on nuScenes). Used to produce the ``nuScenes rect.'' and ``nuScenes sq.'' variants referenced in Tables~\ref{tab:navsim_pdms_merged} and~\ref{tab:navsim_pdms_merged_v11}. ``Rectangular'' variants use the native camera aspect ratio ($224 \times 392$); ``square'' variants use a centre-cropped $224 \times 224$ patch to match the ImageNet pre-training geometry.}
+    \label{tab:hparam-phase3-ssl-pretrain}
+    \small
+    \begin{tabular}{ll}
+    \toprule
+    Architecture          & ViT-S/14, 22M parameters \\
+    Objective             & I-JEPA target-vs-context prediction \\
+    Optimizer             & AdamW \\
+    Learning rate         & Cosine schedule, peak $5\times10^{-4}$ \\
+    Weight decay          & $0.04$ \\
+    Epochs                & 100 \\
+    Batch size            & 64/GPU, effective 128 \\
+    Input resolution      & $224\times224$ (sq.) or $224\times392$ (rect.) \\
+    Dataset               & nuScenes front-camera frames (340k images) \\
+    GPUs                  & 2 $\times$ H200 \\
+    Precision             & 16-mixed \\
+    \bottomrule
+    \end{tabular}
+\end{table}

@@ -27,7 +27,28 @@ City labels are recovered directly from the underlying nuPlan/OpenScene log meta
 \subsection{Split Statistics and Distribution}
 \label{sec:meth-split-stats}
 
-The cross-city protocol uses the natural geographic partitions already present in the source datasets. For nuScenes~\cite{caesar-nuscenes}, the Boston split contains 390 training scenes (2.12 hours) and 77 validation scenes (0.42 hours), while Singapore contains 310 training scenes (1.68 hours) and 73 validation scenes (0.40 hours). For NAVSIM~\cite{dauner-navsim}, the city distribution is more imbalanced: Las Vegas contributes 818 training scenes and 50 evaluation scenes, Boston 255 and 62, Pittsburgh 140 and 22, and Singapore 97 and 13. These counts are large enough to expose meaningful transfer behavior while still making the data imbalance itself part of the problem; Singapore is both the smallest domain and the only left-hand-traffic environment, which makes it a particularly stringent test of transfer~\cite{naeinian-cross-city-2026}.
+The cross-city protocol uses the natural geographic partitions already present in the source datasets. For nuScenes~\cite{caesar-nuscenes}, the Boston split contains 390 training scenes (2.12 hours) and 77 validation scenes (0.42 hours), while Singapore contains 310 training scenes (1.68 hours) and 73 validation scenes (0.40 hours). For NAVSIM~\cite{dauner-navsim}, the city distribution is more imbalanced: Las Vegas contributes 818 training scenes and 50 evaluation scenes, Boston 255 and 62, Pittsburgh 140 and 22, and Singapore 97 and 13. These counts are large enough to expose meaningful transfer behavior while still making the data imbalance itself part of the problem; Singapore is both the smallest domain and the only left-hand-traffic environment, which makes it a particularly stringent test of transfer~\cite{naeinian-cross-city-2026}. \reffig{fig:method-city-map} illustrates the four cities schematically alongside their train/test scene counts; the full data card is in \refapp{app:city-data-card}.
+
+\begin{figure}[ht]
+    \centering
+    \begin{tikzpicture}[
+        city/.style = {draw, rounded corners=3pt, minimum width=26mm, minimum height=14mm, align=center, font=\small},
+        continent/.style = {draw, densely dashed, rounded corners=4pt, inner sep=4mm, font=\scriptsize\itshape, label position=above, label distance=-1mm},
+        citycount/.style = {font=\scriptsize, gray},
+    ]
+        \node[city, fill=red!8] (lv) {Las Vegas (LV)\\{\scriptsize\color{gray}818 / 50}};
+        \node[city, fill=red!8, right=10mm of lv] (pit) {Pittsburgh (P)\\{\scriptsize\color{gray}140 / 22}};
+        \node[city, fill=red!8, right=10mm of pit] (bos) {Boston (B)\\{\scriptsize\color{gray}255 / 62}};
+        \node[draw, densely dashed, rounded corners=4pt, inner sep=3mm, fit=(lv) (pit) (bos), label=above:\itshape North America, label distance=-1mm] (na) {};
+
+        \node[city, fill=blue!8, right=18mm of bos] (sg) {Singapore (S)\\{\scriptsize\color{gray}97 / 13}\\\tiny left-hand traffic};
+        \node[draw, densely dashed, rounded corners=4pt, inner sep=3mm, fit=(sg), label=above:\itshape Southeast Asia, label distance=-1mm] {};
+
+        \node[font=\scriptsize, below=4mm of lv.south west, anchor=north west, text width=120mm] {\textit{trainval / test scene counts from \refapp{app:city-data-card}. Singapore is the only left-hand-traffic city and the smallest training source, making it a stringent cross-city target.}};
+    \end{tikzpicture}
+    \caption{Schematic of the four NAVSIM City Splits. Three North-American cities share traffic conventions (right-hand-side driving) and broadly comparable road-marking standards; Singapore adds a different traffic convention and distinct road-paint conventions. Scene counts are from \reftab{tab:city-splits}.}
+    \label{fig:method-city-map}
+\end{figure}
 
 \subsection{Evaluation Protocols}
 \label{sec:meth-eval-protocols}
@@ -112,7 +133,31 @@ TF denotes TransFuser and DD denotes DiffusionDrive. Unless stated otherwise, SS
 \subsection{Feature Projection}
 \label{sec:meth-feature-proj}
 
-Because the backbones emit features with different dimensionality and structure, a lightweight projection module standardizes them before they enter the planner. For global-regression heads, this is a linear projection from the backbone output dimension to the hidden dimension expected by the planner. For token-based backbones integrated into DiffusionDrive, the adapter projects ViT patch tokens $(B, N, C)$ into spatial feature maps $(B, C', H, W)$ compatible with the planner's multi-scale cross-attention blocks. This projection is intentionally lightweight so that the thesis remains focused on the representation rather than on heavy task-specific adaptation.
+Because the backbones emit features with different dimensionality and structure, a lightweight projection module standardizes them before they enter the planner. For global-regression heads, this is a linear projection from the backbone output dimension to the hidden dimension expected by the planner. For token-based backbones integrated into DiffusionDrive, the adapter projects ViT patch tokens $(B, N, C)$ into spatial feature maps $(B, C', H, W)$ compatible with the planner's multi-scale cross-attention blocks. This projection is intentionally lightweight so that the thesis remains focused on the representation rather than on heavy task-specific adaptation. \reffig{fig:method-adapter} sketches the data-shape flow.
+
+\begin{figure}[ht]
+    \centering
+    \begin{tikzpicture}[
+        node distance = 5mm and 7mm,
+        box/.style = {draw, rounded corners=2pt, minimum height=8mm, minimum width=26mm, align=center, font=\small},
+        shape/.style = {font=\scriptsize\ttfamily, gray},
+        arrow/.style = {-{Stealth[length=2mm]}, thick},
+    ]
+        \node[box] (img) {Image\\$3 \times H_0 \times W_0$};
+        \node[box, right=of img, fill=black!5] (vit) {ViT backbone\\(frozen)};
+        \node[box, right=of vit] (tok) {Patch tokens\\$B \times N \times C$};
+        \node[box, right=of tok] (rsh) {Reshape +\\linear proj.};
+        \node[box, right=of rsh, fill=black!5] (map) {Spatial map\\$B \times C' \times H \times W$};
+        \node[box, right=of map] (plan) {Planner\\(TF / LAW / DD)};
+        \draw[arrow] (img) -- (vit);
+        \draw[arrow] (vit) -- (tok);
+        \draw[arrow] (tok) -- (rsh);
+        \draw[arrow] (rsh) -- (map);
+        \draw[arrow] (map) -- (plan);
+    \end{tikzpicture}
+    \caption{Backbone adapter schematic. A frozen ViT encoder emits $N$ patch tokens; a lightweight reshape and linear projection restructure them into a spatial feature map whose shape matches what the downstream planner expects. ResNet-34 backbones already emit a spatial map and therefore skip the reshape step. This adapter is the only module that differs between Phase-1 TransFuser/LAW and Phase-2 DiffusionDrive runs.}
+    \label{fig:method-adapter}
+\end{figure}
 
 % ============================================================================
 \section{Planning Architecture I: LAW with Swappable Backbones}

@@ -62,6 +62,55 @@ MAE masks a large fraction of image patches and trains a lightweight decoder to 
 
 The three paradigms can be summarized by the invariances they encourage. I-JEPA is predictive and latent-space oriented, which should help it ignore superficial texture while retaining semantic layout. DINOv2 is discriminative and tends to produce highly transferable visual embeddings, but it is not explicitly aligned to future prediction. MAE is generative and may preserve broader scene detail, though not always in the way most useful for planning. The central empirical question of the thesis is whether these differences matter only for mixed-city benchmark performance or whether they become much larger once the model is evaluated under zero-shot transfer to unseen cities.
 
+\begin{figure}[ht]
+    \centering
+    \begin{tikzpicture}[
+        node distance = 4mm and 5mm,
+        img/.style  = {draw, rectangle, minimum width=10mm, minimum height=10mm, fill=black!5, font=\tiny, align=center},
+        enc/.style  = {draw, rounded corners=2pt, minimum height=6mm, minimum width=14mm, align=center, font=\scriptsize},
+        loss/.style = {draw, ellipse, minimum height=6mm, minimum width=14mm, align=center, font=\scriptsize},
+        arrow/.style = {-{Stealth[length=1.5mm]}, thin},
+    ]
+        %---- I-JEPA panel ----
+        \node[img] (ijx) {ctx};
+        \node[img, right=of ijx] (ijy) {target};
+        \node[enc, below=of ijx] (ijec) {Enc $f_\theta$};
+        \node[enc, below=of ijy] (ijet) {Enc $f_{\bar\theta}$};
+        \node[enc, right=8mm of ijet] (ijp) {Predictor};
+        \node[loss, below=of ijec] (ijl) {predict in\\latent space};
+        \draw[arrow] (ijx) -- (ijec);
+        \draw[arrow] (ijy) -- (ijet);
+        \draw[arrow] (ijec) -- (ijl);
+        \draw[arrow] (ijec.east) -- (ijp.west);
+        \draw[arrow] (ijet.east) -- ($(ijp.west)+(0,-2mm)$);
+        \draw[arrow] (ijp.south) |- (ijl.east);
+        \node[font=\scriptsize, above=1mm of ijx] {\textbf{I-JEPA}};
+
+        %---- DINOv2 panel ----
+        \node[img, right=38mm of ijy] (dvx) {img};
+        \node[enc, below=of dvx, xshift=-6mm] (dve1) {Student $f_\theta$};
+        \node[enc, below=of dvx, xshift=+6mm] (dve2) {Teacher $f_{\bar\theta}$};
+        \node[loss, below=of dve1, xshift=6mm] (dvl) {match softmax\\of features};
+        \draw[arrow] (dvx) -- (dve1);
+        \draw[arrow] (dvx) -- (dve2);
+        \draw[arrow] (dve1) -- (dvl.north -| dve1);
+        \draw[arrow] (dve2) -- (dvl.north -| dve2);
+        \node[font=\scriptsize, above=1mm of dvx] {\textbf{DINOv2}};
+
+        %---- MAE panel ----
+        \node[img, right=30mm of dvx] (max) {mask 75\%};
+        \node[enc, below=of max] (mae) {Enc $f_\theta$};
+        \node[enc, below=of mae] (mad) {Decoder};
+        \node[loss, below=of mad] (mal) {reconstruct\\pixels};
+        \draw[arrow] (max) -- (mae);
+        \draw[arrow] (mae) -- (mad);
+        \draw[arrow] (mad) -- (mal);
+        \node[font=\scriptsize, above=1mm of max] {\textbf{MAE}};
+    \end{tikzpicture}
+    \caption{The three SSL objectives compared in this thesis. \textbf{I-JEPA} (left): context and target encoders extract features; a predictor maps context latents to target latents and the loss is in representation space~\cite{assran-ijepa}. \textbf{DINOv2} (middle): a student and a momentum teacher process the same image; the student is trained to match the teacher's soft output distribution~\cite{oquab-dinov2,caron-dino-2021}. \textbf{MAE} (right): a large fraction of image patches is masked and a lightweight decoder is trained to reconstruct pixels from the visible encoded patches~\cite{he-mae}. The three objectives encourage different invariances, which is the central variable varied under cross-city transfer in Phase~4 (\refsec{sec:exp-why-ssl}).}
+    \label{fig:bg-ssl-family}
+\end{figure}
+
 % ============================================================================
 \section{Planning Architectures}
 \label{sec:bg-planning}
@@ -70,6 +119,32 @@ The three paradigms can be summarized by the invariances they encourage. I-JEPA 
 \label{sec:bg-transfuser}
 
 TransFuser is a representative multi-modal end-to-end planner that fuses camera and LiDAR features through transformer-style cross-modal interaction before regressing future waypoints~\cite{chitta-transfuser}. In this thesis it serves two roles. First, it is a strong closed-loop baseline on NAVSIM. Second, it exposes an important practical issue in early SSL experiments: swapping a ViT image encoder into a fusion stack designed around CNN geometry is not a pure test of representation quality. This is one reason the thesis began with lightweight perception-free heads and only later returned to multi-modal planners under a more controlled benchmark.
+
+\begin{figure}[ht]
+    \centering
+    \begin{tikzpicture}[
+        node distance = 6mm and 7mm,
+        box/.style  = {draw, rounded corners=2pt, minimum height=8mm, minimum width=18mm, align=center, font=\small},
+        wide/.style = {draw, rounded corners=2pt, minimum height=8mm, minimum width=26mm, align=center, font=\small},
+        arrow/.style = {-{Stealth[length=2mm]}, thick},
+    ]
+        \node[box] (cam)   {Cameras};
+        \node[box, below=of cam] (lid) {LiDAR BEV};
+        \node[box, right=of cam] (venc) {Image enc.};
+        \node[box, right=of lid] (lenc) {LiDAR enc.};
+        \node[wide, right=of venc, yshift=-4mm] (fuse) {Attention\\fusion};
+        \node[wide, right=of fuse] (head) {GRU\\waypoint\\head};
+        \node[box, right=of head] (out)  {Trajectory};
+        \draw[arrow] (cam) -- (venc);
+        \draw[arrow] (lid) -- (lenc);
+        \draw[arrow] (venc.east) -- (fuse.west |- venc.east);
+        \draw[arrow] (lenc.east) -- (fuse.west |- lenc.east);
+        \draw[arrow] (fuse) -- (head);
+        \draw[arrow] (head) -- (out);
+    \end{tikzpicture}
+    \caption{TransFuser schematic (adapted from~\cite{chitta-transfuser}). Camera and LiDAR streams are encoded independently, fused through repeated cross-modal attention, and decoded to a waypoint sequence. This thesis varies only the Image enc.\ block; everything to the right of fusion is held fixed.}
+    \label{fig:bg-transfuser}
+\end{figure}
 
 \subsection{Lightweight Perception-Free Heads}
 \label{sec:bg-lightweight-heads}
@@ -81,10 +156,63 @@ The stripped-down regime studied in Phase 0 combines a pretrained visual encoder
 
 LAW augments end-to-end planning with a latent world-model objective that encourages the network to predict future feature dynamics while still outputting a single future trajectory~\cite{li-law}. It is especially useful for the thesis because it provides a stable open-loop test bed in which the downstream planner can be held fixed while only the backbone initialization changes. That makes LAW the cleanest architecture for isolating whether cross-city failure comes from the representation or from the planning head.
 
+\begin{figure}[ht]
+    \centering
+    \begin{tikzpicture}[
+        node distance = 6mm and 8mm,
+        box/.style  = {draw, rounded corners=2pt, minimum height=8mm, minimum width=20mm, align=center, font=\small},
+        pill/.style = {draw, rounded corners=4pt, minimum height=8mm, minimum width=24mm, align=center, font=\small, fill=black!5},
+        arrow/.style = {-{Stealth[length=2mm]}, thick},
+    ]
+        \node[box] (img) {Image $o_t$};
+        \node[box, right=of img] (enc) {Encoder\\(backbone)};
+        \node[pill, right=of enc] (lat) {Latent $z_t$};
+        \node[box, right=of lat] (pred) {World-model\\predictor};
+        \node[pill, right=of pred] (latp) {$\hat z_{t+1}$};
+        \node[box, below=8mm of lat] (plan) {Planner head};
+        \node[box, right=of plan, xshift=18mm] (act) {Trajectory $\hat\tau_{t:t+H}$};
+        \draw[arrow] (img) -- (enc);
+        \draw[arrow] (enc) -- (lat);
+        \draw[arrow] (lat) -- (pred);
+        \draw[arrow] (pred) -- (latp);
+        \draw[arrow] (lat.south) |- (plan.west);
+        \draw[arrow] (plan) -- (act);
+    \end{tikzpicture}
+    \caption{LAW schematic (adapted from~\cite{li-law}). The encoder produces a latent $z_t$ from the current observation; a world-model predictor is trained to forecast the next-step latent $\hat z_{t+1}$, while the planner head regresses a waypoint sequence from the same $z_t$. In this thesis the encoder is the variable component; the predictor and planner head are held fixed across backbones.}
+    \label{fig:bg-law}
+\end{figure}
+
 \subsection{Truncated Diffusion Planning (DiffusionDrive)}
 \label{sec:bg-diffusiondrive}
 
 DiffusionDrive represents a different planning family. Rather than directly regressing a single trajectory, it refines trajectory proposals through a truncated diffusion process initialized from anchor trajectories rather than pure Gaussian noise. This design preserves much of the multi-modal expressiveness of diffusion planning while remaining fast enough for realistic deployment. In this thesis, DiffusionDrive matters because it tests whether the representation-centric findings from LAW and TransFuser survive a substantial change in planner head. If SSL continues to help when the head becomes generative rather than regressive, the thesis claim becomes much stronger.
+
+\begin{figure}[ht]
+    \centering
+    \begin{tikzpicture}[
+        node distance = 6mm and 7mm,
+        box/.style  = {draw, rounded corners=2pt, minimum height=8mm, minimum width=20mm, align=center, font=\small},
+        trajanchor/.style = {draw, circle, minimum size=5mm, inner sep=0, fill=black!10, font=\scriptsize},
+        arrow/.style = {-{Stealth[length=2mm]}, thick},
+    ]
+        \node[box] (scene) {Scene feats};
+        \node[box, right=of scene] (enc) {Cross-attn.\\conditioner};
+        \node[trajanchor, below=8mm of enc] (a1) {$\tau_1$};
+        \node[trajanchor, right=2mm of a1] (a2) {$\tau_2$};
+        \node[trajanchor, right=2mm of a2] (a3) {$\ldots$};
+        \node[trajanchor, right=2mm of a3] (aK) {$\tau_K$};
+        \node[box, right=18mm of enc] (den1) {Denoise\\step 1};
+        \node[box, right=of den1] (den2) {Denoise\\step 2};
+        \node[box, right=of den2] (out) {Trajectory};
+        \draw[arrow] (scene) -- (enc);
+        \draw[arrow] (enc) -- (den1);
+        \draw[arrow] (a1.north) -- ++(0,3mm) -| (den1.south);
+        \draw[arrow] (den1) -- (den2);
+        \draw[arrow] (den2) -- (out);
+    \end{tikzpicture}
+    \caption{Truncated DiffusionDrive schematic (adapted from~\cite{jia-diffusiondrive-2025}). A $K$-means anchor bank $\{\tau_k\}$ replaces the usual Gaussian noise initialization; only two denoising steps are used at inference, giving real-time throughput while retaining the multi-modality of diffusion planning. The SSL variants in this thesis substitute the Scene-feats block with a frozen ViT encoder and its ViT-to-CNN adapter.}
+    \label{fig:bg-diffusiondrive}
+\end{figure}
 
 \subsection{DiffusionDriveV2 and RL Post-Training}
 \label{sec:bg-ddv2}

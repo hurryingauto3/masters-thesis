@@ -1,0 +1,22 @@
+% City-split data card. Counts taken from navsim-ssl-city-generalization/city_splits/splits/*.json
+% (derived from nuPlan map_location tags; see navsim-ssl-city-generalization/city_splits/create_splits.py).
+\begin{table}[ht]
+    \centering
+    \caption{%
+    NAVSIM city-split data card. Logs were grouped by nuPlan \texttt{map\_location} tag. \emph{Trainval} is the pool used for both training and validation under the Phase~1 single-city and all-city protocols; \emph{test} is the held-out navtest subset used for every cross-city evaluation. Scene count = log count because each log contributes a single NAVSIM scene.%
+    }
+    \label{tab:city-splits}
+    \small
+    \begin{tabular}{lccl}
+    \toprule
+    \textbf{City} & \textbf{Trainval logs} & \textbf{Test logs} & \textbf{nuPlan \texttt{map\_location}} \\
+    \midrule
+    Las Vegas (LV)   & 818 & 50 & \texttt{us-nv-las-vegas-strip} \\
+    Boston (B)       & 255 & 62 & \texttt{us-ma-boston} \\
+    Pittsburgh (P)   & 140 & 22 & \texttt{us-pa-pittsburgh-hazelwood} \\
+    Singapore (S)    &  97 & 13 & \texttt{sg-one-north} \\
+    \midrule
+    \textbf{Total}   & \textbf{1310} & \textbf{147} & --- \\
+    \bottomrule
+    \end{tabular}
+\end{table}

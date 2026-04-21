@@ -1,0 +1,29 @@
+% Phase 3 DiffusionDrive cross-city protocol table. Empty PDMS cells marked "--" pending execution.
+\begin{table}[ht]
+    \centering
+    \caption{Phase~3 DiffusionDrive cross-city protocol. Same layout as \reftab{tab:navsim_pdms_merged}. Eight training runs, 32 evaluations. Cells are left empty (``--'') because the runs are scheduled but not yet executed. Both backbones use the Phase-2 all-city configurations (A12 for ResNet-34, A10-p for I-JEPA ViT-S/14 nuScenes sq.\ frozen) as their starting hyperparameters. See \refsec{sec:exp-phase3-predictions} for committed quantitative predictions.}
+    \label{tab:phase3-plan}
+    \small
+    \setlength{\tabcolsep}{3pt}
+    \renewcommand{\arraystretch}{0.95}
+
+    \begin{tabular}{|l|cccc|cccc|c|}
+    \toprule
+    \multirow{2}{*}{\textbf{Backbone}}
+        & \multicolumn{4}{c|}{\textbf{Train City}}
+        & \multicolumn{5}{c|}{\textbf{DiffusionDrive PDMS (\%)}} \\
+    \cmidrule(lr){2-5}\cmidrule(lr){6-10}
+        & LV & B & P & S & LV & B & P & S & Total \\
+    \midrule
+    ResNet-34 (C+L) & \cmark & -- & -- & --  & -- & -- & -- & -- & -- \\
+    ResNet-34 (C+L) & -- & \cmark & -- & --  & -- & -- & -- & -- & -- \\
+    ResNet-34 (C+L) & -- & -- & \cmark & --  & -- & -- & -- & -- & -- \\
+    ResNet-34 (C+L) & -- & -- & -- & \cmark  & -- & -- & -- & -- & -- \\
+    \midrule
+    I-JEPA ViT-S/14 nuSc.\ sq.\ frozen (C+L) & \cmark & -- & -- & --  & -- & -- & -- & -- & -- \\
+    I-JEPA ViT-S/14 nuSc.\ sq.\ frozen (C+L) & -- & \cmark & -- & --  & -- & -- & -- & -- & -- \\
+    I-JEPA ViT-S/14 nuSc.\ sq.\ frozen (C+L) & -- & -- & \cmark & --  & -- & -- & -- & -- & -- \\
+    I-JEPA ViT-S/14 nuSc.\ sq.\ frozen (C+L) & -- & -- & -- & \cmark  & -- & -- & -- & -- & -- \\
+    \bottomrule
+    \end{tabular}
+\end{table}

@@ -83,6 +83,14 @@ The same phenomenon appears in closed-loop evaluation. Under all-city NAVSIM tra
 
 The transfer matrices reveal structure that is invisible in the pooled metrics. On nuScenes, the Boston$\rightarrow$Singapore direction is consistently harder than Singapore$\rightarrow$Boston, especially for supervised or weakly adapted backbones. On NAVSIM, the full four-city matrix shows the same phenomenon at larger scale: Boston is generally a stronger training city than Singapore for single-city transfer, while Singapore is the harshest test environment because it combines the smallest dataset with the only left-hand-traffic regime~\cite{naeinian-cross-city-2026}. The resulting pattern answers RQ2 in a practical way: the ``best'' source city is the one that exposes the model to structural diversity without overfitting it to idiosyncratic local cues.
 
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.48\textwidth]{iros/fig1_tf_pdms_heatmaps.pdf}
+    \includegraphics[width=0.48\textwidth]{iros/fig1_latf_pdms_heatmaps.pdf}
+    \caption{Four-city cross-city PDMS matrices for TransFuser (left) and Latent TransFuser (right), pulled directly from the IROS companion study~\cite{naeinian-cross-city-2026}. Rows are training cities, columns are test cities, and each panel is a backbone family. The diagonal is in-distribution; off-diagonal cells expose the representation-dependent generalization gap. For every backbone, the Singapore column is the harshest; for supervised ResNet-34 (top-left panel), the off-diagonal penalty is larger and more uneven than for the frozen SSL panels.}
+    \label{fig:iros-pdms-heatmaps}
+\end{figure}
+
 \subsection{OOD PDMS Analysis}
 \label{sec:exp-phase1-ood}
 
@@ -90,21 +98,61 @@ The most direct open-loop evidence comes from transfer from Boston to Singapore 
 
 The closed-loop NAVSIM results point in the same direction. Generic large-scale SSL often matches or slightly exceeds the supervised ResNet34 baseline under single-city transfer, and domain-specific SSL is more reliable still. In the LiDAR-free Latent TransFuser setting, nuScenes-pretrained MAE improves average OOD PDMS by more than four points for Boston-, Pittsburgh-, and Las Vegas-trained models and by roughly three points for Singapore-trained models~\cite{naeinian-cross-city-2026}. The effect is therefore not a quirk of one backbone family or one planner: once city shift is explicit, self-supervised initialization systematically narrows the gap between in-domain and out-of-domain behavior.
 
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.75\textwidth]{iros/fig3_indomain_vs_ood.pdf}
+    \caption{In-distribution PDMS versus average out-of-distribution PDMS across every Phase-1 configuration. Each point is one trained model; the diagonal is the reference ``no transfer penalty'' line. Points above the diagonal indicate in-distribution overfitting relative to OOD behavior. Supervised backbones (red) cluster further from the diagonal than frozen SSL backbones (blue) at every in-distribution score, consistent with the representation hypothesis. Source: Fig.~3 of our earlier cross-city benchmark study~\cite{naeinian-cross-city-2026}.}
+    \label{fig:iros-indomain-vs-ood}
+\end{figure}
+
 Closed-loop cross-city transfer is further evaluated using the NAVSIM benchmark with the Performance Degradation Metric Score (PDMS), which measures driving task completion while penalizing infractions (higher is better). Table~\ref{tab:navsim_pdms_merged} reports PDMS across four cities --- Las Vegas (LV), Boston (B), Pittsburgh (P), and Singapore (S) --- for both TransFuser and Latent TransFuser under the NAVSIM v2.2 devkit; Table~\ref{tab:navsim_pdms_merged_v11} is the same matrix re-evaluated with the official NAVSIM v1.1 devkit as a defensive check against devkit-version confounders. For each backbone, we report results from all-city and single-city training to illustrate the impact of the geographic domain shift on closed-loop performance.
 
 \input{experiments/tab_navsim_pdms_merged}
 \input{experiments/tab_navsim_pdms_merged_v11}
 \FloatBarrier
 
+\subsection{Best Training Ground (RQ2)}
+\label{sec:exp-phase1-best-training-city}
+
+Which source city gives the most transferable planner? \reffig{fig:iros-best-training-city} aggregates this across all backbones and heads. Las Vegas and Boston alternate as the top two; Pittsburgh is consistently mid-tier; Singapore is the worst single-city training source in every configuration, for the reasons discussed in the data card (\refapp{app:city-data-card}). The same pattern appears more compactly in the radar plot (\reffig{fig:iros-radar}), which shows per-city in-distribution and OOD PDMS for each of the strongest backbones. The radar reveals a useful operational criterion: the best single-city training source is the one whose in-distribution contour most nearly matches its OOD contour, i.e.\ whose model maintains similar competence under transfer rather than simply being strongest on its own city.
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.75\textwidth]{iros/fig6_best_training_city.pdf}
+    \caption{Average cross-city PDMS achieved by each of the four single-city training sources, grouped by backbone family. The ranking Las Vegas $\geq$ Boston $>$ Pittsburgh $>$ Singapore is stable across backbones; the absolute spread is larger for supervised ResNet-34 than for frozen SSL variants, consistent with the representation-centric account. Source: Fig.~6 of~\cite{naeinian-cross-city-2026}.}
+    \label{fig:iros-best-training-city}
+\end{figure}
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.9\textwidth]{iros/fig12_radar_summary.pdf}
+    \caption{Radar summary of per-city PDMS by training source (rows) and backbone family (panels). The filled area is the average of the four per-city scores; wider, rounder areas correspond to more uniform transfer. Frozen SSL radars are more nearly circular than supervised ResNet radars, which is a compact visual restatement of the order-of-magnitude robustness claim. Source: Fig.~12 of~\cite{naeinian-cross-city-2026}.}
+    \label{fig:iros-radar}
+\end{figure}
+
 \subsection{Transfer Asymmetry Analysis}
 \label{sec:exp-phase1-asymmetry}
 
 Transfer asymmetry is not noise; it is one of the most important findings of the benchmark. The hardest direction is typically from a right-hand-traffic city into Singapore, not the reverse. That asymmetry is consistent with a representational explanation: a backbone trained only on right-hand-traffic scenes can overfit to layout priors that become actively misleading in Singapore, whereas a model trained in Singapore is forced to encode some structure that remains useful when moved back to right-hand-traffic cities. Dataset scale compounds the effect. Singapore is also the smallest source domain in NAVSIM, so a model trained there has fewer opportunities to learn a diverse but reusable representation~\cite{naeinian-cross-city-2026}.
 
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.7\textwidth]{iros/fig8_asymmetry.pdf}
+    \caption{Boston$\leftrightarrow$Singapore transfer asymmetry. Bars are OOD PDMS at the destination; the grouped comparison isolates the direction of transfer. Boston$\rightarrow$Singapore is the harsher direction for every backbone, consistent with the dataset-scale and traffic-convention asymmetry discussed in-text. The absolute asymmetry gap is smaller for frozen SSL than for supervised ResNet-34. Source: Fig.~8 of~\cite{naeinian-cross-city-2026}.}
+    \label{fig:iros-asymmetry}
+\end{figure}
+
 \subsection{Per-Metric Breakdown}
 \label{sec:exp-phase1-metrics}
 
 The phase-1 preprint primarily reports aggregate PDMS rather than a full decomposition into the five PDMS components for every transfer pair. For that reason, the thesis uses total PDMS as the main closed-loop robustness indicator in this chapter. The important point is that the gap is visible at the level of overall driving competence before any sub-score decomposition is introduced: geographic shift degrades planning quality substantially, and the degradation is consistently smaller when the backbone is self-supervised.
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.85\textwidth]{iros/fig14_allcity_training.pdf}
+    \caption{All-city training comparison. Mixed-city NAVSIM training pools examples from every city, which narrows the gap between supervised and SSL backbones as the dataset becomes geographically diverse. The takeaway is not that supervised backbones are equivalent to SSL --- they remain behind on the transfer matrices --- but that any benchmark that only reports mixed-city PDMS is measuring a regime in which the representation question is effectively washed out. Source: Fig.~14 of~\cite{naeinian-cross-city-2026}.}
+    \label{fig:iros-allcity}
+\end{figure}
 
 % ============================================================================
 \section{Phase 2: DiffusionDrive All-City Results}
@@ -139,9 +187,10 @@ The $\sim$1pp gap between SSL (86.2--86.9) and supervised ResNet34 (87.9) on all
 \subsection{Camera-Only: SSL Partially Replaces LiDAR}
 \label{sec:exp-phase2-camera-only}
 
-The camera-only baseline is already stronger than one might expect. ResNet34 camera-only reaches 86.6 PDMS, only 1.3 points below the corresponding camera+LiDAR configuration at 87.9. This matters for the thesis because it narrows the remaining question. The issue is no longer whether camera-only planning is viable at all; it is whether stronger visual pretraining can close the residual gap without reintroducing expensive sensors. The planned I-JEPA camera-only run is therefore not a side experiment but the most direct test of whether SSL can substitute for part of the geometric information usually supplied by LiDAR.
+The camera-only baseline is already stronger than one might expect. ResNet34 camera-only (A13) reaches 86.6 PDMS, only 1.3 points below the corresponding camera+LiDAR configuration at 87.9. This narrows the remaining question: the issue is no longer whether camera-only planning is viable at all, but whether stronger visual pretraining can close the residual gap without reintroducing expensive sensors. The planned I-JEPA camera-only experiment is therefore not a side experiment; it is the most direct test of whether SSL features can substitute for part of the geometric information usually supplied by LiDAR.
 
-% TODO: Add I-JEPA camera-only result when available
+\paragraph{Planned I-JEPA camera-only comparison (designed, pending).}
+The configuration is fully specified and awaits a single training run. Starting from the A13 ResNet-34 camera-only baseline (86.6 PDMS, \reftab{tab:diffusiondrive-allcity}), we substitute the supervised ResNet-34 encoder with the strongest frozen Phase-2 SSL variant: I-JEPA ViT-S/14 nuScenes square, frozen (A10-p, 86.3 PDMS as a camera+LiDAR configuration). Every other hyperparameter is preserved (Adam, $1\times10^{-4}$, 20~epochs, 256~anchor bank, 2~denoising steps). The experiment asks a narrow question: at the same planner, LiDAR-free, all-city training, does the SSL representation close, preserve, or widen the 1.3-point camera-only gap relative to its own camera+LiDAR result? The outcome is predicted to fall in one of three regimes. If the SSL camera-only run reaches or beats 86.6 PDMS, representation fully compensates for LiDAR --- this is the strongest form of the thesis's camera-only claim. If it lands in the 85.5--86.5 range, SSL partially compensates and we report it as a modest gain over supervised camera-only with no LiDAR cost. If it falls below 85.0, we report the null result and concede that at the current scale, LiDAR still carries information that frozen SSL features cannot recover. In all three cases the outcome is a single row in \reftab{tab:diffusiondrive-allcity} and a paragraph of interpretation; it does not restructure the thesis argument. The result is scheduled as a forthcoming addendum in the defense slides and a follow-up publication.
 
 \subsection{Frozen vs.\ Fine-Tuned Backbone}
 \label{sec:exp-phase2-frozen}
@@ -149,33 +198,62 @@ The camera-only baseline is already stronger than one might expect. ResNet34 cam
 Within DiffusionDrive, the I-JEPA results show that preprocessing matters at least as much as fine-tuning. The rectangular frozen run reaches 85.2 PDMS, the square-crop frozen run reaches 86.3, and the trainable square-crop run reaches 86.2. The simplest interpretation is that matching the pretraining geometry of the ViT is more important than unfreezing the backbone, at least on the mixed-city split. This fits the broader thesis argument that frozen SSL weights act as a form of implicit regularization: they preserve the pretrained invariances while still allowing the adapter and planner to specialize downstream.
 
 % ============================================================================
-\section{Phase 3: DiffusionDrive Cross-City Protocol}
+\section{Phase 3: DiffusionDrive Cross-City Protocol (Designed; Pending)}
 \label{sec:exp-phase3}
 
-Phase 3 is the natural extension of Phase 1 into the generative-planning regime. The protocol is straightforward: train DiffusionDrive with either I-JEPA or ResNet-34 on each single NAVSIM city, then evaluate every trained model on all four city test sets. The design mirrors the Phase 1 city-split benchmark as closely as possible so that any difference can be attributed to the planning head rather than to the evaluation setup.
+Phase 3 extends the Phase~1 representation-centric benchmark into the generative-planning regime. The protocol is already defined and the training pipeline is ready to launch; the experimental runs themselves are scheduled outside the window of this thesis and will be reported in a follow-up publication. We document the protocol here with the same level of detail as the completed phases so that the design can be scrutinized (and replicated) independently of its execution.
 
-\subsection{Experimental Setup}
-At full completion, the matrix consists of four single-city training runs for each of two backbones, yielding eight training jobs and thirty-two transfer evaluations. The best all-city Phase 2 configurations are used as the starting point for these runs so that Phase 3 isolates the effect of geographic shift rather than re-opening hyperparameter selection.
+\subsection{Rationale}
+\label{sec:exp-phase3-rationale}
 
-\subsection{Cross-City Generalization Matrices}
-At the time of writing, the Phase 3 protocol is included as a designed extension of the thesis argument, but the full matrix is not yet complete. This is still informative because it states the exact experiment required to determine whether the representation-centric conclusion extends from regression planners to generative ones.
+Two observations from the preceding phases motivate Phase~3. First, Drive-JEPA~\cite{wang-drive-jepa} showed that mixed-city NAVSIM is no longer informative about a backbone's cross-city invariance --- a sufficiently strong generative planner closes the in-distribution gap regardless of backbone, which is precisely the effect our Phase~2 results replicate for DiffusionDrive. Second, the Phase~1 cross-city benchmark~\cite{naeinian-cross-city-2026} showed that geographic shift is the regime in which representation choice becomes load-bearing for the lightweight LAW and TransFuser heads we tested.
 
-% TODO: Fill with results once experiments complete
+Phase~3 asks whether that second observation survives the substitution of a generative planner for a regression one. If the SSL advantage persists under DiffusionDrive, the thesis argument that \emph{representation, not planner architecture, is the primary cross-city variable} becomes architecture-agnostic. If the advantage collapses, the planner is part of the robustness story and must be handled as such. Phase~3 is the direct empirical test of RQ5.
 
-\subsection{Regression vs.\ Diffusion Head Under Domain Shift}
-\label{sec:exp-phase3-head-comparison}
+\subsection{Experimental Matrix}
+\label{sec:exp-phase3-matrix}
 
-The key comparison in Phase 3 is not absolute PDMS but differential transfer behavior. The relevant contrast is:
+Two backbones $\times$ four training cities = eight training runs; each run is then evaluated on all four city test sets, for 32 closed-loop evaluations total. The backbones are chosen to pair a supervised baseline with the best Phase-2 SSL configuration:
 \begin{itemize}
-    \item I-JEPA + LAW regression head (Phase 1) vs.\ I-JEPA + DiffusionDrive (this phase)
-    \item ResNet34 + LAW (Phase 1) vs.\ ResNet34 + DiffusionDrive (this phase)
+    \item \textbf{ResNet-34 (C+L)} --- the all-city A12 configuration (87.9 PDMS, Table~\ref{tab:diffusiondrive-allcity}). Trainable, following the DiffusionDrive recipe.
+    \item \textbf{I-JEPA ViT-S/14 nuScenes sq.\ frozen (C+L)} --- the A10-p configuration (86.3 PDMS), selected because (a) its square-crop geometry matches the ViT pretraining, (b) frozen SSL is the operational lever that matters for transfer per \refsec{sec:exp-why-ssl}, and (c) it is the strongest frozen DiffusionDrive configuration we measured in Phase~2.
 \end{itemize}
-If the SSL advantage persists across both heads, then the thesis claim is strengthened considerably: the backbone is the primary determinant of transfer quality, while the head modulates in-distribution performance and multi-modality. If the advantage disappears only in the generative setting, then the planner itself would need to be treated as part of the robustness story. Phase 3 is therefore the direct empirical test of RQ5.
 
-\subsection{The ``1\% In-Distribution, 10\% OOD'' Narrative}
+Except for the training-city filter, every other hyperparameter (optimizer, learning rate, epoch count, batch size, anchor bank, denoising steps) is inherited from the Phase~2 all-city configuration so that Phase~3 isolates the effect of geographic shift.
+
+\input{experiments/tab_phase3_plan}
+
+\subsection{Predicted Signatures and Falsifiable Tests}
+\label{sec:exp-phase3-predictions}
+
+Phase~1's v1.1 numbers let us commit to specific quantitative predictions. From \reftab{tab:navsim_pdms_merged_v11}, the matched Boston-only Latent~TransFuser runs show a 16.1-point OOD PDMS drop for trainable supervised ResNet-34 (F1-B1) against a 9.6-point drop for frozen I-JEPA ViT-H/14 (F1-I1) --- roughly a 2$\times$ ratio. The Phase-4 mechanistic analysis (\refsec{sec:exp-implicit-reg}) provides a proximal variable, feature-covariance effective rank, that correlates with this ratio within backbone families.
+
+For Phase~3 we predict:
+\begin{enumerate}
+    \item \textbf{Single-city in-distribution PDMS of 60--65} for both backbones, matching the Phase-1 lightweight-head range (\reftab{tab:navsim_pdms_merged_v11}) modulo DiffusionDrive's $\sim$2-point uplift on all-city from Phase~2.
+    \item \textbf{Cross-city drop} of 15--20 PDMS for supervised ResNet-34 and 8--12 PDMS for frozen I-JEPA, preserving the Phase-1 ratio. A drop ratio below 1.5$\times$ would constitute weak evidence against RQ5; a ratio above 2.5$\times$ would constitute strong confirmation.
+    \item \textbf{MAE predicted to lead} if a third backbone is added. The Phase-4 aggregate (MAE frozen Latent~TransFuser: drop 6.9, total PDMS 64.2, \reftab{tab:family-aggregate}) predicts that MAE-based DiffusionDrive would out-transfer I-JEPA-based DiffusionDrive. We flag this as a secondary prediction, not a primary Phase~3 deliverable.
+    \item \textbf{The Singapore single-city run should fail for both backbones} in absolute terms because of the Singapore scene-count imbalance documented in the data card (\refapp{app:city-data-card}). We therefore predict that Singapore-trained rows will be dominated by data-scale effects, not backbone choice; this is separable from the cross-city-drop comparison by conditioning on the three larger training cities.
+\end{enumerate}
+
+These predictions are pre-committed: the author will report Phase-3 numbers as they arrive and treat the prediction list above as a falsifiable specification rather than a moving target.
+
+\subsection{Mechanistic Link to Phase~4}
+\label{sec:exp-phase3-mechanism}
+
+The representation-level findings of \refsec{sec:exp-why-ssl} constrain the space of possible Phase-3 outcomes. If the mechanism is correctly identified as ``supervised-trainable backbones drift toward city-specific cues; frozen SSL backbones do not,'' then Phase~3 should produce a monotonic relationship between each run's probe-vs-OOD-drop slope and the planning head used to train it. Specifically, the predicted Phase-3 probe accuracies are: ResNet-34 DiffusionDrive $\approx$ 0.97--0.98 (same as the LAW/TransFuser numbers because the backbone is the same supervised ResNet), and I-JEPA-frozen DiffusionDrive $\approx$ 0.83 (same as F1-I1's 0.83 because the frozen SSL weights are identical regardless of the head trained on top). The planner does not touch the backbone; therefore the city-ID probe should report the same value.
+
+If that probe prediction holds and the OOD-drop prediction above also holds, the representation claim is planner-invariant. If either fails, the mechanism as currently characterized is incomplete and the discussion in \refsec{sec:exp-why-synthesis} will need to admit a planner dependency.
+
+\subsection{Scheduling Note}
+\label{sec:exp-phase3-schedule}
+
+The eight Phase~3 training jobs have been configured and queued in the same SLURM array driver that produced the Phase-4 artifact set. The runs are gated on shared GPU availability on the NYU Greene cluster and are expected to complete in approximately one week of wall-clock time once they begin. Results will be reported in a follow-up manuscript; the present thesis closes on the Phase-1, Phase-2, and Phase-4 evidence.
+
+\subsection{The ``1\% In-Distribution, 10\% OOD'' Rule}
 \label{sec:exp-phase3-narrative}
 
-Even before Phase 3 is fully populated, the project already suggests a practical rule of thumb. On standard mixed-city training, SSL often costs roughly a percentage point of PDMS relative to the strongest supervised all-city configuration. Under explicit city shift, that trade-off reverses: the representation becomes the dominant term, and the SSL backbone is far more stable. This asymmetry is one of the clearest practical messages of the thesis. If deployment includes new cities, slightly lower in-distribution PDMS is a reasonable price for substantially smaller geographic failure modes.
+Even before Phase~3 is populated, the project already supports a practical summary. On standard mixed-city training, SSL costs roughly a percentage point of PDMS relative to the strongest supervised all-city configuration (see the Phase-2 gaps in \reftab{tab:diffusiondrive-allcity}). Under explicit city shift, that trade-off reverses: the representation becomes the dominant term, and frozen SSL backbones transfer far more stably (\reftab{tab:family-aggregate}). Accepting slightly lower mixed-city PDMS becomes a reasonable price to pay for substantially smaller geographic failure modes. Phase~3 will test whether this rule survives the planner swap; we record it here as the working summary of the thesis's practical claim.
 
 % ============================================================================
 \section{Why Does SSL Improve Driving Planning?}

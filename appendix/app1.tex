@@ -1,13 +1,55 @@
 \chapter{Supplementary Results\label{chap:append}}
 
+\textit{This appendix collects reference material that is too dense for the main text: the full per-run PDMS matrices across both devkit versions, a per-metric breakdown of the aggregate PDMS scores into their five NAVSIM components, a data card for the NAVSIM City Splits benchmark, hyperparameter configurations for every training phase, and an index of the 188 per-run mechanistic artifacts produced for \refsec{sec:exp-why-ssl}.}
+
+% ============================================================================
 \section{Full Cross-City PDMS Matrices}
 \label{app:full-pdms-table}
 
-The primary NAVSIM v2.2 and defensive v1.1 devkit re-evaluations are reported in full in Tables~\ref{tab:navsim_pdms_merged} and~\ref{tab:navsim_pdms_merged_v11} of the Experiments chapter. The supplementary material will additionally contain:
+The primary full-roster PDMS tables are typeset in the Experiments chapter proper: \reftab{tab:navsim_pdms_merged} (NAVSIM v2.2 evaluation, used for the IROS submission) and \reftab{tab:navsim_pdms_merged_v11} (NAVSIM v1.1 re-evaluation, hardens the result against devkit-version confounding). We do not re-typeset them here. The v1.1 numbers are the canonical values referenced in the mechanistic analysis (\refsec{sec:exp-why-ssl}) and in \reftab{tab:family-aggregate}. The v2.2 table is retained for backward compatibility with the IROS Phase~1 paper~\cite{naeinian-cross-city-2026} and for any reader who needs to reconcile our numbers with the older NAVSIM leaderboard submissions.
+
+Both tables share the same layout. Every row is one trained checkpoint; each cell is the PDMS (\%) on the test split of that city. Training cities are indicated by \cmark\ under the \emph{Train City} super-column. The \emph{Total} column is the mean PDMS over all four city test splits. ``(frozen)'' means the vision backbone's parameters were held fixed after pretraining; ``(100\% trainable)'' means the entire backbone was unfrozen and updated by the driving loss; ``supervised'' refers to an ImageNet-pretrained ResNet-34 backbone that is always fully trainable in our recipe. Rows within a section are ordered all-city first, then single-city (LV, B, P, S).
+
+% ============================================================================
+\section{Per-Metric PDMS Decomposition}
+\label{app:per-metric}
+
+NAVSIM's aggregate PDMS is the product of five sub-scores: No at-fault Collisions (NC), Drivable Area Compliance (DAC), Ego Progress (EP), Time-To-Collision (TTC), and Comfort. The main-text matrices report only the aggregate; in this appendix we decompose the Tier-A rows into their five components to expose which failure modes dominate cross-city transfer.
+
+\textbf{Status note:} the full per-metric decomposition requires access to the per-scenario evaluation JSONs on the NYU Greene HPC cluster (\texttt{/scratch/ah7072/experiments/evaluations/}), which were temporarily unreachable at the time this first-pass manuscript was compiled. The decomposition pipeline is implemented (\texttt{scripts/phase4\_mechanistic/extract\_per\_metric.py}) and will populate the 5-panel table and figure below once the cluster is reachable again:
+
 \begin{itemize}
-    \item Per-metric (NC, DAC, EP, TTC, Comfort) breakdown tables
-    \item City split statistics and token counts
-    \item Hyperparameter configurations for all experiments
-    \item Additional qualitative trajectory visualizations
-    \item All 13 Tier-A cross-city CKA heatmaps and SVD spectra from the mechanistic analysis (Sec.~\ref{sec:exp-why-ssl})
+    \item \textbf{DAC and EP} are expected to degrade the most under geographic transfer because both are lane-geometry-aware and lane paint, lane width, and turn radii differ systematically between the four cities.
+    \item \textbf{NC} and \textbf{TTC} are expected to be most robust because they depend primarily on agent-to-agent spacing, which is more invariant across cities than lane geometry.
+    \item \textbf{Comfort} should be weakly city-dependent and dominated by speed-profile smoothness.
 \end{itemize}
+
+The thesis text only makes aggregate-PDMS claims, so this appendix is a reviewer aid rather than a load-bearing result. The quantitative decomposition will be incorporated as a revision before submission.
+
+% ============================================================================
+\section{NAVSIM City Splits Data Card}
+\label{app:city-data-card}
+
+This data card documents the scene-count imbalance inherent in the nuPlan-derived NAVSIM city splits. The imbalance is directly relevant to the Singapore result in Phase~1 and to the interpretation of the Phase-4 effective-rank collapses that cluster on Singapore-trained runs.
+
+\input{appendix/tab_city_splits}
+
+The imbalance is severe: Las Vegas contributes 818 training logs against Singapore's 97. This is a consequence of the original nuPlan capture plan rather than a decision on our part; the NAVSIM benchmark inherits the imbalance directly. For every Phase~1 single-city result where the Singapore-trained row underperforms, the reader should ask whether the effect reflects a representation difference or a data-scale difference. Our Phase-4 feature-rank analysis (\refsec{sec:exp-implicit-reg}) finds that the three most extreme feature-rank collapses involve either trainable ViTs on all-city data (which is not the small-data regime) or frozen ViTs on single-city \emph{non-Singapore} runs --- so the small-data hypothesis is not a clean explanation. Still, the imbalance is a confounder the reader should hold in mind; disentangling it fully requires a data-efficiency study that is out of scope for this thesis.
+
+% ============================================================================
+\section{Per-Phase Hyperparameter Tables}
+\label{app:hparams}
+
+The recipes below are intended to be sufficient for reproduction. All experiments used PyTorch 2.4 with Lightning, Hydra configuration, and the HuggingFace Transformers reference implementations of the ViT backbones. The NAVSIM devkit version was v2.2 for the primary IROS submission and v1.1 for the defensive re-evaluation reported in \reftab{tab:navsim_pdms_merged_v11}.
+
+\input{appendix/hparam_tables}
+
+A subtle but load-bearing detail: the TransFuser recipe in \reftab{tab:hparam-phase1-tf} uses \emph{plain} Adam with no weight decay and no learning-rate schedule. Substituting AdamW, or adding a cosine schedule, silently regresses the in-distribution PDMS by more than 30 points without any accompanying error message. This was the root cause of the Phase~1 ``A3 landmine'' reported in our internal repository notes; we document it here so future readers who attempt to reproduce the numbers are warned in advance.
+
+% ============================================================================
+\section{Mechanistic Artifacts Index}
+\label{app:mechanistic-index}
+
+The mechanistic analysis in \refsec{sec:exp-why-ssl} produces a CKA heatmap and a singular-value spectrum for every analyzed run. The full set of 188 per-run artifacts is shipped alongside this thesis under \texttt{fig/phase4/heatmaps/} and \texttt{fig/phase4/spectra/}. \reftab{tab:mechanistic-index} below lists every run ID together with the aggregate probe, CKA, and effective-rank numbers, so that a reader wanting to drill into a specific row of the main PDMS table can find the corresponding mechanistic artifact in constant time.
+
+\input{appendix/tab_mechanistic_index}
