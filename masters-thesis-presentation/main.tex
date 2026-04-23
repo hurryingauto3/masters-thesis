@@ -1,95 +1,685 @@
-\documentclass{beamer}
-%
-% Choose how your presentation looks.
-%
-% For more themes, color themes and font themes, see:
-% http://deic.uab.es/~iblanes/beamer_gallery/index_by_theme.html
-%
+\documentclass[aspectratio=169, xcolor={table}]{beamer}
+
 \mode<presentation>
 {
-  \usetheme{NYU}      % or try Darmstadt, Madrid, Warsaw, ...
-  \usecolortheme{default} % or try albatross, beaver, crane, ...
-  \usefonttheme{default}  % or try serif, structurebold, ...
+  \usetheme{NYU}
+  \usecolortheme{default}
+  \usefonttheme{default}
   \setbeamertemplate{navigation symbols}{}
   \setbeamertemplate{caption}[numbered]
-} 
+}
 
 \usepackage[english]{babel}
-\usepackage[utf8x]{inputenc}
+\usepackage[utf8]{inputenc}
+\usepackage{booktabs}
+\usepackage{tikz}
+\usepackage{amsmath, amssymb}
+\usepackage{pifont}
+\usepackage{url}
+\usepackage{colortbl}
 
-\title[Your Short Title]{Your Presentation}
-\author{You}
-\institute{Where You're From}
-\date{Date of Presentation}
-\titlegraphic{\hfill\includegraphics[height=1.5cm]{nyu_stacked_color}}
+\usetikzlibrary{arrows.meta, positioning, fit}
+
+\definecolor{ssl}{RGB}{90, 35, 140}
+\definecolor{sup}{RGB}{180, 45, 45}
+
+\newcommand{\cmark}{\textcolor{ssl}{\ding{51}}}
+\newcommand{\xmark}{\textcolor{sup}{\ding{55}}}
+
+\title[Cross-City SSL for E2E Driving]{End-to-End Trajectory Planning via Self-Supervised Vision Foundation Models}
+\subtitle{Cross-City Generalization as a Representation Problem}
+\author[A.\ Hamza]{Ali Hamza}
+\institute[NYU Tandon]{%
+  Department of Electrical and Computer Engineering \\
+  NYU Tandon School of Engineering \\[2pt]
+  {\footnotesize Advisor: Prof.\ Anna Choromanska \\
+   Committee: Prof.\ Ludovic Righetti, Prof.\ David Fouhey}
+}
+\date{April 2026}
+\titlegraphic{\hfill\includegraphics[height=1.2cm]{nyu_stacked_color}}
 
 \begin{document}
 
+% =============================================================================
 \begin{frame}
   \titlepage
 \end{frame}
 
-% Uncomment these lines for an automatically generated outline.
-%\begin{frame}{Outline}
-%  \tableofcontents
-%\end{frame}
-
-\section{Introduction}
-
-\begin{frame}{Introduction}
-
-\begin{itemize}
-  \item Your introduction goes here!
-  \item Use \texttt{itemize} to organize your main points.
-\end{itemize}
-
-\vskip 1cm
-
-\begin{block}{Examples}
-Some examples of commonly used commands and features are included, to help you get started.
-\end{block}
-
+% =============================================================================
+\begin{frame}{Outline}
+  \begin{columns}[T]
+    \column{0.48\textwidth}
+    \begin{enumerate}
+      \item Motivation and central claim
+      \item Background: NAVSIM, SSL objectives
+      \item Methodology
+        \begin{itemize}\footnotesize
+          \item NAVSIM City Splits
+          \item SSL pre-training (Naeinian)
+          \item Backbone integration
+          \item Metrics
+        \end{itemize}
+    \end{enumerate}
+    \column{0.48\textwidth}
+    \begin{enumerate}\setcounter{enumi}{3}
+      \item Exploratory lightweight-head study
+      \item Cross-city SSL benchmark
+      \item SSL backbones in generative planning
+      \item Mechanistic analysis of representations
+      \item Contributions and future work
+    \end{enumerate}
+  \end{columns}
 \end{frame}
 
-\section{Some \LaTeX{} Examples}
+% =============================================================================
+\section{Motivation}
+% =============================================================================
 
-\subsection{Tables and Figures}
-
-\begin{frame}{Tables and Figures}
-
-\begin{itemize}
-\item Use \texttt{tabular} for basic tables --- see Table~\ref{tab:widgets}, for example.
-\item You can upload a figure (JPEG, PNG or PDF) using the files menu. 
-\item To include it in your document, use the \texttt{includegraphics} command (see the comment below in the source code).
-\end{itemize}
-
-% Commands to include a figure:
-%\begin{figure}
-%\includegraphics[width=\textwidth]{your-figure's-file-name}
-%\caption{\label{fig:your-figure}Caption goes here.}
-%\end{figure}
-
-\begin{table}
-\centering
-\begin{tabular}{l|r}
-Item & Quantity \\\hline
-Widgets & 42 \\
-Gadgets & 13
-\end{tabular}
-\caption{\label{tab:widgets}An example table.}
-\end{table}
-
+\begin{frame}{The benchmark picture looks solved}
+  \begin{itemize}
+    \item Modern end-to-end planners report strong aggregate PDMS on NAVSIM.
+    \item Top methods sit in the $89$--$94$ PDMS range; TransFuser at $83.9$, DiffusionDrive at $88.1$.
+    \item The headline metric hides a structural weakness: \textbf{train and test cities are pooled}.
+  \end{itemize}
+  \vspace{4pt}
+  \begin{block}{What gets measured}
+    Pooled NAVSIM evaluates \emph{interpolation} inside a known mix of Boston, Pittsburgh, Las Vegas, and Singapore --- not transfer to a new city.
+  \end{block}
 \end{frame}
 
-\subsection{Mathematics}
+% -----------------------------------------------------------------------------
+\begin{frame}{Geographic shift breaks this picture}
+  \begin{columns}[T]
+    \column{0.55\textwidth}
+    \textbf{Open-loop, nuScenes, Boston $\to$ Singapore:}
+    \begin{itemize}
+      \item Supervised Swin: L2 inflates \alert{$9.77\times$}, collisions \alert{$19.34\times$}.
+      \item Domain-pretrained I-JEPA (rect, frozen): L2 \textcolor{ssl}{$1.20\times$}, collisions \textcolor{ssl}{$0.75\times$}.
+    \end{itemize}
+    \vspace{6pt}
+    \textbf{Closed-loop, NAVSIM, Singapore-trained:}
+    \begin{itemize}
+      \item ResNet-34 Latent TransFuser: $48.9\%$ average OOD PDMS.
+      \item Singapore uses left-hand traffic; transfer is asymmetric.
+    \end{itemize}
+    \column{0.45\textwidth}
+    \begin{block}{Observation}
+      Two models with similar pooled PDMS can differ by an \emph{order of magnitude} under explicit city transfer.
+      \smallskip
+      \\{\footnotesize Source: Naeinian et al., prior cross-city benchmark study.}
+    \end{block}
+  \end{columns}
+\end{frame}
 
-\begin{frame}{Readable Mathematics}
+% -----------------------------------------------------------------------------
+\begin{frame}{Central claim of the thesis}
+  \begin{block}{}
+    \large
+    \textbf{Cross-city generalization failure in end-to-end driving is primarily a \emph{representation} problem, not a planning-architecture problem.}
+    \smallskip
+    \\Self-supervised pretraining produces features that are inherently more transferable across cities, \emph{reducing generalization gaps by an order of magnitude}.
+  \end{block}
+  \vspace{8pt}
+  Operationalized as six research questions, covered across four empirical phases.
+\end{frame}
 
-Let $X_1, X_2, \ldots, X_n$ be a sequence of independent and identically distributed random variables with $\text{E}[X_i] = \mu$ and $\text{Var}[X_i] = \sigma^2 < \infty$, and let
-$$S_n = \frac{X_1 + X_2 + \cdots + X_n}{n}
-      = \frac{1}{n}\sum_{i}^{n} X_i$$
-denote their mean. Then as $n$ approaches infinity, the random variables $\sqrt{n}(S_n - \mu)$ converge in distribution to a normal $\mathcal{N}(0, \sigma^2)$.
+% =============================================================================
+\section{Background}
+% =============================================================================
 
+\begin{frame}{NAVSIM in one slide}
+  \begin{columns}[T]
+    \column{0.55\textwidth}
+    \textbf{Inputs.} 8 surround cameras, merged LiDAR, ego state, route.
+    \medskip
+    \\\textbf{Output.} 8 future poses $(x, y, \psi)$ over 4\,s at 0.5\,s intervals.
+    \medskip
+    \\\textbf{Scorer.} Predictive Driver Model Score:
+    \[
+      \mathrm{PDMS} = \mathrm{NC}\cdot\mathrm{DAC}\cdot\tfrac{5\,\mathrm{EP} + 5\,\mathrm{TTC} + 2\,\mathrm{C}}{12}
+    \]
+    {\footnotesize NC / DAC enter multiplicatively --- one violation zeroes the scenario.}
+    \column{0.45\textwidth}
+    \textbf{Four cities (right-hand):}
+    \begin{itemize}\footnotesize
+      \item Las Vegas: $818$ train / $50$ test
+      \item Boston: $255$ train / $62$ test
+      \item Pittsburgh: $140$ train / $22$ test
+    \end{itemize}
+    \textbf{One left-hand:}
+    \begin{itemize}\footnotesize
+      \item Singapore: $97$ train / $13$ test
+    \end{itemize}
+    \smallskip
+    Default NAVSIM pools all four.
+  \end{columns}
+\end{frame}
+
+% -----------------------------------------------------------------------------
+\begin{frame}{Three SSL paradigms studied}
+  \begin{columns}[T]
+    \column{0.33\textwidth}
+    \textbf{I-JEPA}\\{\footnotesize Assran et al., 2023}
+    \begin{itemize}\footnotesize
+      \item Predict \emph{latents} of masked target regions from visible context.
+      \item Loss in representation space, stop-grad EMA target encoder.
+      \item No pixel reconstruction, no contrastive negatives.
+    \end{itemize}
+    \column{0.33\textwidth}
+    \textbf{DINOv2}\\{\footnotesize Oquab et al., 2024}
+    \begin{itemize}\footnotesize
+      \item Student/teacher \emph{self-distillation}.
+      \item Multi-crop views, prototype softmax match.
+      \item Scales on LVD-142M.
+    \end{itemize}
+    \column{0.33\textwidth}
+    \textbf{MAE}\\{\footnotesize He et al., 2022}
+    \begin{itemize}\footnotesize
+      \item \emph{Pixel reconstruction} from $75\%$-masked patches.
+      \item Asymmetric encoder/decoder; decoder discarded.
+      \item No teacher.
+    \end{itemize}
+  \end{columns}
+  \vspace{8pt}
+  \begin{block}{Why study all three}
+    Different invariances. I-JEPA biases to semantic layout; DINOv2 to augmentation-invariant identity; MAE to pixel-level appearance. Geographic transfer punishes the wrong invariance set.
+  \end{block}
+\end{frame}
+
+% -----------------------------------------------------------------------------
+\begin{frame}{Planning architectures evaluated}
+  \begin{columns}[T]
+    \column{0.24\textwidth}
+    \textbf{LAW}
+    \smallskip
+    \\\footnotesize Open-loop, nuScenes. Swin-T baseline. World-model auxiliary loss.
+    \column{0.24\textwidth}
+    \textbf{TransFuser}
+    \smallskip
+    \\\footnotesize Closed-loop, NAVSIM. ResNet-34 + LiDAR fusion.
+    \column{0.24\textwidth}
+    \textbf{Latent TransFuser}
+    \smallskip
+    \\\footnotesize TransFuser with the LiDAR branch replaced by a learned latent --- camera-only probe.
+    \column{0.24\textwidth}
+    \textbf{DiffusionDrive}
+    \smallskip
+    \\\footnotesize Truncated 2-step diffusion from K-means anchor trajectories; 45 FPS.
+  \end{columns}
+  \vspace{10pt}
+  \begin{block}{Design principle}
+    Every planner is held fixed; \emph{only the image backbone} is varied. Any downstream change is attributable to the representation, not to the head.
+  \end{block}
+\end{frame}
+
+% =============================================================================
+\section{Methodology}
+% =============================================================================
+
+\begin{frame}{NAVSIM City Splits --- benchmark contribution}
+  \begin{itemize}
+    \item NAVSIM exposes no per-city partition; city labels are recoverable from nuPlan log prefixes (\texttt{us-ma-boston}, \texttt{sg-one-north}, \dots).
+    \item A single preprocessing pass assigns every scenario token to exactly one city; JSON token lists feed the dataloader.
+    \item Turns NAVSIM from a pooled benchmark into a \textbf{reproducible geographic-transfer benchmark}.
+  \end{itemize}
+  \medskip
+  \centering
+  \begin{tikzpicture}[
+      city/.style = {draw, rounded corners=2pt, minimum width=22mm, minimum height=9mm, font=\scriptsize, align=center},
+    ]
+    \node[city, fill=red!10] (lv) {Las Vegas\\{\tiny 818 / 50}};
+    \node[city, fill=red!10, right=3mm of lv] (pit) {Pittsburgh\\{\tiny 140 / 22}};
+    \node[city, fill=red!10, right=3mm of pit] (bos) {Boston\\{\tiny 255 / 62}};
+    \node[draw, densely dashed, rounded corners, inner sep=2mm, fit=(lv)(pit)(bos), label=above:{\tiny\itshape N.\ America, RHT}] {};
+    \node[city, fill=blue!10, right=10mm of bos] (sg) {Singapore\\{\tiny 97 / 13}};
+    \node[draw, densely dashed, rounded corners, inner sep=2mm, fit=(sg), label=above:{\tiny\itshape SE Asia, LHT}] {};
+  \end{tikzpicture}
+  \smallskip
+  \\{\footnotesize Singapore is smallest \emph{and} the only LHT; the stringent cross-city target.}
+\end{frame}
+
+% -----------------------------------------------------------------------------
+\begin{frame}{SSL pre-training: Fatemeh Naeinian's protocol}
+  \begin{columns}[T]
+    \column{0.55\textwidth}
+    \textbf{Shared substrate}
+    \begin{itemize}\footnotesize
+      \item nuScenes, \emph{all six cameras}, $168{,}780$ frames.
+      \item ViT-S/14 for every SSL family.
+      \item Two resolutions: $224{\times}224$ (square) and $224{\times}392$ (rectangular, native aspect).
+      \item No photometric augmentation --- the objective, not the pretext, is the variable.
+      \item 100 epochs, AdamW, cosine schedule. $1{\times}$ H200.
+    \end{itemize}
+    \column{0.45\textwidth}
+    \textbf{Per-family knobs}
+    \begin{itemize}\footnotesize
+      \item I-JEPA: 1 context block $85$--$100\%$, 4 targets $15$--$20\%$; EMA $0.996\!\to\!1.0$.
+      \item DINOv2: 2 global + 6 local crops; teacher momentum $0.9985$.
+      \item MAE: $75\%$ random mask; decoder $(8, 512, 16)$.
+    \end{itemize}
+  \end{columns}
+  \vspace{6pt}
+  \begin{block}{Credit}
+    All domain-specific SSL pretraining in this thesis was performed by \textbf{Fatemeh Naeinian}, first author of our earlier cross-city benchmark study. This thesis consumes her checkpoints through a shared backbone adapter.
+  \end{block}
+\end{frame}
+
+% -----------------------------------------------------------------------------
+\begin{frame}{Backbone adapter --- single interface across planners}
+  \centering
+  \resizebox{0.95\textwidth}{!}{%
+  \begin{tikzpicture}[
+      node distance = 3mm and 4mm,
+      box/.style = {draw, rounded corners=2pt, minimum height=8mm, minimum width=20mm, align=center, font=\scriptsize},
+      ssl/.style = {fill=ssl!15},
+      arrow/.style = {-{Stealth[length=1.8mm]}, thick},
+    ]
+    \node[box] (img) {Image\\$3{\times}H_0{\times}W_0$};
+    \node[box, right=of img, ssl] (enc) {ViT / ResNet\\(frozen or full)};
+    \node[box, right=of enc] (tok) {Tokens\\$B{\times}N{\times}C$};
+    \node[box, right=of tok] (rsh) {Reshape +\\linear proj.};
+    \node[box, right=of rsh, ssl] (map) {Spatial map\\$B{\times}C'{\times}H{\times}W$};
+    \node[box, right=of map] (plan) {Planner\\(LAW / TF / DD)};
+    \draw[arrow] (img) -- (enc);
+    \draw[arrow] (enc) -- (tok);
+    \draw[arrow] (tok) -- (rsh);
+    \draw[arrow] (rsh) -- (map);
+    \draw[arrow] (map) -- (plan);
+  \end{tikzpicture}}
+  \begin{itemize}
+    \item One \texttt{create\_image\_encoder} factory, eleven backbones, four planners.
+    \item \texttt{huggingface} path loads off-the-shelf weights; \texttt{custom} path regenerates exact 2-D sin--cos positional encodings for rectangular pretrains.
+    \item \texttt{trainable\_backbone\_fraction} $\in \{0, 1\}$: frozen vs.\ fully unfrozen; no partial thaw.
+  \end{itemize}
+\end{frame}
+
+% -----------------------------------------------------------------------------
+\begin{frame}{Generalization-gap metrics}
+  \textbf{Open-loop error ratio} (lower is better):
+  \[
+    R_\text{err}(c_\text{train} \to c_\text{test})
+    \;=\;
+    \frac{E_\text{cross}(c_\text{train} \to c_\text{test})}
+         {E_\text{in}(c_\text{train} \to c_\text{train})}
+  \]
+  $R_\text{err}{=}1$ is perfect preservation, $R_\text{err}{>}1$ is degradation.
+  \medskip
+  \\
+  \textbf{Closed-loop OOD PDMS} (higher is better):
+  \[
+    S_\text{OOD}(c_i) \;=\; \tfrac{1}{|\mathcal{C}|-1}\sum_{c_j \neq c_i} S(c_i \to c_j)
+  \]
+  \smallskip
+  Both follow Naeinian et al., prior cross-city benchmark study. Ratios are reported \emph{alongside} the full matrix to flag degenerate in-domain denominators.
+\end{frame}
+
+% =============================================================================
+\section{Exploratory Lightweight-Head Study}
+% =============================================================================
+
+\begin{frame}{Exploratory study: minimum planner, varied backbone}
+  \begin{columns}[T]
+    \column{0.48\textwidth}
+    \textbf{\texttt{LightweightPlanningAgent}}
+    \begin{itemize}\footnotesize
+      \item One front camera, $224{\times}224$.
+      \item 2-layer MLP head ($1288\!\to\!256\!\to\!256\!\to\!T{\cdot}3$).
+      \item $L_1$ loss only; no world-model, no perception auxiliaries.
+      \item AdamW, 20 epochs, cosine, frozen / fully unfrozen only.
+    \end{itemize}
+    \column{0.48\textwidth}
+    \textbf{45-run experiment matrix}
+    \begin{itemize}\footnotesize
+      \item[$\bullet$] P1: 10 backbones $\times$ frozen
+      \item[$\bullet$] P2: 16 cross-city + 4 fusion variants
+      \item[$\bullet$] P3: 10 backbones $\times$ fully unfrozen
+      \item[$\bullet$] P4: 5 multi-cam / cross-attn / Tx head
+    \end{itemize}
+    \smallskip
+    Driven by one \texttt{LightweightHeadConfig}.
+  \end{columns}
+  \vspace{6pt}
+  \begin{block}{Purpose}
+    Diagnostic, not competitive. With planner capacity pinned at its minimum, any PDMS spread \emph{is} a representation spread.
+  \end{block}
+\end{frame}
+
+% -----------------------------------------------------------------------------
+\begin{frame}{Exploratory study --- P1 frozen MLP sweep on \texttt{navtest}}
+  \centering\scriptsize
+  \begin{tabular}{@{}llcc@{}}
+    \toprule
+    \textbf{Backbone} & \textbf{Pre-training} & \textbf{PDMS} & \textbf{DAC} \\
+    \midrule
+    I-JEPA ViT-H/14    & ImageNet-1k SSL           & \textbf{0.797} & 0.892 \\
+    MAE ViT-B/16       & ImageNet-1k SSL           & 0.775          & 0.871 \\
+    MAE ViT-S/14       & nuScenes $224^2$          & 0.749          & 0.856 \\
+    MAE ViT-S/14       & nuScenes $224{\times}392$ & 0.738          & 0.846 \\
+    I-JEPA ViT-S/14    & nuScenes $224^2$          & 0.716          & 0.827 \\
+    DINOv2 ViT-S/14    & nuScenes $224{\times}392$ & 0.698          & 0.809 \\
+    DINOv2 ViT-S/14    & nuScenes $224^2$          & 0.697          & 0.807 \\
+    \rowcolor{gray!15}
+    ResNet-34          & ImageNet supervised       & 0.687          & 0.798 \\
+    DINOv2 ViT-S/14    & LVD-142M SSL              & 0.668          & 0.781 \\
+    I-JEPA ViT-S/14    & nuScenes $224{\times}392$ & 0.654          & 0.767 \\
+    \bottomrule
+  \end{tabular}
+  \vspace{6pt}
+  \begin{itemize}\footnotesize
+    \item \textbf{Frozen I-JEPA ViT-H/14 leads} --- zero backbone gradients, beats every smaller-ViT full fine-tune except MAE.
+    \item Seven of nine SSL variants exceed supervised ResNet-34 at the same head.
+    \item Rectangular ViT-S/14 lags its square counterpart for MAE and I-JEPA; consistent with rect-pretraining's cross-city-specific edge in prior work.
+  \end{itemize}
+\end{frame}
+
+% -----------------------------------------------------------------------------
+\begin{frame}{Exploratory study --- P3 full fine-tune preserves the ordering}
+  \centering\scriptsize
+  \begin{tabular}{@{}llcc@{}}
+    \toprule
+    \textbf{Backbone} & \textbf{Pre-training} & \textbf{PDMS} & $\boldsymbol{\Delta_\text{adapt}}$ \\
+    \midrule
+    MAE ViT-B/16       & ImageNet-1k SSL           & \textbf{0.849} & $+0.074$ \\
+    MAE ViT-S/14       & nuScenes $224{\times}392$ & 0.817          & $+0.078$ \\
+    MAE ViT-S/14       & nuScenes $224^2$          & 0.814          & $+0.064$ \\
+    I-JEPA ViT-S/14    & nuScenes $224^2$          & 0.809          & $\mathbf{+0.094}$ \\
+    \rowcolor{gray!15}
+    ResNet-34          & ImageNet supervised       & 0.769          & $+0.082$ \\
+    DINOv2 ViT-S/14    & nuScenes $224^2$          & 0.760          & $+0.063$ \\
+    DINOv2 ViT-S/14    & nuScenes $224{\times}392$ & 0.760          & $+0.062$ \\
+    DINOv2 ViT-S/14    & LVD-142M SSL              & 0.718          & $+0.050$ \\
+    I-JEPA ViT-S/14    & nuScenes $224{\times}392$ & 0.668          & $+0.014$ \\
+    I-JEPA ViT-H/14    & ImageNet-1k SSL           & \emph{pending}   & --- \\
+    \bottomrule
+  \end{tabular}
+  \vspace{6pt}
+  \begin{itemize}\footnotesize
+    \item \textbf{MAE sweeps the top three slots} under full fine-tuning --- the reconstructive objective adapts best to end-to-end gradient flow.
+    \item Biggest lift: I-JEPA ViT-S/14 square at $+9.4$\,pp. ResNet-34 lifts $+8.2$\,pp.
+    \item Rectangular I-JEPA stuck at $+1.4$\,pp (flagged as optimizer-instability row).
+  \end{itemize}
+\end{frame}
+
+% -----------------------------------------------------------------------------
+\begin{frame}{Exploratory study --- cross-city probe on \texttt{navtest}}
+  \centering\small
+  \begin{tabular}{@{}lcccc@{}}
+    \toprule
+    \textbf{Train city} & \textbf{ResNet-34} & \textbf{DINOv2} & \textbf{I-JEPA} & \textbf{MAE} \\
+                        & (sup., IN1k)       & (ViT-S/14, IN1k) & (ViT-H/14, IN1k) & (ViT-B/16, IN1k) \\
+    \midrule
+    Boston     & 0.611 & 0.598 & \textbf{0.688} & 0.654 \\
+    Pittsburgh & 0.556 & 0.557 & \textbf{0.652} & 0.613 \\
+    Las Vegas  & 0.623 & 0.595 & \textbf{0.722} & 0.692 \\
+    Singapore  & 0.511 & 0.509 & \textbf{0.529} & 0.528 \\
+    \midrule
+    \rowcolor{gray!15}
+    Mean (4 cities) & $0.575$ & $0.564$ & $\mathbf{0.648}$ & $0.622$ \\
+    \bottomrule
+  \end{tabular}
+  \vspace{8pt}
+  \begin{itemize}\footnotesize
+    \item Each row: frozen backbone trained on one city only, evaluated on full \texttt{navtest}.
+    \item \textbf{I-JEPA +7.3\,pp, MAE +4.7\,pp} over supervised ResNet-34 on the 4-city mean.
+    \item Singapore is the weakest source for every backbone; only $\approx$\,2\,pp spread across families there --- the limited-gradient regime.
+  \end{itemize}
+\end{frame}
+
+% =============================================================================
+\section{Cross-City SSL Benchmark}
+% =============================================================================
+
+\begin{frame}{Cross-city benchmark: strict city-disjoint splits}
+  \begin{columns}[T]
+    \column{0.46\textwidth}
+    \textbf{Open-loop, nuScenes (LAW)}
+    \begin{itemize}\footnotesize
+      \item Bidirectional Boston $\leftrightarrow$ Singapore.
+      \item 12 ep, AdamW $5\!\times\!10^{-5}$, cosine, L40S, batch 2.
+      \item \emph{Implemented and run by Fatemeh Naeinian.}
+    \end{itemize}
+    \medskip
+    \textbf{Closed-loop, NAVSIM (TF / LatTF)}
+    \begin{itemize}\footnotesize
+      \item Full $4{\times}4$ train / test city matrix.
+      \item 20 ep, plain Adam $10^{-4}$, no wd / no scheduler, 4$\times$H200, effective batch 128.
+      \item ViT-into-CNN adapter + config hardening --- author's contribution.
+    \end{itemize}
+    \column{0.48\textwidth}
+    \textbf{11-backbone matrix per leg}
+    \begin{itemize}\footnotesize
+      \item Supervised defaults: Swin-T / ResNet-34.
+      \item Large-scale SSL: I-JEPA ViT-H/14, DINOv2 ViT-S/14, MAE ViT-B/16.
+      \item Capacity-matched domain SSL: 3 objectives $\times$ 2 resolutions on ViT-S/14.
+      \item Each row $\times$ \{frozen, fully unfrozen\}.
+    \end{itemize}
+  \end{columns}
+\end{frame}
+
+% -----------------------------------------------------------------------------
+\begin{frame}{Open-loop headline --- Boston $\to$ Singapore}
+  \centering\small
+  \begin{tabular}{@{}lcc@{}}
+    \toprule
+    \textbf{Backbone (LAW)} & $R_{L2}$ & $R_\text{coll}$ \\
+    \midrule
+    Swin-T (supervised, LAW default) & \alert{$9.77\times$} & \alert{$19.34\times$} \\
+    I-JEPA ViT-H/14 (IN1k, frozen) & $9.78\times$ & $5.18\times$ \\
+    MAE ViT-B/16 (IN1k, fine-tuned) & $3.67\times$ & $10.38\times$ \\
+    DINOv2 ViT-S/14 (nuSc rect, frozen) & $3.80\times$ & $7.64\times$ \\
+    \textbf{I-JEPA ViT-S/14 (nuSc rect, frozen)} & \textcolor{ssl}{$\mathbf{1.20\times}$} & \textcolor{ssl}{$\mathbf{0.75\times}$} \\
+    \bottomrule
+  \end{tabular}
+  \vspace{10pt}
+  \begin{itemize}\footnotesize
+    \item Same planner, same recipe, same data. Only the backbone changes.
+    \item Domain-specific rectangular I-JEPA brings $R_{L2}$ from $9.77\times$ to $1.20\times$ --- almost an order of magnitude.
+    \item Collision ratio drops \emph{below 1}: fewer collisions in Singapore than in-domain Boston.
+  \end{itemize}
+  \vspace{4pt}
+  \hfill{\scriptsize Source: Naeinian et al., prior cross-city benchmark study, Table II.}
+\end{frame}
+
+% -----------------------------------------------------------------------------
+\begin{frame}{Closed-loop NAVSIM --- OOD PDMS by training city}
+  \centering\footnotesize
+  \begin{tabular}{@{}l cc c@{}}
+    \toprule
+    \textbf{Train city} & \textbf{Rn34 LatTF} & \textbf{MAE nuSc sq LatTF} & $\boldsymbol{\Delta}$ \\
+    \midrule
+    Boston (best)       & $56.8$ & $\approx 60.8$ & $+4.0$ \\
+    Pittsburgh          & $\cdot$ & $\cdot$        & $\approx\!+4$ \\
+    Las Vegas           & $\cdot$ & $\cdot$        & $\approx\!+4$ \\
+    Singapore (worst; LHT, smallest data) & $48.9$ & $\approx 51.9$ & $+3.0$ \\
+    \bottomrule
+  \end{tabular}
+  \vspace{8pt}
+  \begin{block}{Observation}
+    SSL's advantage is \emph{amplified} in camera-only LatTF: removing the LiDAR shortcut forces the model to rely on the representation, where SSL dominates supervised pretraining. Full four-city matrix in thesis Table~5.6.
+  \end{block}
+\end{frame}
+
+% -----------------------------------------------------------------------------
+\begin{frame}{Transfer is structurally asymmetric}
+  \textbf{Boston $\to$ Singapore is harder than Singapore $\to$ Boston} for every backbone.
+  \medskip
+  \begin{itemize}
+    \item Three of four cities are right-hand traffic (Boston, Pittsburgh, Las Vegas).
+    \item Singapore: left-hand traffic + smallest data pool + distinct road paint.
+    \item Models trained on RHT data overfit lane-geometry priors that do not exist in Singapore.
+  \end{itemize}
+  \vspace{6pt}
+  \begin{block}{Supervised vs.\ SSL}
+    Supervised ResNet-34 shows the largest asymmetry. Frozen SSL backbones collapse the gap --- the SSL feature space is closer to \emph{city-invariant} by construction.
+  \end{block}
+\end{frame}
+
+% -----------------------------------------------------------------------------
+\begin{frame}{Cross-city benchmark --- takeaways}
+  \begin{enumerate}
+    \item \textbf{Representation dominates planner} under explicit geographic shift.
+    \item \textbf{Domain-specific nuScenes pretraining} reduces the generalization gap roughly $8\times$ over supervised Swin on the hardest open-loop transfer.
+    \item \textbf{Singapore is the stress-test city}; SSL narrows but does not eliminate the directional asymmetry.
+    \item \textbf{Removing LiDAR amplifies the SSL advantage}, because the planner can no longer route around a weak image representation.
+  \end{enumerate}
+\end{frame}
+
+% =============================================================================
+\section{SSL Backbones in Generative Planning}
+% =============================================================================
+
+\begin{frame}{Why DiffusionDrive --- a hostile-to-backbone planner}
+  \textbf{DiffusionDrive attenuates the backbone by design.}
+  \begin{itemize}\footnotesize
+    \item \textbf{K-means anchors.} Denoising starts from one of 256 expert-trajectory prototypes, not noise. Weak features can still exit near a valid plan.
+    \item \textbf{Truncated 2-step denoising.} Only two conditioning rounds at inference; each contributes less than it would under a 50-step denoiser.
+    \item \textbf{Grid-sampled BEV cross-attention.} Quantizes backbone access to waypoint-local grid samples, not a dense feature map.
+    \item \textbf{Time-only FiLM.} The only gate that fires is on the denoising timestep, not on the visual features.
+  \end{itemize}
+  \begin{block}{Evaluation criterion}
+    Under a head that absorbs backbone differences, \emph{any surviving cross-city SSL advantage is stronger evidence than a large advantage under a weak planner}. We therefore report \textbf{transfer-ratio inflation}, not absolute PDMS. Adapter is identical to the cross-city benchmark's (same \texttt{create\_image\_encoder} factory) --- the head is the only manipulated variable.
+  \end{block}
+\end{frame}
+
+% -----------------------------------------------------------------------------
+\begin{frame}{Generative-planning study --- in-distribution baseline}
+  \centering\footnotesize
+  All-city NAVSIM (under re-verification on \texttt{feat/navsim-v1\_1-reeval})
+  \\[4pt]
+  \begin{tabular}{@{}l l c@{}}
+    \toprule
+    \textbf{Backbone}         & \textbf{Modality} & \textbf{PDMS} \\
+    \midrule
+    ResNet-34 (sup.)          & C + L       & $\mathbf{87.9}$ \\
+    MAE ViT-S/14 (nuSc rect)  & C + L       & $86.9$ \\
+    MAE ViT-S/14 (nuSc sq)    & C + L       & $86.8$ \\
+    I-JEPA ViT-S/14 (nuSc sq) & C + L       & $86.2$ \\
+    \midrule
+    ResNet-34 (sup.)          & Camera only & $86.6$ \\
+    \bottomrule
+  \end{tabular}
+  \vspace{10pt}
+  \begin{block}{Reading}
+    $\sim$1~PDMS in-distribution gap SSL--supervised is \emph{consistent with the hostile-planner prediction}: the head has absorbed most of the backbone signal. The in-distribution cost is the setup for the cross-city punchline, not a weakness.
+  \end{block}
+\end{frame}
+
+% -----------------------------------------------------------------------------
+\begin{frame}{Cross-city generative study --- protocol (designed)}
+  \begin{columns}[T]
+    \column{0.55\textwidth}
+    \textbf{Matrix}
+    \begin{itemize}\footnotesize
+      \item 2 backbones: ResNet-34 supervised, I-JEPA ViT-S/14 nuScenes sq frozen.
+      \item 4 training cities $\to$ 4 test cities $=$ 32 evaluations.
+    \end{itemize}
+    \medskip
+    \textbf{Pre-registered success criterion}
+    \begin{itemize}\footnotesize
+      \item Frozen SSL shows a \emph{smaller OOD PDMS drop than ResNet-34} in \textbf{3 of 4 training-city rows}.
+      \item Evidence-of-absence if fewer: reported as a null result, \emph{not} re-engineered.
+      \item Transfer-ratio inflation (in-dist / OOD), not absolute gaps.
+    \end{itemize}
+    \column{0.45\textwidth}
+    \begin{block}{Status}
+      Matrix is scripted and queued. 100-epoch-per-config compute is the bottleneck; results are framed as future work in the thesis if incomplete by defense.
+    \end{block}
+  \end{columns}
+\end{frame}
+
+% =============================================================================
+\section{Mechanistic Analysis of Representations}
+% =============================================================================
+
+\begin{frame}{Why does SSL transfer better?}
+  \textbf{Five complementary probes} applied to the cross-city Tier-A checkpoints:
+  \begin{enumerate}
+    \item \textbf{CKA} across cities --- does the feature covariance structure align?
+    \item \textbf{City-classification linear probing} --- how much city identity leaks into the representation?
+    \item \textbf{MMD} between per-city feature distributions --- distance in RKHS.
+    \item \textbf{Effective rank} --- does SSL maintain higher-dimensional subspaces?
+    \item \textbf{Attention-relevance maps} --- which pixels drive the planner under city shift?
+  \end{enumerate}
+  \medskip
+  \begin{block}{Expected pattern}
+    SSL: higher cross-city CKA, lower linear-probe city accuracy, smaller MMD, higher effective rank. Supervised ResNet-34: the reverse. No prior end-to-end driving study combines all five under a strict geographic holdout.
+  \end{block}
+\end{frame}
+
+% -----------------------------------------------------------------------------
+\begin{frame}{Mechanistic analysis --- partial evidence (CKA heatmap, TBD)}
+  \begin{columns}[T]
+    \column{0.48\textwidth}
+    \textbf{Pipeline status}
+    \begin{itemize}\footnotesize
+      \item Per-city feature-cache generator implemented at \path{scripts/phase4_mechanistic/}.
+      \item CKA kernel and linear-probe heads implemented; waiting on HPC checkpoints.
+      \item MMD and effective rank are one-pass scalar computations on the same caches.
+    \end{itemize}
+    \column{0.48\textwidth}
+    \textbf{Placeholder figure}
+    \smallskip
+    \\\footnotesize $4 \times 4$ city $\times$ city heatmap per backbone family. Frozen SSL expected darker (higher similarity) off-diagonal; supervised expected lighter.
+  \end{columns}
+  \vspace{6pt}
+  \begin{block}{Appendix caveat}
+    Full decomposition requires reachable per-scenario evaluation JSONs on NYU Greene. Pipeline runs autonomously once the cluster is reachable.
+  \end{block}
+\end{frame}
+
+% =============================================================================
+\section{Contributions and Future Work}
+% =============================================================================
+
+\begin{frame}{Contributions}
+  \begin{enumerate}
+    \item \textbf{NAVSIM City Splits benchmark.} First per-city train/test partitioning of NAVSIM across four cities. The protocol the rest of the thesis is built on.
+    \item \textbf{Cross-city SSL benchmark.} 11 backbones $\times$ 2 adaptation modes $\times$ 4 cities on LAW, TransFuser, Latent TransFuser. Supervised $\to$ SSL reduces open-loop transfer inflation by an order of magnitude.
+    \item \textbf{Exploratory lightweight-head agent.} Backbone-agnostic \texttt{LightweightPlanningAgent} with 45 runs pinned at minimum planner capacity; isolates representation from planner.
+    \item \textbf{DiffusionDrive + SSL integration.} First camera-only SSL + truncated-diffusion planner on NAVSIM; matches camera+LiDAR ResNet within $\approx 1$ PDMS.
+    \item \textbf{Mechanistic analysis framework.} CKA, linear probing, MMD, effective rank, and attention-relevance applied to driving backbones under strict city holdout.
+  \end{enumerate}
+\end{frame}
+
+% -----------------------------------------------------------------------------
+\begin{frame}{Limitations}
+  \begin{itemize}
+    \item Open-loop evaluation covers two cities (nuScenes); closed-loop four (NAVSIM). Broader geographies would strengthen external validity.
+    \item Weather, lighting, and seasonal effects are not disentangled from geographic shift.
+    \item Single training runs per cell; variance across seeds is not measured.
+    \item Domain-specific pretraining is on nuScenes only; extending to \texttt{navtrain} or video SSL (V-JEPA) is future work.
+    \item RL post-training (GRPO, DPO) is out of scope for this thesis.
+  \end{itemize}
+\end{frame}
+
+% -----------------------------------------------------------------------------
+\begin{frame}{Future work}
+  \begin{itemize}
+    \item \textbf{Video SSL.} V-JEPA and Drive-JEPA-style video pretraining for the same cross-city protocol.
+    \item \textbf{RL transfer.} Does GRPO / DPO fine-tuning of DiffusionDrive survive geographic transfer?
+    \item \textbf{Weather / lighting factorization.} Joint city $\times$ weather splits to isolate geography from appearance.
+    \item \textbf{More cities.} Beyond nuScenes + NAVSIM, extend to nuPlan's extended logs and to non-US/SG datasets.
+    \item \textbf{Mechanistic $\to$ training-time feedback.} Use CKA / MMD as pretraining auxiliaries.
+  \end{itemize}
+\end{frame}
+
+% -----------------------------------------------------------------------------
+\begin{frame}{Thank you}
+  \begin{block}{}
+    \large
+    \textbf{Cross-city generalization failure in end-to-end autonomous driving is primarily a representation problem, not a planning-architecture problem.}
+  \end{block}
+  \vspace{10pt}
+  \textbf{Acknowledgements.}
+  \begin{itemize}\footnotesize
+    \item Prof.\ Anna Choromanska (advisor); Prof.\ Ludovic Righetti, Prof.\ David Fouhey (committee).
+    \item Fatemeh Naeinian --- lead author on our cross-city benchmark study, SSL pretraining, open-loop LAW pipeline.
+    \item Haoran Zhu --- co-author on our cross-city benchmark study.
+    \item NYU Tandon HPC (Greene / Torch clusters).
+  \end{itemize}
+  \vspace{8pt}
+  \centering
+  \textbf{Questions?}
 \end{frame}
 
 \end{document}

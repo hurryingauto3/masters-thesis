@@ -6,7 +6,7 @@
 \section{Full Cross-City PDMS Matrices}
 \label{app:full-pdms-table}
 
-The primary full-roster PDMS tables are typeset in the Experiments chapter proper: \reftab{tab:navsim_pdms_merged} (NAVSIM v2.2 evaluation, used for the IROS submission) and \reftab{tab:navsim_pdms_merged_v11} (NAVSIM v1.1 re-evaluation, hardens the result against devkit-version confounding). We do not re-typeset them here. The v1.1 numbers are the canonical values referenced in the mechanistic analysis (\refsec{sec:exp-why-ssl}) and in \reftab{tab:family-aggregate}. The v2.2 table is retained for backward compatibility with the IROS Phase~1 paper~\cite{naeinian-cross-city-2026} and for any reader who needs to reconcile our numbers with the older NAVSIM leaderboard submissions.
+The primary full-roster PDMS tables are typeset in the Experiments chapter proper: \reftab{tab:navsim_pdms_merged} (NAVSIM v2.2 evaluation, used for our earlier cross-city benchmark) and \reftab{tab:navsim_pdms_merged_v11} (NAVSIM v1.1 re-evaluation, hardens the result against devkit-version confounding). We do not re-typeset them here. The v1.1 numbers are the canonical values referenced in the mechanistic analysis (\refsec{sec:exp-why-ssl}) and in \reftab{tab:family-aggregate}. The v2.2 table is retained for backward compatibility with our earlier cross-city study~\cite{naeinian-cross-city-2026} and for any reader who needs to reconcile our numbers with the older NAVSIM leaderboard submissions.
 
 Both tables share the same layout. Every row is one trained checkpoint; each cell is the PDMS (\%) on the test split of that city. Training cities are indicated by \cmark\ under the \emph{Train City} super-column. The \emph{Total} column is the mean PDMS over all four city test splits. ``(frozen)'' means the vision backbone's parameters were held fixed after pretraining; ``(100\% trainable)'' means the entire backbone was unfrozen and updated by the driving loss; ``supervised'' refers to an ImageNet-pretrained ResNet-34 backbone that is always fully trainable in our recipe. Rows within a section are ordered all-city first, then single-city (LV, B, P, S).
 
@@ -30,21 +30,21 @@ The thesis text only makes aggregate-PDMS claims, so this appendix is a reviewer
 \section{NAVSIM City Splits Data Card}
 \label{app:city-data-card}
 
-This data card documents the scene-count imbalance inherent in the nuPlan-derived NAVSIM city splits. The imbalance is directly relevant to the Singapore result in Phase~1 and to the interpretation of the Phase-4 effective-rank collapses that cluster on Singapore-trained runs.
+This data card documents the scene-count imbalance inherent in the nuPlan-derived NAVSIM city splits. The imbalance is directly relevant to the Singapore result in the cross-city benchmark and to the interpretation of the mechanistic effective-rank collapses that cluster on Singapore-trained runs.
 
 \input{appendix/tab_city_splits}
 
-The imbalance is severe: Las Vegas contributes 818 training logs against Singapore's 97. This is a consequence of the original nuPlan capture plan rather than a decision on our part; the NAVSIM benchmark inherits the imbalance directly. For every Phase~1 single-city result where the Singapore-trained row underperforms, the reader should ask whether the effect reflects a representation difference or a data-scale difference. Our Phase-4 feature-rank analysis (\refsec{sec:exp-implicit-reg}) finds that the three most extreme feature-rank collapses involve either trainable ViTs on all-city data (which is not the small-data regime) or frozen ViTs on single-city \emph{non-Singapore} runs --- so the small-data hypothesis is not a clean explanation. Still, the imbalance is a confounder the reader should hold in mind; disentangling it fully requires a data-efficiency study that is out of scope for this thesis.
+The imbalance is severe: Las Vegas contributes 818 training logs against Singapore's 97. This is a consequence of the original nuPlan capture plan rather than a decision on our part; the NAVSIM benchmark inherits the imbalance directly. For every the cross-city benchmark single-city result where the Singapore-trained row underperforms, the reader should ask whether the effect reflects a representation difference or a data-scale difference. Our mechanistic feature-rank analysis (\refsec{sec:exp-implicit-reg}) finds that the three most extreme feature-rank collapses involve either trainable ViTs on all-city data (which is not the small-data regime) or frozen ViTs on single-city \emph{non-Singapore} runs --- so the small-data hypothesis is not a clean explanation. Still, the imbalance is a confounder the reader should hold in mind; disentangling it fully requires a data-efficiency study that is out of scope for this thesis.
 
 % ============================================================================
-\section{Per-Phase Hyperparameter Tables}
+\section{Per-Study Hyperparameter Tables}
 \label{app:hparams}
 
-The recipes below are intended to be sufficient for reproduction. All experiments used PyTorch 2.4 with Lightning, Hydra configuration, and the HuggingFace Transformers reference implementations of the ViT backbones. The NAVSIM devkit version was v2.2 for the primary IROS submission and v1.1 for the defensive re-evaluation reported in \reftab{tab:navsim_pdms_merged_v11}.
+The recipes below are intended to be sufficient for reproduction. All experiments used PyTorch 2.4 with Lightning, Hydra configuration, and the HuggingFace Transformers reference implementations of the ViT backbones. The NAVSIM devkit version was v2.2 for the primary cross-city evaluation and v1.1 for the defensive re-evaluation reported in \reftab{tab:navsim_pdms_merged_v11}.
 
 \input{appendix/hparam_tables}
 
-A subtle but load-bearing detail: the TransFuser recipe in \reftab{tab:hparam-phase1-tf} uses \emph{plain} Adam with no weight decay and no learning-rate schedule. Substituting AdamW, or adding a cosine schedule, silently regresses the in-distribution PDMS by more than 30 points without any accompanying error message. This was the root cause of the Phase~1 ``A3 landmine'' reported in our internal repository notes; we document it here so future readers who attempt to reproduce the numbers are warned in advance.
+A subtle but load-bearing detail: the TransFuser recipe in \reftab{tab:hparam-phase1-tf} uses \emph{plain} Adam with no weight decay and no learning-rate schedule. Substituting AdamW, or adding a cosine schedule, silently regresses the in-distribution PDMS by more than 30 points without any accompanying error message. This was the root cause of the ``A3 landmine'' reported in our internal repository notes during the cross-city benchmark build-out; we document it here so future readers who attempt to reproduce the numbers are warned in advance.
 
 % ============================================================================
 \section{Mechanistic Artifacts Index}

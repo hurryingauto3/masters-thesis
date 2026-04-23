@@ -45,29 +45,34 @@ The thesis decomposes the problem along two axes:
     \item \textbf{Planning axis}: Does the planning head architecture (regression vs.\ generative diffusion) independently affect cross-city robustness?
 \end{enumerate}
 
-The experiments are designed to isolate those axes. An exploratory Phase 0 documents the original lightweight-head hypothesis that seeded the project. Phase 1 then summarizes and extends the controlled protocol introduced in~\cite{naeinian-cross-city-2026}: the planner is held fixed while the backbone is swapped across supervised and self-supervised initializations under explicit geographic transfer. Phase 2 and Phase 3 move to DiffusionDrive to test whether the representation-centric finding survives a different planning head and a camera-only setting. Phase 4 adds a mechanistic analysis of the resulting feature spaces to explain why some representations transfer more gracefully than others.
+The experiments are designed to isolate those axes. An \emph{exploratory lightweight-head study} documents the original hypothesis that seeded the project. The \emph{cross-city SSL benchmark} then summarizes and extends the controlled protocol introduced in~\cite{naeinian-cross-city-2026}: the planner is held fixed while the backbone is swapped across supervised and self-supervised initializations under explicit geographic transfer. Two subsequent studies move to DiffusionDrive --- one on mixed-city NAVSIM, one on the city-disjoint protocol --- to test whether the representation-centric finding survives a different planning head and a camera-only setting. A final \emph{mechanistic analysis} of the resulting feature spaces explains why some representations transfer more gracefully than others.
 
 % ============================================================================
 \section{Research Questions}
 \label{sec:research-questions}
 
-This thesis addresses the following research questions:
+The lightweight-head study is treated as exploratory motivation rather than a primary research question; the formal questions below begin at the point where mixed-city performance alone is no longer sufficient to differentiate SSL-based planning systems. \reftab{tab:intro-rqs} lists them with the section of Chapter~\ref{chap:experiments} that addresses each.
 
-The early lightweight-head phase is treated as exploratory motivation rather than a primary research question. The formal questions below begin at the point where mixed-city performance alone is no longer sufficient to differentiate SSL-based planning systems.
-
-\begin{enumerate}
-    \item \textbf{RQ1}: Which self-supervised pre-training objective (I-JEPA, DINOv2, MAE) generalizes best across cities for end-to-end planning, compared to supervised ImageNet features? \textit{(Addressed in Chapter~\ref{chap:experiments}, Phase 1)}
-
-    \item \textbf{RQ2}: Which city in the NAVSIM benchmark (Boston, Las Vegas, Pittsburgh, Singapore) serves as the best single-city training ground for zero-shot transfer? \textit{(Addressed in Chapter~\ref{chap:experiments}, Phase 1)}
-
-    \item \textbf{RQ3}: Do SSL-pretrained features degrade more gracefully than supervised baselines under increasing domain shift? \textit{(Addressed in Chapter~\ref{chap:experiments}, Phases 1 and 4)}
-
-    \item \textbf{RQ4}: Can a camera-only planner combining I-JEPA features with a truncated diffusion head match the performance of heavier multi-modal methods? \textit{(Addressed in Chapter~\ref{chap:experiments}, Phase 2)}
-
-    \item \textbf{RQ5}: Does pairing SSL features with a generative (diffusion) planning head reduce cross-city generalization gaps compared to SSL with a regression head? \textit{(Addressed in Chapter~\ref{chap:experiments}, Phase 3)}
-
-    \item \textbf{RQ6} (exploratory): Do reinforcement learning post-training gains (GRPO/DPO) transfer across cities? \textit{(Addressed in Chapter~\ref{chap:experiments}, if completed)}
-\end{enumerate}
+\begin{table}[ht]
+\centering
+\caption{Research questions and the chapter section that addresses each.}
+\label{tab:intro-rqs}
+\small
+\setlength{\tabcolsep}{6pt}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{1.1cm} >{\raggedright\arraybackslash}p{7.5cm} >{\raggedright\arraybackslash}p{4.2cm}@{}}
+\toprule
+\textbf{ID} & \textbf{Question} & \textbf{Addressed in} \\
+\midrule
+RQ1 & Which SSL pre-training objective (I-JEPA, DINOv2, MAE) generalizes best across cities vs.\ supervised ImageNet features? & Cross-city SSL benchmark \\
+RQ2 & Which NAVSIM city (Boston, Las Vegas, Pittsburgh, Singapore) is the best single-city training ground for zero-shot transfer? & Cross-city SSL benchmark \\
+RQ3 & Do SSL features degrade more gracefully than supervised baselines under increasing domain shift? & Cross-city benchmark + mechanistic analysis \\
+RQ4 & Can a camera-only I-JEPA + truncated-diffusion planner match heavier multi-modal methods? & Generative-planning study \\
+RQ5 & Does an SSL + generative (diffusion) head shrink cross-city gaps relative to SSL + regression head? & Cross-city generative study \\
+RQ6 & (Exploratory) Do RL post-training gains (GRPO / DPO) transfer across cities? & Addressed if completed \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 % ============================================================================
 \section{Contributions}
@@ -102,7 +107,7 @@ The remainder of this thesis is organized as follows:
 
     \item \textbf{Chapter~\ref{chap:relatedwork}} reviews related work in three threads: SSL for autonomous driving, cross-domain generalization, and diffusion-based planning, with particular attention to how Drive-JEPA changed the in-distribution performance landscape.
 
-    \item \textbf{Chapter~\ref{chap:methodology}} describes our methodology: the exploratory lightweight-head phase, city split creation, SSL backbone integration, DiffusionDrive + SSL architecture, and the full Phase 0--4 experimental protocol.
+    \item \textbf{Chapter~\ref{chap:methodology}} describes our methodology: the exploratory lightweight-head study, city split creation, SSL backbone integration, DiffusionDrive + SSL architecture, and the full five-study experimental protocol.
 
     \item \textbf{Chapter~\ref{chap:experiments}} presents experiments and results across the full project arc, from the initial SSL-backbone + lightweight-head hypothesis to cross-city evaluation and the ``Why does SSL work?'' mechanistic analysis.
 

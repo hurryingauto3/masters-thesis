@@ -29,7 +29,27 @@ The headline metric is the Predictive Driver Model Score, PDMS, which aggregates
 \label{eq:pdms}
 \mathrm{PDMS} \;=\; \underbrace{\prod_{m \in \mathcal{M}_{\mathrm{mul}}} s_m}_{\text{multiplicative terms}} \;\times\; \underbrace{\frac{\sum_{m \in \mathcal{M}_{\mathrm{avg}}} w_m \, s_m}{\sum_{m \in \mathcal{M}_{\mathrm{avg}}} w_m}}_{\text{weighted average}},
 \end{equation}
-where the multiplicative terms $\mathcal{M}_{\mathrm{mul}} = \{\mathrm{NC}, \mathrm{DAC}\}$ are safety-critical and force the overall score to zero if the plan violates them, and the weighted average is taken over $\mathcal{M}_{\mathrm{avg}} = \{\mathrm{EP}, \mathrm{TTC}, \mathrm{Comfort}\}$ with weights $w_{\mathrm{EP}} = 5$, $w_{\mathrm{TTC}} = 5$, and $w_{\mathrm{Comfort}} = 2$ \cite{dauner-pdm-2023}. The five sub-scores are: No at-fault Collision (NC), which penalizes collisions for which the ego is responsible under the traffic rules of the scenario; Drivable Area Compliance (DAC), which penalizes excursions off the drivable surface defined by the lane graph; Ego Progress (EP), which scores route progress relative to a reference planner that uses privileged information; Time To Collision (TTC), which penalizes trajectories that would collide with other agents within a short prediction horizon; and Comfort, which penalizes large longitudinal and lateral accelerations as well as jerk \cite{dauner-navsim-2024,dauner-pdm-2023}. NAVSIM v2 extends this to EPDMS by adding four further rule-compliance and comfort terms: Driving-Direction Compliance (DDC), Traffic-Light Compliance (TLC), Lane Keeping (LK), and Extended Comfort (EC) \cite{navsim-v2-2024}. Because the multiplicative safety terms dominate, a single at-fault collision or a single drivable-area violation is sufficient to drive PDMS to zero on that scenario, which makes the metric sensitive to rare but critical failures rather than only to typical-case accuracy.
+where $\mathcal{M}_\text{mul}$ and $\mathcal{M}_\text{avg}$ are defined in \reftab{tab:bg-pdms-subscores}. NAVSIM v2 extends the aggregation to EPDMS by adding four further compliance and comfort terms (DDC, TLC, LK, EC)~\cite{navsim-v2-2024}. Because the multiplicative safety terms dominate, a single at-fault collision or a single drivable-area violation is sufficient to drive PDMS to zero on that scenario, which makes the metric sensitive to rare but critical failures rather than only to typical-case accuracy.
+
+\begin{table}[ht]
+\centering
+\caption{PDMS sub-scores~\cite{dauner-pdm-2023,dauner-navsim-2024}. \emph{Mul.} enters multiplicatively; \emph{Avg.} enters the weighted average with the listed weight.}
+\label{tab:bg-pdms-subscores}
+\small
+\setlength{\tabcolsep}{6pt}
+\renewcommand{\arraystretch}{1.15}
+\begin{tabular}{@{}l l c >{\raggedright\arraybackslash}p{7.5cm}@{}}
+\toprule
+\textbf{Sub-score} & \textbf{Role} & $\boldsymbol{w}$ & \textbf{Penalizes} \\
+\midrule
+NC (No at-fault Collision)    & Mul. & ---     & Collisions for which the ego is responsible under the scenario's traffic rules \\
+DAC (Drivable-Area Compliance) & Mul. & ---    & Excursions off the drivable surface defined by the lane graph \\
+EP (Ego Progress)             & Avg. & $5$     & Route progress below a privileged-reference planner \\
+TTC (Time-To-Collision)       & Avg. & $5$     & Trajectories that would collide with other agents within a short horizon \\
+Comfort                       & Avg. & $2$     & Large longitudinal / lateral accelerations and jerk \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 NAVSIM supports two evaluation modes. In the non-reactive mode used for the default \texttt{navtest} leaderboard, the predicted trajectory is rolled out against a log-replay world in which background agents follow their recorded future motion, and PDMS is computed from the resulting simulated rollout. In the reactive two-stage mode introduced with NAVSIM v2, background vehicles are replayed for a short horizon and then handed over to an IDM-based reactive policy so that their behavior can respond to the ego plan rather than being fixed ahead of time \cite{navsim-v2-2024,dauner-pdm-2023}. The two-stage protocol exposes planning failures that non-reactive evaluation cannot, because it requires the predicted plan to remain valid under modest perturbations of the surrounding agents. The schematic in Figure~\ref{fig:bg-navsim-pipeline} summarizes this evaluation flow and the relationship between PDMS and its sub-scores.
 
@@ -216,7 +236,7 @@ Two variants of I-JEPA appear in the experiments. The first is the ImageNet-pret
 
 DINOv2 is a self-distillation method in which a student network is trained to match the output distribution of a momentum teacher under carefully stabilized target statistics \cite{oquab-dinov2-2024,caron-dino-2021}. Given two augmented views of the same image, the student and teacher each produce feature vectors. Those vectors are projected to a probability distribution over a learnable prototype codebook, and the student is trained to minimize the cross-entropy between its distribution and the teacher's. The teacher weights are maintained as an exponential moving average of the student, and centering and sharpening operations on the teacher output prevent the trivial collapse solution in which both networks predict the same constant. DINOv2 scales this recipe to large curated datasets such as LVD-142M and produces features that transfer competitively across classification, retrieval, segmentation, and monocular depth benchmarks \cite{oquab-dinov2-2024}.
 
-DINOv2 is useful in this thesis as a strong non-predictive SSL baseline. If DINOv2 and I-JEPA both outperform supervised pretraining under cross-city transfer, then the robustness gain is a property of self-supervision in general rather than of the predictive objective in particular. If I-JEPA consistently leads, then the predictive objective itself becomes a plausible part of the explanation. This decomposition is what the experiments in Chapter~\ref{chap:experiments}, Phase 1, are set up to test.
+DINOv2 is useful in this thesis as a strong non-predictive SSL baseline. If DINOv2 and I-JEPA both outperform supervised pretraining under cross-city transfer, then the robustness gain is a property of self-supervision in general rather than of the predictive objective in particular. If I-JEPA consistently leads, then the predictive objective itself becomes a plausible part of the explanation. This decomposition is what the cross-city SSL benchmark in Chapter~\ref{chap:experiments} is set up to test.
 
 \subsection{Masked Autoencoders (MAE)}
 \label{sec:bg-mae}
@@ -273,7 +293,7 @@ The three paradigms can be summarized by the invariances they encourage. I-JEPA 
         \draw[arrow] (mad) -- (mal);
         \node[font=\scriptsize, above=1mm of max] {\textbf{MAE}};
     \end{tikzpicture}
-    \caption{The three SSL objectives compared in this thesis. \textbf{I-JEPA} (left): context and target encoders extract features, a predictor maps context latents to target latents, and the loss is in representation space \cite{assran-ijepa-2023}. \textbf{DINOv2} (middle): a student and a momentum teacher process augmented views of the same image, and the student is trained to match the teacher's softmax output \cite{oquab-dinov2-2024,caron-dino-2021}. \textbf{MAE} (right): a large fraction of image patches is masked and a lightweight decoder reconstructs the masked pixels from the encoded visible patches \cite{he-mae-2022}. The three objectives encourage different invariances, which is the central variable varied under cross-city transfer in Phase~4 (Section~\ref{sec:exp-why-ssl}).}
+    \caption{The three SSL objectives compared in this thesis. \textbf{I-JEPA} (left): context and target encoders extract features, a predictor maps context latents to target latents, and the loss is in representation space \cite{assran-ijepa-2023}. \textbf{DINOv2} (middle): a student and a momentum teacher process augmented views of the same image, and the student is trained to match the teacher's softmax output \cite{oquab-dinov2-2024,caron-dino-2021}. \textbf{MAE} (right): a large fraction of image patches is masked and a lightweight decoder reconstructs the masked pixels from the encoded visible patches \cite{he-mae-2022}. The three objectives encourage different invariances, which is the central variable varied under cross-city transfer in the mechanistic analysis (Section~\ref{sec:exp-why-ssl}).}
     \label{fig:bg-ssl-family}
 \end{figure}
 
@@ -286,7 +306,46 @@ The thesis evaluates visual backbones inside four planning architectures, each o
 \subsection{TransFuser}
 \label{sec:bg-transfuser}
 
-TransFuser is a representative multi-modal end-to-end planner that fuses camera and LiDAR features through transformer-style cross-modal attention before regressing a future trajectory \cite{chitta-transfuser-2023,prakash-transfuser-2021}. The model processes each modality with its own convolutional backbone, typically ResNet-34 for both streams in NAVSIM. It inserts transformer blocks at four resolution scales to allow image and LiDAR tokens to attend to one another, aggregates the fused feature map into a compact scene embedding, and decodes a sequence of future waypoints with a GRU-based autoregressive head conditioned on ego status and a discrete driving command \cite{chitta-transfuser-2023}. In NAVSIM, TransFuser is a standard reference baseline on \texttt{navtest}, where it reaches $84.0$ PDMS (NC $97.7$, DAC $92.8$, TTC $92.8$, Comf.\ $100$, EP $79.2$), while its camera-only variant Latent TransFuser (LTF) reaches $83.8$ PDMS (NC $97.4$, DAC $92.8$, TTC $92.4$, Comf.\ $100$, EP $79.0$) \cite{dauner-navsim-2024}. The gap between the two baselines is approximately $0.2$ PDMS, which is well within the single-run standard deviation of $\pm 0.56$ PDMS reported across training seeds \cite{dauner-navsim-2024}. The authors train both agents for $100$ epochs on \texttt{navtrain} using a ResNet-34 image encoder, three stitched front-facing cameras at $1024 \times 256$ covering an approximate FOV of $140^{\circ}$, an Adam optimizer with a constant learning rate of $1\mathrm{e}{-4}$, batch size $96$, and a single NVIDIA A5000 GPU for roughly one day of training \cite{dauner-navsim-2024}.
+TransFuser is a representative multi-modal end-to-end planner that fuses camera and LiDAR features through transformer-style cross-modal attention before regressing a future trajectory \cite{chitta-transfuser-2023,prakash-transfuser-2021}. The model processes each modality with its own convolutional backbone, typically ResNet-34 for both streams in NAVSIM. It inserts transformer blocks at four resolution scales to allow image and LiDAR tokens to attend to one another, aggregates the fused feature map into a compact scene embedding, and decodes a sequence of future waypoints with a GRU-based autoregressive head conditioned on ego status and a discrete driving command \cite{chitta-transfuser-2023}. Published TransFuser and Latent TransFuser baselines on NAVSIM \texttt{navtest}, and the authors' reference training recipe, are summarized in \reftab{tab:bg-transfuser-baseline} and \reftab{tab:bg-transfuser-recipe}.
+
+\begin{table}[ht]
+\centering
+\caption{Published TransFuser and Latent TransFuser baselines on \texttt{navtest}~\cite{dauner-navsim-2024}. Single-run standard deviation across training seeds is $\pm 0.56$ PDMS; the $0.2$-PDMS TF--LTF gap is within this band.}
+\label{tab:bg-transfuser-baseline}
+\small
+\setlength{\tabcolsep}{5pt}
+\renewcommand{\arraystretch}{1.15}
+\begin{tabular}{@{}l c c c c c c@{}}
+\toprule
+\textbf{Planner} & \textbf{Modality} & \textbf{PDMS} & \textbf{NC} & \textbf{DAC} & \textbf{TTC} & \textbf{EP} \\
+\midrule
+TransFuser        & Camera $+$ LiDAR & $84.0$ & $97.7$ & $92.8$ & $92.8$ & $79.2$ \\
+Latent TransFuser & Camera only      & $83.8$ & $97.4$ & $92.8$ & $92.4$ & $79.0$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[ht]
+\centering
+\caption{TransFuser / LTF reference training recipe~\cite{dauner-navsim-2024}. Both agents are trained with this recipe on \texttt{navtrain}.}
+\label{tab:bg-transfuser-recipe}
+\small
+\setlength{\tabcolsep}{6pt}
+\renewcommand{\arraystretch}{1.15}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{4.0cm} >{\raggedright\arraybackslash}p{8.0cm}@{}}
+\toprule
+\textbf{Setting} & \textbf{Value} \\
+\midrule
+Image encoder    & ResNet-34 \\
+Cameras          & 3 front-facing, stitched ($\approx\!140^{\circ}$ FOV) \\
+Input resolution & $1024 \times 256$ \\
+Optimizer        & Adam, constant LR $1{\times}10^{-4}$ \\
+Batch size       & $96$ \\
+Epochs           & $100$ \\
+Hardware         & 1 $\times$ NVIDIA A5000 ($\approx\!1$ day) \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 TransFuser plays two roles in this thesis. First, it is a strong closed-loop reference point on NAVSIM, which allows self-supervised backbones to be evaluated under a realistic planner rather than a toy head. Second, it exposes a practical issue that matters for the rest of the thesis: inserting a ViT image encoder into a fusion stack designed around CNN geometry is not a pure test of representation quality, because the fusion layers themselves must be adapted to a new feature shape. This is one reason the thesis started with lightweight perception-free heads, and only later returned to multi-modal planners under a more controlled benchmark. The architecture is summarized in Figure~\ref{fig:bg-transfuser}.
 

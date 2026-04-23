@@ -3,7 +3,7 @@
 % notes (A3 landmine, February 2026).
 \begin{table}[ht]
     \centering
-    \caption{Phase~1 training recipe, LAW agent. Used for every cross-city LAW open-loop run. Single L40S GPU, batch~2, gradient clipping~35.}
+    \caption{Cross-city benchmark training recipe, LAW agent. Used for every cross-city LAW open-loop run. Single L40S GPU, batch~2, gradient clipping~35.}
     \label{tab:hparam-phase1-law}
     \small
     \begin{tabular}{ll}
@@ -23,7 +23,7 @@
 
 \begin{table}[ht]
     \centering
-    \caption{Phase~1 training recipe, TransFuser and Latent TransFuser. Used for every cross-city TF/LatTF run including the full 95-row PDMS matrix in Tables~\ref{tab:navsim_pdms_merged} and \ref{tab:navsim_pdms_merged_v11}. 4\,$\times$\,H200, effective batch 128. The configuration is the TransFuser paper recipe verbatim --- we document the trap explicitly because an earlier run used the wrong lr schedule and silently dropped all-city PDMS from 84~$\rightarrow$~51 before the recipe was restored.}
+    \caption{Cross-city benchmark training recipe, TransFuser and Latent TransFuser. Used for every cross-city TF/LatTF run including the full 95-row PDMS matrix in Tables~\ref{tab:navsim_pdms_merged} and \ref{tab:navsim_pdms_merged_v11}. 4\,$\times$\,H200, effective batch 128. The configuration is the TransFuser paper recipe verbatim --- we document the trap explicitly because an earlier run used the wrong lr schedule and silently dropped all-city PDMS from 84~$\rightarrow$~51 before the recipe was restored.}
     \label{tab:hparam-phase1-tf}
     \small
     \begin{tabular}{ll}
@@ -44,7 +44,7 @@
 
 \begin{table}[ht]
     \centering
-    \caption{Phase~2 DiffusionDrive + SSL training recipe. Used for experiments A10--A13 on NAVSIM v1 navtrain. The SSL backbone is frozen by default; the trajectory head is initialized from the K-means anchor bank and denoised with two diffusion steps at inference.}
+    \caption{Generative-planning study training recipe (DiffusionDrive + SSL). Used for experiments A10--A13 on NAVSIM v1 navtrain. The SSL backbone is frozen by default; the trajectory head is initialized from the K-means anchor bank and denoised with two diffusion steps at inference.}
     \label{tab:hparam-phase2-dd}
     \small
     \begin{tabular}{ll}
