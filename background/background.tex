@@ -55,54 +55,89 @@ NAVSIM supports two evaluation modes. In the non-reactive mode used for the defa
 
 \begin{figure}[ht]
     \centering
+    \resizebox{\linewidth}{!}{%
     \begin{tikzpicture}[
-        node distance = 5mm and 7mm,
-        obs/.style  = {draw, rounded corners=2pt, minimum height=7mm, minimum width=22mm, align=center, font=\scriptsize, fill=black!3},
-        agent/.style= {draw, rounded corners=2pt, minimum height=9mm, minimum width=22mm, align=center, font=\small, fill=black!7},
-        sim/.style  = {draw, rounded corners=2pt, minimum height=9mm, minimum width=26mm, align=center, font=\scriptsize},
-        score/.style= {draw, rounded corners=2pt, minimum height=6mm, minimum width=20mm, align=center, font=\scriptsize, fill=black!5},
-        final/.style= {draw, ellipse, minimum height=8mm, minimum width=18mm, align=center, font=\small},
-        arrow/.style = {-{Stealth[length=1.8mm]}, thin},
+        obs/.style    = {draw, rounded corners=2pt, minimum height=6mm, minimum width=18mm, align=center, font=\scriptsize, fill=black!3, inner sep=2pt},
+        agent/.style  = {draw, rounded corners=2pt, minimum height=34mm, minimum width=16mm, align=center, font=\scriptsize, fill=black!7, inner sep=2pt},
+        trjbox/.style = {draw, rounded corners=2pt, minimum height=8mm, minimum width=16mm, align=center, font=\scriptsize, inner sep=2pt},
+        sim/.style    = {draw, rounded corners=2pt, minimum height=34mm, minimum width=22mm, align=center, font=\scriptsize, inner sep=2pt},
+        score/.style  = {draw, rounded corners=2pt, minimum height=5mm, minimum width=15mm, align=center, font=\scriptsize, fill=black!5, inner sep=2pt},
+        final/.style  = {draw, ellipse, minimum height=12mm, minimum width=16mm, align=center, font=\small, fill=black!10, inner sep=2pt},
+        arrow/.style  = {-{Stealth[length=2mm]}, thin},
+        stub/.style   = {thin},
     ]
-        % Inputs
-        \node[obs] (cam) {cameras (8)};
-        \node[obs, below=1mm of cam] (lid) {LiDAR};
-        \node[obs, below=1mm of lid] (ego) {ego state};
-        \node[obs, below=1mm of ego] (route) {route};
-        % Agent
-        \node[agent, right=8mm of lid] (agent) {planner $\pi_\theta$};
-        % Predicted trajectory
-        \node[obs, right=8mm of agent] (tau) {$\hat\tau_{t:t+H}$};
-        % Simulator
-        \node[sim, right=8mm of tau] (sim) {non-reactive or\\two-stage\\simulator};
-        % Sub-scores
-        \node[score, above right=2mm and 10mm of sim.east, anchor=west] (nc) {NC};
-        \node[score, below=1mm of nc] (dac) {DAC};
-        \node[score, below=1mm of dac] (ep) {EP};
-        \node[score, below=1mm of ep] (ttc) {TTC};
-        \node[score, below=1mm of ttc] (cmf) {Comfort};
-        % PDMS
-        \node[final, right=12mm of ep] (pdms) {PDMS};
+        % -------- Column 1: inputs (stacked) --------
+        \node[obs] (cam)   {cameras (8)};
+        \node[obs, below=1.2mm of cam]   (lid)   {LiDAR};
+        \node[obs, below=1.2mm of lid]   (ego)   {ego state};
+        \node[obs, below=1.2mm of ego]   (route) {route};
 
-        % Arrows
-        \draw[arrow] (cam.east) -- (agent.west |- cam.east);
-        \draw[arrow] (lid.east) -- (agent.west |- lid.east);
-        \draw[arrow] (ego.east) -- (agent.west |- ego.east);
-        \draw[arrow] (route.east) -- (agent.west |- route.east);
-        \draw[arrow] (agent) -- (tau);
-        \draw[arrow] (tau) -- (sim);
-        \draw[arrow] (sim.east) -- (nc.west);
-        \draw[arrow] (sim.east) -- (dac.west);
-        \draw[arrow] (sim.east) -- (ep.west);
-        \draw[arrow] (sim.east) -- (ttc.west);
-        \draw[arrow] (sim.east) -- (cmf.west);
-        \draw[arrow] (nc.east) -- (pdms.west |- nc.east);
-        \draw[arrow] (dac.east) -- (pdms.west |- dac.east);
-        \draw[arrow] (ep.east) -- (pdms.west |- ep.east);
-        \draw[arrow] (ttc.east) -- (pdms.west |- ttc.east);
-        \draw[arrow] (cmf.east) -- (pdms.west |- cmf.east);
-    \end{tikzpicture}
-    \caption{NAVSIM evaluation pipeline. The planner receives sensor, ego, and route inputs and emits a predicted trajectory $\hat\tau_{t:t+H}$ of eight waypoints at 2\,Hz over a four-second horizon. The simulator rolls this trajectory either against log-replay agents (non-reactive, \texttt{navtest}) or against IDM-driven reactive agents (two-stage, \texttt{navhard\_two\_stage}), then computes the PDMS sub-scores in Equation~\ref{eq:pdms}. NC and DAC enter multiplicatively, so any at-fault collision or drivable-area violation zeroes the score on that scenario \cite{dauner-navsim-2024,dauner-pdm-2023}.}
+        % -------- Column 2: planner, vertically centred on the input stack --------
+        \coordinate (inputs-mid) at ($(cam.east)!0.5!(route.east)$);
+        \node[agent, right=14mm of inputs-mid, anchor=west] (agent) {planner\\$\pi_\theta$};
+
+        % -------- Column 3: predicted trajectory --------
+        \node[trjbox, right=7mm of agent] (tau) {$\hat\tau_{t:t+H}$};
+
+        % -------- Column 4: simulator --------
+        \node[sim, right=7mm of tau] (sim) {non-reactive\\or two-stage\\simulator};
+
+        % -------- Column 5: sub-scores stack --------
+        \node[score, right=12mm of sim.east, anchor=west, yshift=12mm] (nc)  {NC};
+        \node[score, below=1.2mm of nc]  (dac) {DAC};
+        \node[score, below=1.2mm of dac] (ep)  {EP};
+        \node[score, below=1.2mm of ep]  (ttc) {TTC};
+        \node[score, below=1.2mm of ttc] (cmf) {Comfort};
+
+        % -------- Column 6: PDMS, vertically centred on the score stack --------
+        \coordinate (scores-mid) at ($(nc.east)!0.5!(cmf.east)$);
+        \node[final, right=14mm of scores-mid, anchor=west] (pdms) {PDMS};
+
+        % ===================== Fan-in on the input side =====================
+        % Confluence x-column mid-way between inputs.east and agent.west.
+        \coordinate (in-rail)  at ($(cam.east)!0.5!(agent.west)$);
+        \coordinate (in-rail-top) at (in-rail |- cam);
+        \coordinate (in-rail-bot) at (in-rail |- route);
+        % Vertical collection rail
+        \draw[stub] (in-rail-top) -- (in-rail-bot);
+        % Stubs from each input to the rail
+        \draw[stub] (cam.east)   -- (cam.east   -| in-rail);
+        \draw[stub] (lid.east)   -- (lid.east   -| in-rail);
+        \draw[stub] (ego.east)   -- (ego.east   -| in-rail);
+        \draw[stub] (route.east) -- (route.east -| in-rail);
+        % Single merged arrow from rail mid-point into the planner
+        \draw[arrow] (in-rail |- agent.west) -- (agent.west);
+
+        % ===================== Planner --> trajectory --> simulator =========
+        \draw[arrow] (agent.east) -- (tau.west);
+        \draw[arrow] (tau.east)   -- (sim.west);
+
+        % ===================== Fan-out from simulator to sub-scores =========
+        % Confluence rail between sim.east and nc/dac/ep/ttc/cmf.west
+        \coordinate (out-rail) at ($(sim.east)!0.5!(nc.west)$);
+        \coordinate (out-rail-top) at (out-rail |- nc);
+        \coordinate (out-rail-bot) at (out-rail |- cmf);
+        \draw[arrow] (sim.east) -- (out-rail |- sim.east);
+        \draw[stub]  (out-rail-top) -- (out-rail-bot);
+        \draw[arrow] (out-rail |- nc)  -- (nc.west);
+        \draw[arrow] (out-rail |- dac) -- (dac.west);
+        \draw[arrow] (out-rail |- ep)  -- (ep.west);
+        \draw[arrow] (out-rail |- ttc) -- (ttc.west);
+        \draw[arrow] (out-rail |- cmf) -- (cmf.west);
+
+        % ===================== Fan-in from sub-scores to PDMS ===============
+        \coordinate (pdms-rail) at ($(nc.east)!0.5!(pdms.west)$);
+        \coordinate (pdms-rail-top) at (pdms-rail |- nc);
+        \coordinate (pdms-rail-bot) at (pdms-rail |- cmf);
+        \draw[stub] (nc.east)  -- (nc.east  -| pdms-rail);
+        \draw[stub] (dac.east) -- (dac.east -| pdms-rail);
+        \draw[stub] (ep.east)  -- (ep.east  -| pdms-rail);
+        \draw[stub] (ttc.east) -- (ttc.east -| pdms-rail);
+        \draw[stub] (cmf.east) -- (cmf.east -| pdms-rail);
+        \draw[stub] (pdms-rail-top) -- (pdms-rail-bot);
+        \draw[arrow] (pdms-rail |- pdms.west) -- (pdms.west);
+    \end{tikzpicture}}
+    \caption{NAVSIM evaluation pipeline. The planner receives sensor, ego, and route inputs and emits a predicted trajectory $\hat\tau_{t:t+H}$ of eight waypoints at 2\,Hz over a four-second horizon. The simulator rolls this trajectory either against log-replay agents (non-reactive, \texttt{navtest}) or against IDM-driven reactive agents (two-stage, \texttt{navhard\_two\_stage}), then computes the PDMS sub-scores of Equation~\ref{eq:pdms}. NC and DAC enter multiplicatively, so any at-fault collision or drivable-area violation zeroes the score on that scenario~\cite{dauner-navsim-2024,dauner-pdm-2023}.}
     \label{fig:bg-navsim-pipeline}
 \end{figure}
 
@@ -250,49 +285,54 @@ The three paradigms can be summarized by the invariances they encourage. I-JEPA 
 
 \begin{figure}[ht]
     \centering
+    \resizebox{\linewidth}{!}{%
     \begin{tikzpicture}[
-        node distance = 4mm and 5mm,
-        img/.style  = {draw, rectangle, minimum width=10mm, minimum height=10mm, fill=black!5, font=\tiny, align=center},
-        enc/.style  = {draw, rounded corners=2pt, minimum height=6mm, minimum width=14mm, align=center, font=\scriptsize},
-        loss/.style = {draw, ellipse, minimum height=6mm, minimum width=14mm, align=center, font=\scriptsize},
-        arrow/.style = {-{Stealth[length=1.5mm]}, thin},
+        node distance = 4mm and 6mm,
+        img/.style  = {draw, rectangle, minimum width=13mm, minimum height=10mm, fill=black!5, font=\scriptsize, align=center},
+        enc/.style  = {draw, rounded corners=2pt, minimum height=7mm, minimum width=21mm, align=center, font=\scriptsize},
+        pred/.style = {draw, rounded corners=2pt, minimum height=7mm, minimum width=22mm, align=center, font=\scriptsize, fill=black!3},
+        loss/.style = {draw, ellipse, minimum height=8mm, minimum width=28mm, align=center, font=\scriptsize},
+        arrow/.style = {-{Stealth[length=1.6mm]}, thin},
     ]
         %---- I-JEPA panel ----
-        \node[img] (ijx) {ctx};
-        \node[img, right=of ijx] (ijy) {target};
-        \node[enc, below=of ijx] (ijec) {Enc $f_\theta$};
-        \node[enc, below=of ijy] (ijet) {Enc $f_{\bar\theta}$};
-        \node[enc, right=8mm of ijet] (ijp) {Predictor};
-        \node[loss, below=of ijec] (ijl) {predict in\\latent space};
+        \node[font=\scriptsize\bfseries] at (0,0.25) {I-JEPA};
+        \node[img] (ijx) at (-1.25,-0.55) {context};
+        \node[img] (ijy) at (1.25,-0.55) {target};
+        \node[enc] (ijec) at (-1.25,-1.85) {context enc.\\$f_\theta$};
+        \node[enc] (ijet) at (1.25,-1.85) {target enc.\\$f_{\bar\theta}$};
+        \node[pred] (ijp) at (0,-3.05) {predictor\\$g_\phi$};
+        \node[loss] (ijl) at (0,-4.35) {latent-space\\prediction loss};
         \draw[arrow] (ijx) -- (ijec);
         \draw[arrow] (ijy) -- (ijet);
-        \draw[arrow] (ijec) -- (ijl);
-        \draw[arrow] (ijec.east) -- (ijp.west);
-        \draw[arrow] (ijet.east) -- ($(ijp.west)+(0,-2mm)$);
-        \draw[arrow] (ijp.south) |- (ijl.east);
-        \node[font=\scriptsize, above=1mm of ijx] {\textbf{I-JEPA}};
+        \draw[arrow] (ijec.south) |- (ijp.west);
+        \draw[arrow] (ijet.south) |- (ijp.east);
+        \draw[arrow] (ijp) -- (ijl);
 
         %---- DINOv2 panel ----
-        \node[img, right=38mm of ijy] (dvx) {img};
-        \node[enc, below=of dvx, xshift=-6mm] (dve1) {Student $f_\theta$};
-        \node[enc, below=of dvx, xshift=+6mm] (dve2) {Teacher $f_{\bar\theta}$};
-        \node[loss, below=of dve1, xshift=6mm] (dvl) {match softmax\\of features};
-        \draw[arrow] (dvx) -- (dve1);
-        \draw[arrow] (dvx) -- (dve2);
-        \draw[arrow] (dve1) -- (dvl.north -| dve1);
-        \draw[arrow] (dve2) -- (dvl.north -| dve2);
-        \node[font=\scriptsize, above=1mm of dvx] {\textbf{DINOv2}};
+        \begin{scope}[xshift=5.2cm]
+        \node[font=\scriptsize\bfseries] at (0,0.25) {DINOv2};
+        \node[img] (dvx) at (0,-0.55) {aug.\\views};
+        \node[enc] (dve1) at (-1.35,-1.85) {student\\$f_\theta$};
+        \node[enc] (dve2) at (1.35,-1.85) {teacher\\$f_{\bar\theta}$};
+        \node[loss] (dvl) at (0,-3.25) {match teacher\\softmax};
+        \draw[arrow] (dvx.south) -- (dve1.north);
+        \draw[arrow] (dvx.south) -- (dve2.north);
+        \draw[arrow] (dve1.south) -- (dvl.north -| dve1);
+        \draw[arrow] (dve2.south) -- (dvl.north -| dve2);
+        \end{scope}
 
         %---- MAE panel ----
-        \node[img, right=30mm of dvx] (max) {mask 75\%};
-        \node[enc, below=of max] (mae) {Enc $f_\theta$};
-        \node[enc, below=of mae] (mad) {Decoder};
-        \node[loss, below=of mad] (mal) {reconstruct\\pixels};
+        \begin{scope}[xshift=9.6cm]
+        \node[font=\scriptsize\bfseries] at (0,0.25) {MAE};
+        \node[img] (max) at (0,-0.55) {mask\\75\%};
+        \node[enc] (mae) at (0,-1.85) {encoder\\$f_\theta$};
+        \node[pred] (mad) at (0,-3.05) {decoder};
+        \node[loss] (mal) at (0,-4.35) {reconstruct\\pixels};
         \draw[arrow] (max) -- (mae);
         \draw[arrow] (mae) -- (mad);
         \draw[arrow] (mad) -- (mal);
-        \node[font=\scriptsize, above=1mm of max] {\textbf{MAE}};
-    \end{tikzpicture}
+        \end{scope}
+    \end{tikzpicture}}
     \caption{The three SSL objectives compared in this thesis. \textbf{I-JEPA} (left): context and target encoders extract features, a predictor maps context latents to target latents, and the loss is in representation space \cite{assran-ijepa-2023}. \textbf{DINOv2} (middle): a student and a momentum teacher process augmented views of the same image, and the student is trained to match the teacher's softmax output \cite{oquab-dinov2-2024,caron-dino-2021}. \textbf{MAE} (right): a large fraction of image patches is masked and a lightweight decoder reconstructs the masked pixels from the encoded visible patches \cite{he-mae-2022}. The three objectives encourage different invariances, which is the central variable varied under cross-city transfer in the mechanistic analysis (Section~\ref{sec:exp-why-ssl}).}
     \label{fig:bg-ssl-family}
 \end{figure}
@@ -361,13 +401,13 @@ TransFuser plays two roles in this thesis. First, it is a strong closed-loop ref
         \node[box, below=of cam] (lid) {LiDAR BEV};
         \node[box, right=of cam] (venc) {Image enc.};
         \node[box, right=of lid] (lenc) {LiDAR enc.};
-        \node[wide, right=of venc, yshift=-4mm] (fuse) {Attention\\fusion};
+        \node[wide, right=11mm of venc, yshift=-4mm] (fuse) {Attention\\fusion};
         \node[wide, right=of fuse] (head) {GRU\\waypoint\\head};
         \node[box, right=of head] (out)  {Trajectory};
         \draw[arrow] (cam) -- (venc);
         \draw[arrow] (lid) -- (lenc);
-        \draw[arrow] (venc.east) -- (fuse.west |- venc.east);
-        \draw[arrow] (lenc.east) -- (fuse.west |- lenc.east);
+        \draw[arrow] (venc.east) -- ++(4mm,0) |- ([yshift=2mm]fuse.west);
+        \draw[arrow] (lenc.east) -- ++(4mm,0) |- ([yshift=-2mm]fuse.west);
         \draw[arrow] (fuse) -- (head);
         \draw[arrow] (head) -- (out);
     \end{tikzpicture}

@@ -12,7 +12,7 @@
 
 Before interpreting cross-city behavior, we first establish the scale of the task on the standard mixed-city NAVSIM split. Table~\ref{tab:baselines} includes both non-learning or low-capacity lower bounds and strong learned baselines. The purpose is not to reproduce the full leaderboard, but to anchor the later discussion of representation quality against concrete reference points.
 
-\begin{table}[ht]
+\begin{table}[H]
 \centering
 \caption{Reference baselines on NAVSIM under the standard mixed-city split.}
 \label{tab:baselines}
@@ -22,7 +22,8 @@ Before interpreting cross-city behavior, we first establish the scale of the tas
 \midrule
 A1  & Constant-velocity controller & 25.88 \\
 A2  & Ego-status MLP & 65.99 \\
-A4  & TransFuser (ResNet34, C+L) & 81.68 \\
+A4  & TransFuser (ResNet34, C+L) & \textbf{83.68} \\
+A9  & Latent TransFuser (ResNet34, C+L) & \textbf{83.17} \\
 A10 & DiffusionDrive (ResNet34, C+L) & 88.1 \\
 \bottomrule
 \end{tabular}
@@ -41,13 +42,14 @@ This thesis did not begin with city splits. The original working hypothesis was 
 
 The Priority-1 sweep holds the planner at its minimum capacity --- a single front camera, frozen backbone, $1288{\to}256{\to}256{\to}T{\cdot}3$ MLP --- and varies only the backbone. \reftab{tab:exp-phase0-p1} reports all ten Priority-1 results on the full \texttt{navtest} split, ranked by PDMS. Each row is one evaluation record in the authoritative MongoDB experiment store, and sub-scores (NC, DAC, EP, TTC, C) come from the same record.
 
-\begin{table}[ht]
+\begin{table}[H]
 \centering
-\caption{Priority-1 lightweight-head sweep on \texttt{navtest} ($12{,}146$ scenarios), pooled all-city. All rows use the same frozen encoder, single-front-camera, MLP$(256,256)$ head, AdamW, 20-epoch recipe from~\ref{sec:meth-lh-recipe}. PDMS is one-stage, devkit v1.0, non-reactive.}
+\caption[Priority-1 lightweight-head sweep on \texttt{navtest}.]{Priority-1 lightweight-head sweep on \texttt{navtest} ($12{,}146$ scenarios), pooled all-city. All rows use the same frozen encoder, single-front-camera, MLP$(256,256)$ head, AdamW, 20-epoch recipe from~\ref{sec:meth-lh-recipe}. PDMS is one-stage, devkit v1.0, non-reactive.}
 \label{tab:exp-phase0-p1}
-\small
+\footnotesize
 \renewcommand{\arraystretch}{1.15}
 \setlength{\tabcolsep}{4pt}
+\begin{adjustbox}{max width=\textwidth}
 \begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.2cm} >{\raggedright\arraybackslash}p{2.4cm} >{\raggedright\arraybackslash}p{2.6cm} ccccccc@{}}
 \toprule
 \textbf{Experiment} & \textbf{Backbone} & \textbf{Pre-training} & \textbf{PDMS} & \textbf{NC} & \textbf{DAC} & \textbf{EP} & \textbf{TTC} & \textbf{C} \\
@@ -65,20 +67,22 @@ The Priority-1 sweep holds the planner at its minimum capacity --- a single fron
 \texttt{LH-B1-IJS-r-fr.}   & I-JEPA ViT-S/14 & nuSc $224{\times}392$   & $0.654$ & 0.931 & 0.767 & 0.857 & 0.914 & 0.928 \\
 \bottomrule
 \end{tabular}
+\end{adjustbox}
 \end{table}
 
 \subsection{Priority-3 Sweep (Fully Fine-Tuned, Front-1, MLP)}
 \label{sec:exp-phase0-p3}
 
-Priority-3 repeats the same backbone matrix with \(\texttt{trainable\_backbone\_fraction}{=}1.0\) and the two-group AdamW schedule (head LR $10^{-4}$, encoder LR $3 \times 10^{-5}$) from~\ref{sec:meth-lh-recipe}. Nine of ten rows are scored; the I-JEPA ViT-H/14 fully-unfrozen run is re-evaluating after an out-of-memory event on the one-stage scorer and is marked pending.
+Priority-3 repeats the same backbone matrix in full-backbone fine-tuning mode, using the two-group AdamW schedule (head LR $10^{-4}$, encoder LR $3 \times 10^{-5}$) from~\ref{sec:meth-lh-recipe}. All ten rows are now scored. The last row, I-JEPA ViT-H/14 fully unfrozen, completed after a scorer-memory fix and is notable precisely because it changes less than expected: the strongest frozen row only gains $+0.0276$ PDMS under end-to-end adaptation.
 
 \begin{table}[ht]
 \centering
-\caption{Priority-3 lightweight-head sweep --- fully unfrozen backbone, otherwise identical to Table~\ref{tab:exp-phase0-p1}.}
+\caption[Priority-3 lightweight-head sweep.]{Priority-3 lightweight-head sweep --- fully unfrozen backbone, otherwise identical to Table~\ref{tab:exp-phase0-p1}.}
 \label{tab:exp-phase0-p3}
-\small
+\footnotesize
 \renewcommand{\arraystretch}{1.15}
 \setlength{\tabcolsep}{4pt}
+\begin{adjustbox}{max width=\textwidth}
 \begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.2cm} >{\raggedright\arraybackslash}p{2.4cm} >{\raggedright\arraybackslash}p{2.6cm} ccccccc@{}}
 \toprule
 \textbf{Experiment} & \textbf{Backbone} & \textbf{Pre-training} & \textbf{PDMS} & \textbf{NC} & \textbf{DAC} & \textbf{EP} & \textbf{TTC} & \textbf{C} \\
@@ -92,10 +96,11 @@ Priority-3 repeats the same backbone matrix with \(\texttt{trainable\_backbone\_
 \texttt{LH-B1-Dv2-s-full}  & DINOv2 ViT-S/14 & nuSc $224^2$          & $0.760$ & 0.954 & 0.865 & 0.868 & 0.941 & 0.929 \\
 \texttt{LH-B1-Dv2-r-full}  & DINOv2 ViT-S/14 & nuSc $224{\times}392$ & $0.760$ & 0.954 & 0.865 & 0.868 & 0.941 & 0.929 \\
 \texttt{LH-B1-Dv2-hf-full} & DINOv2 ViT-S/14 & LVD-142M SSL          & $0.718$ & 0.943 & 0.826 & 0.866 & 0.929 & 0.930 \\
+\texttt{LH-B1-IJH-hf-full} & I-JEPA ViT-H/14 & ImageNet-1k SSL       & $0.825$ & 0.969 & 0.917 & 0.868 & 0.960 & -- \\
 \texttt{LH-B1-IJS-r-full}  & I-JEPA ViT-S/14 & nuSc $224{\times}392$ & $0.668$ & 0.932 & 0.780 & 0.861 & 0.918 & 0.929 \\
-\texttt{LH-B1-IJH-hf-full} & I-JEPA ViT-H/14 & ImageNet-1k SSL       & \emph{pending} & -- & -- & -- & -- & -- \\
 \bottomrule
 \end{tabular}
+\end{adjustbox}
 \end{table}
 
 \subsection{Adaptation Lift: Frozen $\to$ Fully Unfrozen}
@@ -117,6 +122,7 @@ Pairing each row of Table~\ref{tab:exp-phase0-p1} with its Table~\ref{tab:exp-ph
 MAE ViT-S/14 (nuSc $224^2$)        & $0.749$ & $0.814$ & $+0.064$ \\
 MAE ViT-S/14 (nuSc $224{\times}392$) & $0.738$ & $0.817$ & $+0.078$ \\
 MAE ViT-B/16 (ImageNet)            & $0.775$ & $0.849$ & $+0.074$ \\
+I-JEPA ViT-H/14 (ImageNet)         & $0.797$ & $0.825$ & $+0.028$ \\
 I-JEPA ViT-S/14 (nuSc $224^2$)     & $0.716$ & $0.809$ & $\mathbf{+0.094}$ \\
 I-JEPA ViT-S/14 (nuSc $224{\times}392$) & $0.654$ & $0.668$ & $+0.014$ \\
 DINOv2 ViT-S/14 (nuSc $224^2$)     & $0.697$ & $0.760$ & $+0.063$ \\
@@ -160,13 +166,13 @@ Mean (4 cities) & $0.575$ & $0.564$ & $\mathbf{0.648}$ & $0.622$ \\
 
 Seven observations follow from the Priority-1, Priority-3, and Cross-City results above.
 
-\paragraph{Frozen I-JEPA ViT-H/14 is the strongest minimum-head configuration.} At \(0.797\) PDMS with zero backbone gradients updated, \texttt{LH-B1-IJH-hf-frozen} (Table~\ref{tab:exp-phase0-p1}) outperforms every fully-unfrozen small-ViT configuration in Table~\ref{tab:exp-phase0-p3} except the three MAE runs. This is the strongest single argument for frozen self-supervised features plus a lightweight adapter: the representation carries enough planning-relevant structure that backbone gradients do not have to do the work.
+\paragraph{Frozen I-JEPA ViT-H/14 is the strongest minimum-head configuration.} At \(0.797\) PDMS with zero backbone gradients updated, \texttt{LH-B1-IJH-hf-frozen} (Table~\ref{tab:exp-phase0-p1}) outperforms every fully-unfrozen small-ViT configuration in Table~\ref{tab:exp-phase0-p3} except the three MAE runs and its own ViT-H/14 counterpart at \(0.825\). This is the strongest single argument for frozen self-supervised features plus a lightweight adapter: the representation carries enough planning-relevant structure that backbone gradients do not have to do most of the work.
 
-\paragraph{MAE leads the fully-fine-tuned leaderboard; I-JEPA leads the frozen one.} Under Priority-3, the three MAE rows (\(0.849\), \(0.817\), \(0.814\)) hold the top three positions and together exceed every I-JEPA or DINOv2 variant. Under Priority-1, I-JEPA ViT-H/14 leads by \(2.2\) points over the best MAE configuration. The reconstructive objective of MAE appears to produce features that adapt better under end-to-end fine-tuning, while I-JEPA's latent-predictive features are more usable off-the-shelf. Both are consistent with the thesis claim that the SSL objective is the variable that matters.
+\paragraph{MAE leads the fully-fine-tuned leaderboard; I-JEPA leads the frozen one.} Under Priority-3, MAE ViT-B/16 remains the best row at \(0.849\), but I-JEPA ViT-H/14 closes at \(0.825\) and takes second place despite the smallest lift in the table. Under Priority-1, I-JEPA ViT-H/14 leads by \(2.2\) points over the best MAE configuration. The reconstructive objective of MAE appears to produce features that adapt best under end-to-end fine-tuning, while I-JEPA's latent-predictive features are more usable off-the-shelf. Both are consistent with the thesis claim that the SSL objective is the variable that matters.
 
 \paragraph{Self-supervised pretraining beats supervised ResNet-34 under the same head.} In the frozen setting, seven of nine SSL variants exceed the ResNet-34 baseline (\(0.687\)); under full fine-tuning, seven of nine again exceed ResNet-34 (\(0.769\)). The two SSL rows that trail are the off-the-shelf DINOv2 LVD-142M checkpoint and the I-JEPA ViT-S/14 rectangular variant --- both architectural edge cases rather than typical deployments.
 
-\paragraph{Fine-tuning lift depends on the backbone.} Table~\ref{tab:exp-phase0-lift} shows I-JEPA ViT-S/14 (square) is the biggest beneficiary of fine-tuning ($+9.4$\,pp), followed by supervised ResNet-34 ($+8.2$\,pp) and the two MAE ViT-S/14 variants ($+7.8$\,pp and $+6.4$\,pp). The exception is \textbf{I-JEPA ViT-S/14 rectangular}, which lifts only $+1.4$\,pp. This flags a likely optimizer-instability issue when the EMA target-encoder weights of a rectangular pretraining are unfrozen together with their non-square positional embeddings; the thesis treats this row as a known-flaky configuration rather than as evidence against I-JEPA.
+\paragraph{Fine-tuning lift depends on the backbone.} Table~\ref{tab:exp-phase0-lift} shows I-JEPA ViT-S/14 (square) is the biggest beneficiary of fine-tuning ($+9.4$\,pp), followed by supervised ResNet-34 ($+8.2$\,pp) and the two MAE ViT-S/14 variants ($+7.8$\,pp and $+6.4$\,pp). At the other extreme, I-JEPA ViT-H/14 gains only $+2.8$\,pp, which suggests the frozen ViT-H features already saturate much of what the lightweight MLP head can exploit. The additional exception is \textbf{I-JEPA ViT-S/14 rectangular}, which lifts only $+1.4$\,pp. This flags a likely optimizer-instability issue when the EMA target-encoder weights of a rectangular pretraining are unfrozen together with their non-square positional embeddings; the thesis treats this row as a known-flaky configuration rather than as evidence against I-JEPA.
 
 \paragraph{Rectangular pretraining does not help pooled in-domain PDMS.} For both MAE and I-JEPA, the square ViT-S/14 variant outperforms its rectangular counterpart on pooled \texttt{navtest} in both adaptation modes. DINOv2 is tied within $0.001$. This replicates the observation in our earlier benchmark study~\cite{naeinian-cross-city-2026} that the rectangular-input advantage is specific to explicit cross-city evaluation and does not appear on pooled in-domain splits, and it motivates the inversion of the comparison in~\ref{sec:exp-phase1}.
 
@@ -174,14 +180,14 @@ Seven observations follow from the Priority-1, Priority-3, and Cross-City result
 
 \paragraph{Singapore is the cross-city anomaly.} All four backbones fall to their lowest PDMS when trained on Singapore (\(0.509\)--\(0.529\)), a spread of only \(2\) PDMS points across the backbone families. Singapore has the smallest single-city partition (\(97\) scenes, \(5.8\) hours) and is the only left-hand-traffic city; the representation advantage is partially eaten by the limited gradient signal available during downstream training. This matches the directional-asymmetry finding in our earlier cross-city study~\cite{naeinian-cross-city-2026} exactly.
 
-\subsection{In-Flight B-series Ablations}
+\subsection{Active B-series Ablations}
 \label{sec:exp-phase0-inflight}
 
-The nine B-series runs (multi-camera and fusion/head ablations from~\ref{sec:meth-lh-taxonomy}) are currently queued behind the rebuild of the \texttt{front3} and \texttt{front5\_plus\_b} training caches. \reftab{tab:exp-phase0-inflight} lists the block for completeness; all rows share the I-JEPA ViT-H/14 ImageNet backbone and are scheduled to fire automatically once the squashfs compressions complete.
+The nine B-series runs (multi-camera and fusion/head ablations from~\ref{sec:meth-lh-taxonomy}) are an active validation block around the strongest exploratory backbone, I-JEPA ViT-H/14. They are included for completeness in \reftab{tab:exp-phase0-inflight}, but they are not load-bearing for any thesis claim: if they complete before the defense freeze, they enter as an addendum; if not, the thesis conclusions remain unchanged.
 
 \begin{table}[ht]
 \centering
-\caption{Exploratory B-series ablations (queued, I-JEPA ViT-H/14 backbone throughout).}
+\caption{Exploratory B-series ablations (active validation, I-JEPA ViT-H/14 backbone throughout).}
 \label{tab:exp-phase0-inflight}
 \small
 \renewcommand{\arraystretch}{1.15}
@@ -335,14 +341,14 @@ The $\sim$1pp gap between SSL (86.2--86.9) and supervised ResNet34 (87.9) on all
 \subsection{Camera-Only: SSL Partially Replaces LiDAR}
 \label{sec:exp-phase2-camera-only}
 
-The camera-only baseline is already stronger than one might expect. ResNet34 camera-only (A13) reaches 86.6 PDMS, only 1.3 points below the corresponding camera+LiDAR configuration at 87.9. This narrows the remaining question: the issue is no longer whether camera-only planning is viable at all, but whether stronger visual pretraining can close the residual gap without reintroducing expensive sensors. The planned I-JEPA camera-only experiment is therefore not a side experiment; it is the most direct test of whether SSL features can substitute for part of the geometric information usually supplied by LiDAR.
+The camera-only baseline is already stronger than one might expect. ResNet34 camera-only (A13) reaches 86.6 PDMS, only 1.3 points below the corresponding camera+LiDAR configuration at 87.9. This narrows the remaining question: the issue is no longer whether camera-only planning is viable at all, but whether stronger visual pretraining can close the residual gap without reintroducing expensive sensors. The I-JEPA camera-only experiment is therefore not a side experiment; it is the most direct active-validation test of whether SSL features can substitute for part of the geometric information usually supplied by LiDAR.
 
-\paragraph{Planned I-JEPA camera-only comparison (designed, pending).}
+\paragraph{I-JEPA camera-only comparison (active validation).}
 Starting from the A13 ResNet-34 camera-only baseline ($86.6$ PDMS, \reftab{tab:diffusiondrive-allcity}), the supervised encoder is replaced with the strongest frozen SSL variant: I-JEPA ViT-S/14 nuScenes square, frozen (A10-p, $86.3$ PDMS in a camera+LiDAR configuration). Configuration is in \reftab{tab:exp-camonly-config}; pre-registered reading bands are in \reftab{tab:exp-camonly-bands}.
 
 \begin{table}[ht]
 \centering
-\caption{Configuration for the planned I-JEPA camera-only comparison. All fields are held fixed to the A10-p / A13 hyperparameters; only the backbone and the LiDAR modality differ from their respective cells of \reftab{tab:diffusiondrive-allcity}.}
+\caption{Configuration for the I-JEPA camera-only active-validation comparison. All fields are held fixed to the A10-p / A13 hyperparameters; only the backbone and the LiDAR modality differ from their respective cells of \reftab{tab:diffusiondrive-allcity}.}
 \label{tab:exp-camonly-config}
 \small
 \setlength{\tabcolsep}{6pt}
@@ -387,10 +393,10 @@ Null              & $< 85.0$               & Frozen SSL does not recover the LiD
 Within DiffusionDrive, the I-JEPA results show that preprocessing matters at least as much as fine-tuning. The rectangular frozen run reaches 85.2 PDMS, the square-crop frozen run reaches 86.3, and the trainable square-crop run reaches 86.2. The simplest interpretation is that matching the pretraining geometry of the ViT is more important than unfreezing the backbone, at least on the mixed-city split. This fits the broader thesis argument that frozen SSL weights act as a form of implicit regularization: they preserve the pretrained invariances while still allowing the adapter and planner to specialize downstream.
 
 % ============================================================================
-\section{Cross-City Generative Planning Protocol (Designed; Pending)}
+\section{Cross-City Generative Planning (Active Validation)}
 \label{sec:exp-phase3}
 
-The cross-city generative study extends the representation-centric cross-city benchmark into the generative-planning regime. The protocol is already defined and the training pipeline is ready to launch; the experimental runs themselves are scheduled outside the window of this thesis and will be reported in a follow-up publication. We document the protocol here with the same level of detail as the completed studies so that the design can be scrutinized (and replicated) independently of its execution.
+The cross-city generative study extends the representation-centric cross-city benchmark into the generative-planning regime. The protocol is already defined and the training pipeline is running, but the full matrix is not yet complete. This section is therefore presented as \emph{active validation} rather than as completed evidence: it specifies the design, success criteria, and interpretation rules in advance, and the thesis conclusions are written so that they do not depend on these runs finishing before the defense freeze.
 
 \subsection{Rationale}
 \label{sec:exp-phase3-rationale}
@@ -412,12 +418,12 @@ Except for the training-city filter, every other hyperparameter (optimizer, lear
 
 \input{experiments/tab_phase3_plan}
 
-\subsection{Predicted Signatures and Falsifiable Tests}
+\subsection{Success Criteria and Falsifiable Tests}
 \label{sec:exp-phase3-predictions}
 
 The cross-city benchmark's v1.1 numbers ground the predictions below. The matched Boston-only Latent TransFuser rows from \reftab{tab:navsim_pdms_merged_v11} give an OOD PDMS drop of $16.1$ for trainable supervised ResNet-34 (F1-B1) against $9.6$ for frozen I-JEPA ViT-H/14 (F1-I1), a $\approx 2\times$ ratio that the mechanistic analysis (\refsec{sec:exp-implicit-reg}) links to feature-covariance effective rank within backbone families.
 
-Pre-committed predictions are tabulated in \reftab{tab:exp-phase3-predictions}. The author will report cross-city generative numbers as they arrive and treat these bands as a falsifiable specification rather than a moving target.
+Pre-committed reading rules are tabulated in \reftab{tab:exp-phase3-predictions}. Cross-city generative numbers will be reported only as they arrive and will be interpreted against these fixed bands rather than against a retrofitted narrative.
 
 \begin{table}[ht]
 \centering
@@ -450,12 +456,12 @@ If that probe prediction holds and the OOD-drop prediction above also holds, the
 \subsection{Scheduling Note}
 \label{sec:exp-phase3-schedule}
 
-The eight the cross-city generative study training jobs have been configured and queued in the same SLURM array driver that produced the mechanistic-analysis artifact set. The runs are gated on shared GPU availability on the NYU Greene cluster and are expected to complete in approximately one week of wall-clock time once they begin. Results will be reported in a follow-up manuscript; the present thesis closes on the cross-city, generative-planning, and mechanistic-analysis evidence.
+The eight cross-city generative training jobs are configured in the same SLURM-driven pipeline that produced the mechanistic-analysis artifact set. At the time of writing, the matrix is an active validation study rather than a completed thesis result. If matched families finish before the defense freeze, they will be reported as addenda; if not, the thesis conclusions remain unchanged.
 
 \subsection{The ``1\% In-Distribution, 10\% OOD'' Rule}
 \label{sec:exp-phase3-narrative}
 
-Even before the cross-city generative study is populated, the project already supports a practical summary. On standard mixed-city training, SSL costs roughly a percentage point of PDMS relative to the strongest supervised all-city configuration (see the generative-planning gaps in \reftab{tab:diffusiondrive-allcity}). Under explicit city shift, that trade-off reverses: the representation becomes the dominant term, and frozen SSL backbones transfer far more stably (\reftab{tab:family-aggregate}). Accepting slightly lower mixed-city PDMS becomes a reasonable price to pay for substantially smaller geographic failure modes. the cross-city generative study will test whether this rule survives the planner swap; we record it here as the working summary of the thesis's practical claim.
+Even before the cross-city generative study is populated, the project already supports a practical summary. On standard mixed-city training, SSL costs roughly a percentage point of PDMS relative to the strongest supervised all-city configuration (see the generative-planning gaps in \reftab{tab:diffusiondrive-allcity}). Under explicit city shift, that trade-off reverses: the representation becomes the dominant term, and frozen SSL backbones transfer far more stably (\reftab{tab:family-aggregate}). Accepting slightly lower mixed-city PDMS becomes a reasonable price to pay for substantially smaller geographic failure modes. The cross-city generative study tests whether this rule survives the planner swap; until that matrix completes, the rule is a completed claim about the lightweight and benchmark studies, not about planner invariance.
 
 % ============================================================================
 \section{Why Does SSL Improve Driving Planning?}
@@ -602,6 +608,10 @@ First, trainable supervised backbones drift toward city-discriminative cues. A l
 Second, across the full 188-run roster the simple probe-vs-drop correlation is weak ($\rho = -0.13$, Fig.~\ref{fig:probe-vs-ood}) because training-city confounds dominate and because the MAE family --- the OOD winner by several points --- has moderately high probe accuracy without paying a generalization cost. MAE frozen LatTF (OOD drop 6.9, total PDMS 64.2) is the best family in the roster despite probing higher than DINOv2 and I-JEPA. The pretraining objective therefore matters beyond its effect on probe accuracy: the masked-autoencoder objective produces features that are both city-discriminable and city-robust, because it optimizes for reconstruction of scene content rather than for an embedding distance that can be minimized by discarding structure.
 
 Third, the frozen constraint is itself load-bearing. Fine-tuning compresses feature-covariance rank for every SSL family (MAE 72$\rightarrow$47, I-JEPA 69$\rightarrow$47, DINOv2 60$\rightarrow$52--65), and in the worst cases produces an outright collapse to effective rank $<5$ (A6-b I-JEPA, A7-b DINOv2, P1-D2 DINOv2). The collapsed runs lose their probe-accuracy and MMD signals simultaneously --- with only two or three nontrivial feature directions left, the linear probe cannot separate cities and the RBF kernel cannot resolve distributions. Preserving the pretrained rank structure is, empirically, what keeps the SSL representation useful for transfer; the frozen SSL backbones that retain it (MAE ViT-B/16, I-JEPA ViT-H/14, DINOv2 ViT-S/14) are the ones that generalize.
+
+Two cautions matter for committee-facing interpretation. CKA is descriptive rather than decisive: it shows that feature-covariance structure is broadly aligned across cities, but it does not by itself explain why one family transfers better than another. MMD is a sanity check rather than a predictor: absolute values depend on the backbone-specific kernel scale and are only informative within matched comparisons. The load-bearing mechanistic evidence is therefore the matched probe ordering and the frozen-vs-trainable rank contrast, not the pooled global correlations.
+
+The confounders are also explicit. Training-city scale and traffic convention clearly affect the raw transfer matrices; Singapore is both the smallest training source and the only left-hand-traffic city. Pretraining domain and backbone capacity matter as well: domain-specific nuScenes pretraining can help independently of the SSL objective, and ViT-H versus ViT-S comparisons are not capacity matched. For that reason, the strongest causal claims in this thesis are restricted to matched settings where those variables are held fixed, and the full-roster summaries are treated as synthesis rather than as a single pooled law.
 
 Cross-city robustness in this study is therefore best summarized as three claims:
 (i) supervised backbones learn city identity almost for free, and the fraction they learn predicts their transfer deficit within matched comparisons;

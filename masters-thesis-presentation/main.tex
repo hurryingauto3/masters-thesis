@@ -388,15 +388,15 @@
     DINOv2 ViT-S/14    & nuScenes $224^2$          & 0.760          & $+0.063$ \\
     DINOv2 ViT-S/14    & nuScenes $224{\times}392$ & 0.760          & $+0.062$ \\
     DINOv2 ViT-S/14    & LVD-142M SSL              & 0.718          & $+0.050$ \\
+    I-JEPA ViT-H/14    & ImageNet-1k SSL           & 0.825          & $+0.028$ \\
     I-JEPA ViT-S/14    & nuScenes $224{\times}392$ & 0.668          & $+0.014$ \\
-    I-JEPA ViT-H/14    & ImageNet-1k SSL           & \emph{pending}   & --- \\
     \bottomrule
   \end{tabular}
   \vspace{6pt}
   \begin{itemize}\footnotesize
-    \item \textbf{MAE sweeps the top three slots} under full fine-tuning --- the reconstructive objective adapts best to end-to-end gradient flow.
+    \item \textbf{MAE still leads}, but I-JEPA ViT-H/14 now closes at \textbf{0.825} with the \emph{smallest} adaptation lift in the table.
     \item Biggest lift: I-JEPA ViT-S/14 square at $+9.4$\,pp. ResNet-34 lifts $+8.2$\,pp.
-    \item Rectangular I-JEPA stuck at $+1.4$\,pp (flagged as optimizer-instability row).
+    \item ViT-H/14 adds only $+2.8$\,pp over its frozen row --- evidence that the weak MLP head already extracts most of the usable signal.
   \end{itemize}
 \end{frame}
 
@@ -542,9 +542,9 @@
 \end{frame}
 
 % -----------------------------------------------------------------------------
-\begin{frame}{Generative-planning study --- in-distribution baseline}
+\begin{frame}{Generative-planning study --- completed in-distribution baseline}
   \centering\footnotesize
-  All-city NAVSIM (under re-verification on \texttt{feat/navsim-v1\_1-reeval})
+  All-city NAVSIM (completed mixed-city study)
   \\[4pt]
   \begin{tabular}{@{}l l c@{}}
     \toprule
@@ -560,12 +560,12 @@
   \end{tabular}
   \vspace{10pt}
   \begin{block}{Reading}
-    $\sim$1~PDMS in-distribution gap SSL--supervised is \emph{consistent with the hostile-planner prediction}: the head has absorbed most of the backbone signal. The in-distribution cost is the setup for the cross-city punchline, not a weakness.
+    $\sim$1~PDMS in-distribution gap SSL--supervised is \emph{consistent with the hostile-planner prediction}: the head has absorbed most of the backbone signal. This is completed evidence, but it is \textbf{not} the thesis-defining result; it sets up the harder cross-city validation question.
   \end{block}
 \end{frame}
 
 % -----------------------------------------------------------------------------
-\begin{frame}{Cross-city generative study --- protocol (designed)}
+\begin{frame}{Cross-city generative study --- active validation}
   \begin{columns}[T]
     \column{0.55\textwidth}
     \textbf{Matrix}
@@ -582,9 +582,34 @@
     \end{itemize}
     \column{0.45\textwidth}
     \begin{block}{Status}
-      Matrix is scripted and queued. 100-epoch-per-config compute is the bottleneck; results are framed as future work in the thesis if incomplete by defense.
+      Matrix is scripted and running on NYU HPC. Until matched families complete, it is reported as \textbf{active validation}, not as completed thesis evidence.
     \end{block}
   \end{columns}
+\end{frame}
+
+% -----------------------------------------------------------------------------
+\begin{frame}{Completed results vs active validation}
+  \begin{columns}[T]
+    \column{0.5\textwidth}
+    \textbf{Completed and load-bearing}
+    \begin{itemize}\footnotesize
+      \item Lightweight-head diagnostic study on \texttt{navtest}.
+      \item Cross-city benchmark on LAW, TransFuser, and Latent TransFuser.
+      \item DiffusionDrive mixed-city SSL integration.
+      \item Mechanistic analysis on 188 checkpoints.
+    \end{itemize}
+    \column{0.47\textwidth}
+    \textbf{Active validation, not load-bearing}
+    \begin{itemize}\footnotesize
+      \item DiffusionDrive cross-city $4{\times}4$ matrix.
+      \item I-JEPA camera-only DiffusionDrive run.
+      \item B-series camera / fusion / head ablations.
+    \end{itemize}
+  \end{columns}
+  \vspace{6pt}
+  \begin{block}{Defense rule}
+    New runs can strengthen or narrow the thesis, but they do not rewrite the completed story presented here.
+  \end{block}
 \end{frame}
 
 % =============================================================================
@@ -592,39 +617,51 @@
 % =============================================================================
 
 \begin{frame}{Why does SSL transfer better?}
-  \textbf{Five complementary probes} applied to the cross-city Tier-A checkpoints:
+  \textbf{Four completed probes + one optional qualitative check} applied to the cross-city Tier-A checkpoints:
   \begin{enumerate}
     \item \textbf{CKA} across cities --- does the feature covariance structure align?
     \item \textbf{City-classification linear probing} --- how much city identity leaks into the representation?
     \item \textbf{MMD} between per-city feature distributions --- distance in RKHS.
     \item \textbf{Effective rank} --- does SSL maintain higher-dimensional subspaces?
-    \item \textbf{Attention-relevance maps} --- which pixels drive the planner under city shift?
+    \item \textbf{Attention maps} --- qualitative backup only, not load-bearing.
   \end{enumerate}
   \medskip
-  \begin{block}{Expected pattern}
-    SSL: higher cross-city CKA, lower linear-probe city accuracy, smaller MMD, higher effective rank. Supervised ResNet-34: the reverse. No prior end-to-end driving study combines all five under a strict geographic holdout.
+  \begin{block}{Readout discipline}
+    The committee-facing claim does \textbf{not} rely on one pooled correlation. Matched probe ordering and frozen-vs-trainable rank collapse are the strongest evidence; CKA is descriptive and MMD is a sanity check.
   \end{block}
 \end{frame}
 
 % -----------------------------------------------------------------------------
-\begin{frame}{Mechanistic analysis --- partial evidence (CKA heatmap, TBD)}
+\begin{frame}{Mechanistic analysis --- what is established}
+  \scriptsize
   \begin{columns}[T]
-    \column{0.48\textwidth}
-    \textbf{Pipeline status}
-    \begin{itemize}\footnotesize
-      \item Per-city feature-cache generator implemented at \path{scripts/phase4_mechanistic/}.
-      \item CKA kernel and linear-probe heads implemented; waiting on HPC checkpoints.
-      \item MMD and effective rank are one-pass scalar computations on the same caches.
+    \column{0.52\textwidth}
+    \textbf{Matched Boston-only LatTF comparison}
+    \begin{tabular}{@{}lcc@{}}
+      \toprule
+      \textbf{Backbone} & \textbf{Probe} & \textbf{OOD drop} \\
+      \midrule
+      ResNet-34 & 0.97 & 16.1 \\
+      MAE       & 0.89 & 13.2 \\
+      I-JEPA    & 0.83 & 9.6 \\
+      DINOv2    & 0.81 & 6.3 \\
+      \bottomrule
+    \end{tabular}
+    \vspace{4pt}
+    \begin{itemize}
+      \item Probe ordering matches OOD-drop ordering in the matched comparison.
+      \item Pooled 188-run correlation is weak ($\rho=-0.13$), so there is no universal probe law.
     \end{itemize}
-    \column{0.48\textwidth}
-    \textbf{Placeholder figure}
-    \smallskip
-    \\\footnotesize $4 \times 4$ city $\times$ city heatmap per backbone family. Frozen SSL expected darker (higher similarity) off-diagonal; supervised expected lighter.
+    \column{0.44\textwidth}
+    \textbf{Frozen vs.\ trainable}
+    \begin{itemize}
+      \item Fine-tuning compresses feature rank for every SSL family.
+      \item Worst collapses: A6-b I-JEPA rank $2.9$, A7-b DINOv2 rank $1.2$.
+      \item MAE is the nuance: higher probe than I-JEPA / DINOv2, yet best family-level OOD drop.
+    \end{itemize}
   \end{columns}
-  \vspace{6pt}
-  \begin{block}{Appendix caveat}
-    Full decomposition requires reachable per-scenario evaluation JSONs on NYU Greene. Pipeline runs autonomously once the cluster is reachable.
-  \end{block}
+  \vspace{4pt}
+  \textbf{Claim boundary.} Matched probe ordering and frozen-vs-trainable rank contrast are load-bearing; CKA and MMD are supporting evidence.
 \end{frame}
 
 % =============================================================================
@@ -633,21 +670,35 @@
 
 \begin{frame}{Contributions}
   \begin{enumerate}
-    \item \textbf{NAVSIM City Splits benchmark.} First per-city train/test partitioning of NAVSIM across four cities. The protocol the rest of the thesis is built on.
-    \item \textbf{Cross-city SSL benchmark.} 11 backbones $\times$ 2 adaptation modes $\times$ 4 cities on LAW, TransFuser, Latent TransFuser. Supervised $\to$ SSL reduces open-loop transfer inflation by an order of magnitude.
-    \item \textbf{Exploratory lightweight-head agent.} Backbone-agnostic \texttt{LightweightPlanningAgent} with 45 runs pinned at minimum planner capacity; isolates representation from planner.
-    \item \textbf{DiffusionDrive + SSL integration.} First camera-only SSL + truncated-diffusion planner on NAVSIM; matches camera+LiDAR ResNet within $\approx 1$ PDMS.
-    \item \textbf{Mechanistic analysis framework.} CKA, linear probing, MMD, effective rank, and attention-relevance applied to driving backbones under strict city holdout.
+    \item \textbf{Representation-centered city-split framing.} The thesis argues that pooled evaluation hides the real robustness question; city-disjoint evaluation exposes it.
+    \item \textbf{Exploratory lightweight-head study.} \texttt{LightweightPlanningAgent} isolates backbone quality from planner capacity across 45 runs.
+    \item \textbf{Completed DiffusionDrive + SSL study.} SSL backbones survive a planner swap in-distribution under a head that attenuates backbone signal.
+    \item \textbf{Mechanistic synthesis.} Matched probe ordering, rank-collapse under fine-tuning, and objective-specific nuance explain why frozen SSL transfers better.
+    \item \textbf{Pre-registered active validation.} Cross-city generative planning is specified with a fixed success criterion rather than retrofitted after the fact.
   \end{enumerate}
+\end{frame}
+
+% -----------------------------------------------------------------------------
+\begin{frame}{My contribution vs prior joint work}
+  \begin{itemize}
+    \item \textbf{Prior joint work:} cross-city benchmark study, SSL pretraining, LAW pipeline, and the initial TransFuser / LatTF benchmark program with Fatemeh Naeinian and Haoran Zhu.
+    \item \textbf{My thesis-specific work:} lightweight-head agent and experiment matrix, NAVSIM-side adapter hardening, DiffusionDrive SSL integration, mechanistic analysis pipeline and synthesis, manuscript and defense framing.
+    \item \textbf{Boundary of authorship:} prior benchmark results are credited explicitly; I only claim direct ownership where I built the method, ran the study, or synthesized the evidence in this thesis.
+  \end{itemize}
+  \vspace{6pt}
+  \begin{block}{Committee-facing takeaway}
+    The thesis contribution is not ``I did every component alone.'' It is the representation-centered argument, the new supporting studies around it, and the mechanistic account tying them together.
+  \end{block}
 \end{frame}
 
 % -----------------------------------------------------------------------------
 \begin{frame}{Limitations}
   \begin{itemize}
-    \item Open-loop evaluation covers two cities (nuScenes); closed-loop four (NAVSIM). Broader geographies would strengthen external validity.
+    \item Evidence comes from benchmark proxy metrics; broader geographies and interactive closed-loop simulation would strengthen external validity.
     \item Weather, lighting, and seasonal effects are not disentangled from geographic shift.
     \item Single training runs per cell; variance across seeds is not measured.
-    \item Domain-specific pretraining is on nuScenes only; extending to \texttt{navtrain} or video SSL (V-JEPA) is future work.
+    \item Domain-specific pretraining is on nuScenes only; separating SSL-objective effects from pretraining-domain effects remains open.
+    \item Completed DiffusionDrive evidence is mixed-city only; cross-city generative transfer is active validation, not yet a completed result.
     \item RL post-training (GRPO, DPO) is out of scope for this thesis.
   \end{itemize}
 \end{frame}

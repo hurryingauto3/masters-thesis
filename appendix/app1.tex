@@ -16,7 +16,7 @@ Both tables share the same layout. Every row is one trained checkpoint; each cel
 
 NAVSIM's aggregate PDMS is the product of five sub-scores: No at-fault Collisions (NC), Drivable Area Compliance (DAC), Ego Progress (EP), Time-To-Collision (TTC), and Comfort. The main-text matrices report only the aggregate; in this appendix we decompose the Tier-A rows into their five components to expose which failure modes dominate cross-city transfer.
 
-\textbf{Status note:} the full per-metric decomposition requires access to the per-scenario evaluation JSONs on the NYU Greene HPC cluster, stored under the \texttt{experiments/evaluations/} tree in the author's scratch directory, which were temporarily unreachable at the time this first-pass manuscript was compiled. The decomposition pipeline is implemented at \path{scripts/phase4_mechanistic/extract_per_metric.py} and will populate the 5-panel table and figure below once the cluster is reachable again:
+\textbf{Status note:} the full per-metric decomposition requires access to the per-scenario evaluation JSONs on the NYU Greene HPC cluster, stored under the \path{experiments/evaluations/} tree in the author's scratch directory. The extraction pipeline is implemented at \path{scripts/phase4_mechanistic/extract_per_metric.py}, but the resulting table is not used in any thesis claim. If the remaining evaluation JSONs are recovered before archival submission, the appendix table can be populated without changing the main conclusions:
 
 \begin{itemize}
     \item \textbf{DAC and EP} are expected to degrade the most under geographic transfer because both are lane-geometry-aware and lane paint, lane width, and turn radii differ systematically between the four cities.
@@ -24,7 +24,7 @@ NAVSIM's aggregate PDMS is the product of five sub-scores: No at-fault Collision
     \item \textbf{Comfort} should be weakly city-dependent and dominated by speed-profile smoothness.
 \end{itemize}
 
-The thesis text only makes aggregate-PDMS claims, so this appendix is a reviewer aid rather than a load-bearing result. The quantitative decomposition will be incorporated as a revision before submission.
+The thesis text only makes aggregate-PDMS claims, so this appendix is a reviewer aid rather than a load-bearing result. The quantitative decomposition can be added later without altering any committee-facing conclusion in the main text.
 
 % ============================================================================
 \section{NAVSIM City Splits Data Card}
@@ -34,7 +34,7 @@ This data card documents the scene-count imbalance inherent in the nuPlan-derive
 
 \input{appendix/tab_city_splits}
 
-The imbalance is severe: Las Vegas contributes 818 training logs against Singapore's 97. This is a consequence of the original nuPlan capture plan rather than a decision on our part; the NAVSIM benchmark inherits the imbalance directly. For every the cross-city benchmark single-city result where the Singapore-trained row underperforms, the reader should ask whether the effect reflects a representation difference or a data-scale difference. Our mechanistic feature-rank analysis (\refsec{sec:exp-implicit-reg}) finds that the three most extreme feature-rank collapses involve either trainable ViTs on all-city data (which is not the small-data regime) or frozen ViTs on single-city \emph{non-Singapore} runs --- so the small-data hypothesis is not a clean explanation. Still, the imbalance is a confounder the reader should hold in mind; disentangling it fully requires a data-efficiency study that is out of scope for this thesis.
+The imbalance is severe: Las Vegas contributes 818 training logs against Singapore's 97. This is a consequence of the original nuPlan capture plan rather than a decision on our part; the NAVSIM benchmark inherits the imbalance directly. For every cross-city benchmark single-city result where the Singapore-trained row underperforms, the reader should ask whether the effect reflects a representation difference or a data-scale difference. Our mechanistic feature-rank analysis (\refsec{sec:exp-implicit-reg}) finds that the three most extreme feature-rank collapses involve either trainable ViTs on all-city data (which is not the small-data regime) or frozen ViTs on single-city \emph{non-Singapore} runs --- so the small-data hypothesis is not a clean explanation. Still, the imbalance is a confounder the reader should hold in mind; disentangling it fully requires a data-efficiency study that is out of scope for this thesis.
 
 % ============================================================================
 \section{Per-Study Hyperparameter Tables}

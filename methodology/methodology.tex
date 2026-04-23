@@ -110,11 +110,11 @@ The exploratory regime emits a structured experiment matrix rather than a list o
 \begin{figure}[ht]
     \centering
     \begin{tikzpicture}[
-        node distance = 5mm and 10mm,
+        node distance = 7mm and 10mm,
         tier/.style = {draw, rounded corners=3pt, minimum height=10mm, minimum width=80mm, align=center, font=\small},
         t1/.style = {fill=black!10},
         t2/.style = {fill=black!5},
-        arrow/.style = {-{Stealth[length=2mm]}, thick, gray},
+        arrow/.style = {-{Stealth[length=1.8mm]}, semithick, gray!70, shorten >=7pt, shorten <=3pt},
     ]
         \node[tier, t1] (p1) {\textbf{Priority 1}\\11 backbones $\times$ frozen, MLP, front1 (10 runs)};
         \node[tier, t2, below=of p1] (p2) {\textbf{Priority 2}\\4 backbones $\times$ 4 training cities + 4 fusion-ablation variants (20 runs)};
@@ -591,7 +591,7 @@ The consequence for interpretation is that small absolute PDMS differences under
 
 The central repro-fairness commitment of the generative-planning study is that the SSL backbone is plugged into DiffusionDrive through the \emph{same} adapter used in the cross-city benchmark. In code, both pipelines import \texttt{create\_image\_encoder} from the TransFuser backbone module (\ref{sec:meth-backbones}); DiffusionDrive's image-encoder configuration is a drop-in replacement at the same interface. There is no bespoke DiffusionDrive-specific ViT adapter, no resolution-specific branch divergence, and no "feature pyramid up-sampling" patch that is applied here but not in the cross-city benchmark.
 
-This matters because it forecloses the obvious alternative explanation for any observed effect: "maybe DiffusionDrive sees the backbone more richly because its adapter is different." The adapter is held fixed, and the head is the single manipulated variable between the cross-city benchmark and this study. An ablation branch (\texttt{fix/vit-architecture-bottlenecks}) explores a set of ViT-specific resolution-matching commits that could, in principle, further narrow the backbone--planner gap; those commits are \emph{not} merged into the thesis's main branch and \emph{not} applied to any run reported here, so reproducibility under the same adapter is preserved.
+This matters because it forecloses the obvious alternative explanation for any observed effect: "maybe DiffusionDrive sees the backbone more richly because its adapter is different." The adapter is held fixed, and the head is the single manipulated variable between the cross-city benchmark and this study. A separate ViT-bottleneck ablation branch explores resolution-matching commits that could, in principle, further narrow the backbone--planner gap; those commits are \emph{not} merged into the thesis's main branch and \emph{not} applied to any run reported here, so reproducibility under the same adapter is preserved.
 
 Integration otherwise follows the minimal recipe:
 \begin{itemize}
