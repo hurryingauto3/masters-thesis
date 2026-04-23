@@ -11,9 +11,170 @@
 \section{Exploratory Lightweight-Head Regime}
 \label{sec:meth-lightweight-head}
 
-The project began with an intentionally simple experimental regime: pair a pretrained visual backbone with a lightweight planning head and ask whether the representation alone already improves end-to-end driving behavior. The earliest version of this regime used a simple MLP waypoint regressor over image features and ego state. Its role was diagnostic rather than competitive. By minimizing planner capacity, it made it easier to attribute downstream changes to the backbone itself.
+The project began with an intentionally simple experimental regime: pair a pretrained visual backbone with a lightweight planning head and ask whether the representation alone already improves end-to-end driving behavior. This regime is deliberately minimal. By holding planner capacity fixed at its lowest meaningful level and varying only the backbone, any change in downstream performance is attributable to the representation rather than to the planner. The chapter continues from this starting point; understanding the lightweight regime is therefore a prerequisite for the cross-city experiments in~\ref{sec:meth-city-splits} and the generative-head experiments in Phase 2.
 
-This regime remains important in the final thesis for two reasons. First, it explains why the thesis is fundamentally about representations rather than planner engineering. Second, it provides the historical starting point for the later pivot in scope. Once Drive-JEPA~\cite{wang-drive-jepa} demonstrated that V-JEPA pretraining plus a lightweight decoder could already be highly competitive on standard NAVSIM, the thesis moved away from asking whether SSL can improve in-distribution PDMS and toward the harder question of where that representational advantage remains uniquely informative.
+\subsection{Role in the Thesis}
+\label{sec:meth-lh-role}
+
+Three questions motivated the exploratory regime. First, whether the in-distribution improvement of SSL over supervised backbones reported in related work~\cite{wang-drive-jepa, naeinian-cross-city-2026} survives when the planner is stripped to a waypoint regressor. Second, whether different SSL objectives (I-JEPA, DINOv2, MAE) separate from one another under the same head, or whether their differences require a heavier planner to become visible. Third, whether fine-tuning the backbone helps or hurts relative to freezing it, once the planning head is this small. The answers to those questions set the prior for every subsequent planner choice in the thesis.
+
+The answer from Drive-JEPA~\cite{wang-drive-jepa} reframed the scope. Their result that V-JEPA plus a lightweight decoder is already competitive on standard NAVSIM argued that in-distribution PDMS on the pooled benchmark is close to saturation for SSL methods. The exploratory regime therefore serves less as a competitive submission and more as a controlled baseline: it produces the head-fixed, backbone-varying numbers against which the cross-city and diffusion-head studies measure their own contributions.
+
+\subsection{Agent Architecture}
+\label{sec:meth-lh-arch}
+
+The exploratory planner is a single configurable agent, \texttt{LightweightPlanningAgent}, whose components are wired through a dataclass configuration so that a backbone, a multi-view fusion rule, and a planning head can be swapped independently. \reffig{fig:method-lh-arch} shows the forward path.
+
+\begin{figure}[ht]
+    \centering
+    \resizebox{\linewidth}{!}{%
+    \begin{tikzpicture}[
+        node distance = 4mm and 5mm,
+        box/.style = {draw, rounded corners=2pt, minimum height=8mm, minimum width=18mm, align=center, font=\scriptsize},
+        ssl/.style = {fill=black!5},
+        arrow/.style = {-{Stealth[length=1.8mm]}, thick},
+    ]
+        \node[box] (cams) {Cameras\\$V \in \{1,3,6\}$};
+        \node[box, right=of cams, ssl] (enc) {Backbone\\(ResNet / ViT)};
+        \node[box, right=of enc] (tok) {Tokens\\$B{\times}V{\times}N{\times}C$};
+        \node[box, right=of tok, ssl] (fus) {View fusion\\$f_\text{view}$};
+        \node[box, right=of fus] (vis) {Visual\\$B{\times}C$};
+        \node[box, below=8mm of fus] (ego) {Ego\\$B{\times}8$};
+        \node[box, right=of vis, ssl] (head) {Head\\(MLP / Tx.)};
+        \node[box, right=of head] (traj) {Trajectory\\$B{\times}T{\times}3$};
+        \draw[arrow] (cams) -- (enc);
+        \draw[arrow] (enc) -- (tok);
+        \draw[arrow] (tok) -- (fus);
+        \draw[arrow] (fus) -- (vis);
+        \draw[arrow] (vis) -- (head);
+        \draw[arrow] (ego) -| (head);
+        \draw[arrow] (head) -- (traj);
+    \end{tikzpicture}}
+    \caption{The \texttt{LightweightPlanningAgent} forward path. A camera set is encoded by a shared backbone into per-view patch tokens, fused into a single visual vector by one of five interchangeable rules, concatenated with ego status, and decoded to $T{=}8$ waypoints. Shaded blocks are the components swapped during ablations; unshaded blocks are fixed.}
+    \label{fig:method-lh-arch}
+\end{figure}
+
+Every block in \reffig{fig:method-lh-arch} is addressable by configuration. The camera set is selected by a \texttt{camera\_mode} field that resolves to one, three, or six nuPlan views. The backbone is constructed by the same \texttt{create\_image\_encoder} factory used in the TransFuser and DiffusionDrive variants of~\ref{sec:meth-backbones}; it accepts any backbone in \reftab{tab:backbones} and exposes an \texttt{unfreeze\_last\_blocks} hook for encoder-fine-tune ablations. The view-fusion module $f_\text{view}$ consumes a $(B, V, N, C)$ token tensor and returns a $(B, C)$ summary; five implementations are available. The head consumes $[\text{visual} \;\|\; \text{ego}]$ and emits eight poses. Keeping the interface narrow at each seam lets the experiment matrix vary one factor at a time.
+
+\subsection{Design Decisions}
+\label{sec:meth-lh-design}
+
+Four design axes are load-bearing and are reused later in the chapter. Each axis is exposed as a named field on \texttt{LightweightHeadConfig} and selected by a single Hydra override. \reftab{tab:meth-lh-design} enumerates the choice space and the rationale for each axis.
+
+\begin{table}[ht]
+\centering
+\caption{Configuration axes of the lightweight-head agent. Each field is a top-level key in \texttt{LightweightHeadConfig}; values are the Hydra strings used at the command line.}
+\label{tab:meth-lh-design}
+\small
+\renewcommand{\arraystretch}{1.2}
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.2cm} >{\raggedright\arraybackslash}p{3.3cm} >{\raggedright\arraybackslash}p{1.7cm} >{\raggedright\arraybackslash}p{4.3cm}@{}}
+\toprule
+\textbf{Axis} & \textbf{Values} & \textbf{Default} & \textbf{Rationale} \\
+\midrule
+\texttt{backbone} &
+  \texttt{resnet}, \texttt{ijepa}, \texttt{dinov2}, \texttt{mae} &
+  \texttt{ijepa} &
+  Single \texttt{create\_} \texttt{image\_encoder} factory shared with Trans\-Fuser and Diffusion\-Drive. \\
+\texttt{vit\_backend} &
+  \texttt{huggingface}, \texttt{custom} &
+  \texttt{hugging\-face} &
+  \texttt{custom} loads Meta-style checkpoints with exact 2-D sin--cos positional encodings. \\
+\texttt{trainable\_}\newline\texttt{backbone\_}\newline\texttt{fraction} &
+  $\{0.0,\ 1.0\}$ &
+  $0.0$ &
+  Frozen vs.\ fully-unfrozen only; intermediate fractions caused optimizer instability in pilots. \\
+\texttt{camera\_mode} &
+  \texttt{front1}, \texttt{front3}, \texttt{front5\_}\texttt{plus\_b} &
+  \texttt{front1} &
+  Selects 1, 3, or 6 nuPlan cameras. Heavier sets reserved for fusion ablations. \\
+\texttt{view\_fusion} &
+  \texttt{single}, \texttt{mean}, \texttt{weighted\_}\texttt{mean}, \texttt{concat\_}\texttt{proj}, \texttt{cross\_attn} &
+  \texttt{single} &
+  \texttt{cross\_attn} adds ${\approx}\,21$\,M parameters and restricts the GPU pool. \\
+\texttt{head\_type} &
+  \texttt{mlp}, \texttt{transformer} &
+  \texttt{mlp} &
+  \texttt{mlp} is the two-layer $1288{\to}256{\to}256{\to}T{\cdot}3$ regressor used for representation isolation. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Two decisions that cut across the axes in \reftab{tab:meth-lh-design} are worth calling out explicitly. First, when \texttt{trainable\_backbone\_fraction}${=}\,1.0$, the optimizer places encoder parameters in a separate group with a lower learning rate than the head, matching the two-group AdamW schedule used in~\ref{sec:meth-phase1-law}. Second, the fusion rules are defined on the same $(B, V, N, C)\to(B, C)$ signature, which means the fusion choice is a clean independent axis in the experiment matrix rather than a backbone-specific option. Both decisions carry forward into the heavier planners later in this chapter.
+
+\subsection{Exploratory Experiment Taxonomy}
+\label{sec:meth-lh-taxonomy}
+
+The exploratory regime emits a structured experiment matrix rather than a list of hand-tuned runs. Four tiers organize the matrix; they run in priority order so that the main thesis claim is answered before any expensive variant is scheduled. \reffig{fig:method-lh-matrix} summarizes the tiers.
+
+\begin{figure}[ht]
+    \centering
+    \begin{tikzpicture}[
+        node distance = 5mm and 10mm,
+        tier/.style = {draw, rounded corners=3pt, minimum height=10mm, minimum width=80mm, align=center, font=\small},
+        t1/.style = {fill=black!10},
+        t2/.style = {fill=black!5},
+        arrow/.style = {-{Stealth[length=2mm]}, thick, gray},
+    ]
+        \node[tier, t1] (p1) {\textbf{Priority 1}\\11 backbones $\times$ frozen, MLP, front1 (10 runs)};
+        \node[tier, t2, below=of p1] (p2) {\textbf{Priority 2}\\4 backbones $\times$ 4 training cities + 4 fusion-ablation variants (20 runs)};
+        \node[tier, below=of p2] (p3) {\textbf{Priority 3}\\11 backbones $\times$ fully-unfrozen, MLP, front1 (10 runs)};
+        \node[tier, below=of p3] (p4) {\textbf{Priority 4}\\3-cam / 6-cam / cross-attn / transformer-head, fully-unfrozen (5 runs)};
+        \draw[arrow] (p1) -- (p2);
+        \draw[arrow] (p2) -- (p3);
+        \draw[arrow] (p3) -- (p4);
+    \end{tikzpicture}
+    \caption{Four-tier exploratory experiment matrix (45 runs total). Tier order is enforced at submission: the Priority~1 backbone-controlled baseline runs to completion before heavier variants are scheduled. Tiers~1--2 use the flexible SLURM constraint \texttt{a100|h100|h200|l40s}; tiers~3--4 restrict to \texttt{a100|h100|h200} because fully-unfrozen ViT-H backbones do not fit on 48\,GB cards.}
+    \label{fig:method-lh-matrix}
+\end{figure}
+
+Priority~1 is the core scientific instrument of this section. Each of the backbones listed in \reftab{tab:backbones} is paired with the same frozen-encoder \texttt{mlp} head over a single front camera, trained for the same 20 epochs, and evaluated on the pooled \texttt{navtest} split. The only variable is the backbone identity. Priority~2 extends the protocol across the four nuPlan cities introduced in~\ref{sec:meth-city-splits} to produce a first cross-city readout at minimal planner capacity, and adds the \texttt{mean}, \texttt{cross\_attn}, and \texttt{weighted\_mean} fusion ablations on a fixed I-JEPA backbone to isolate the fusion axis. Priority~3 repeats the Priority~1 matrix with \texttt{trainable\_backbone\_fraction}${=}\,1.0$. Priority~4 reserves the \texttt{transformer} head and the six-camera \texttt{cross\_attn} variants. Across all 45 runs the head, loss, optimizer schedule, camera normalization, and trajectory sampling are held fixed (see \reftab{tab:meth-lh-recipe}).
+
+\subsection{Training and Evaluation Recipe}
+\label{sec:meth-lh-recipe}
+
+All 45 runs share the single recipe in \reftab{tab:meth-lh-recipe}. The recipe is intentionally minimal: no auxiliary losses (world-model, semantic, detection) are used in this regime, because any non-zero auxiliary weight would confound the representational comparison. The only hyperparameters that vary between runs are the encoder learning rate (which takes effect only when the encoder is unfrozen) and the batch size (which drops to 16 for fully-unfrozen or multi-camera runs because of memory).
+
+\begin{table}[ht]
+\centering
+\caption{Fixed training and evaluation recipe for the exploratory regime.}
+\label{tab:meth-lh-recipe}
+\small
+\renewcommand{\arraystretch}{1.15}
+\setlength{\tabcolsep}{6pt}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.8cm} >{\raggedright\arraybackslash}p{8.5cm}@{}}
+\toprule
+\textbf{Setting} & \textbf{Value} \\
+\midrule
+Input resolution      & $224 \times 224$, normalized with per-backbone processor statistics \\
+Cameras               & 1, 3, or 6 (from \texttt{camera\_mode}) \\
+Trajectory target     & 8 future poses at 0.5\,s (4\,s horizon), ego-frame $(x, y, \text{heading})$ \\
+Loss                  & $L_1$ trajectory regression; no auxiliary losses \\
+Optimizer             & AdamW, weight decay $0.0$ \\
+Head LR               & $1 \times 10^{-4}$ \\
+Encoder LR            & $3 \times 10^{-5}$ (applied only when the encoder is unfrozen) \\
+LR schedule           & Cosine, decays to $1\%$ of initial over 20 epochs \\
+Epochs                & 20 \\
+Precision             & Mixed (bfloat16 via PyTorch Lightning) \\
+Gradient clipping     & $1.0$ \\
+Batch size            & 32 (frozen, single-camera) / 16 (unfrozen or multi-camera) \\
+SLURM memory          & 128\,GB (batch 32) / 256\,GB (batch 16) \\
+Eval split            & \texttt{navtest} \\
+Eval scorer           & one-stage PDM (non-reactive) \\
+Devkit                & \texttt{v1\_0} primary; \texttt{v1\_1} re-evaluation \\
+Primary metric        & PDMS (sub-scores NC, DAC, EP, TTC, Comfort also logged) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The split, scorer, and devkit choice match the protocol in~\cite{naeinian-cross-city-2026}, which keeps the numbers in Chapter~\ref{chap:experiments} directly comparable to that prior work. The \texttt{v1\_1} re-eval is a defensive control for the eval-version sensitivity discussed in Chapter~\ref{chap:relatedwork}.
+
+\subsection{From Lightweight Head to Cross-City}
+\label{sec:meth-lh-bridge}
+
+Three observations carry forward from this regime. The lightweight \texttt{mlp} head is sufficient to discriminate backbones: with planner capacity held at its minimum, backbone choice alone moves in-distribution PDMS by several points, as reported in~\ref{sec:exp-phase0}. This means the cross-city study in the following sections can use a similarly minimal planner without risking that the reported gaps are masked by planner expressivity. The fusion interface $(B, V, N, C) \to (B, C)$ generalizes to the heavier planners later in the chapter, so the same multi-camera variants can be revisited without rewriting the agent. Finally, the same \texttt{LightweightHeadConfig} dataclass drives all 45 runs; this is what makes it practical to extend the matrix with four training cities in~\ref{sec:meth-city-splits} without a corresponding code expansion.
+
+The remaining open question, and the one~\ref{sec:meth-city-splits} takes up, is whether the backbone ordering produced by this regime on a pooled benchmark survives geographic distribution shift, or whether SSL's apparent advantage collapses once train and test cities differ. That question cannot be answered at the level of \texttt{navtest}; it requires a re-partitioning of the benchmark along city identity, which the next section builds.
 
 % ============================================================================
 \section{NAVSIM City Splits}
@@ -27,7 +188,7 @@ City labels are recovered directly from the underlying nuPlan/OpenScene log meta
 \subsection{Split Statistics and Distribution}
 \label{sec:meth-split-stats}
 
-The cross-city protocol uses the natural geographic partitions already present in the source datasets. For nuScenes~\cite{caesar-nuscenes}, the Boston split contains 390 training scenes (2.12 hours) and 77 validation scenes (0.42 hours), while Singapore contains 310 training scenes (1.68 hours) and 73 validation scenes (0.40 hours). For NAVSIM~\cite{dauner-navsim}, the city distribution is more imbalanced: Las Vegas contributes 818 training scenes and 50 evaluation scenes, Boston 255 and 62, Pittsburgh 140 and 22, and Singapore 97 and 13. These counts are large enough to expose meaningful transfer behavior while still making the data imbalance itself part of the problem; Singapore is both the smallest domain and the only left-hand-traffic environment, which makes it a particularly stringent test of transfer~\cite{naeinian-cross-city-2026}. \reffig{fig:method-city-map} illustrates the four cities schematically alongside their train/test scene counts; the full data card is in \refapp{app:city-data-card}.
+The cross-city protocol uses the natural geographic partitions already present in the source datasets. For nuScenes~\cite{caesar-nuscenes-2020}, the Boston split contains 390 training scenes (2.12 hours) and 77 validation scenes (0.42 hours), while Singapore contains 310 training scenes (1.68 hours) and 73 validation scenes (0.40 hours). For NAVSIM~\cite{dauner-navsim-2024}, the city distribution is more imbalanced: Las Vegas contributes 818 training scenes and 50 evaluation scenes, Boston 255 and 62, Pittsburgh 140 and 22, and Singapore 97 and 13. These counts are large enough to expose meaningful transfer behavior while still making the data imbalance itself part of the problem; Singapore is both the smallest domain and the only left-hand-traffic environment, which makes it a particularly stringent test of transfer~\cite{naeinian-cross-city-2026}. \reffig{fig:method-city-map} illustrates the four cities schematically alongside their train/test scene counts; the full data card is in \refapp{app:city-data-card}.
 
 \begin{figure}[ht]
     \centering
@@ -80,18 +241,130 @@ which equals 1 for perfect preservation and grows as transfer degrades~\cite{nae
 \section{SSL Pre-Training Protocol}
 \label{sec:meth-ssl-pretraining}
 
-To isolate the effect of the self-supervised objective from architecture and capacity, the Phase 1 protocol in~\cite{naeinian-cross-city-2026} performs domain-specific pretraining on nuScenes using the same ViT-S/14 backbone for I-JEPA, DINOv2-style distillation, and MAE. The goal is not to maximize absolute benchmark performance during pretraining, but to create matched representation initializations whose downstream behavior can be compared fairly under city transfer.
+All domain-specific SSL pretraining used in this thesis was carried out by Fatemeh Naeinian, first author of the prior IROS benchmark study~\cite{naeinian-cross-city-2026}, on a shared pretraining repository maintained for this collaboration. This section documents the recipe she followed, which is the protocol under which every nuScenes-pretrained ViT-S/14 backbone in Chapters~\ref{chap:methodology} and~\ref{chap:experiments} was produced. The goal of the protocol is not to maximize absolute benchmark performance during pretraining; it is to create matched representation initializations whose downstream behavior can be compared fairly under city transfer. Holding the architecture, data, schedule, and input resolution fixed across three SSL families is what turns the backbone comparisons in Chapter~\ref{chap:experiments} into a controlled intervention rather than an uncontrolled family comparison.
 
-\begin{itemize}
-    \item \textbf{Architecture}: ViT-S/14 for all domain-specific SSL runs
-    \item \textbf{Pre-training data}: nuScenes training split (driving images)
-    \item \textbf{Views and resolution}: all six camera views, with both square $224 \times 224$ and rectangular $224 \times 392$ inputs
-    \item \textbf{Training}: 100 epochs with AdamW and cosine learning-rate scheduling
-    \item \textbf{Hardware}: 2$\times$ H200 GPUs
-    \item \textbf{Batch size}: 64 per GPU
-\end{itemize}
+\subsection{Common Setup: Dataset, Architecture, and Input Geometry}
+\label{sec:meth-ssl-common}
 
-Rectangular inputs preserve the native geometry of the driving scene, while square inputs align better with common ImageNet-style ViT pretraining. The comparison between those two settings turns out to matter empirically, particularly for I-JEPA under cross-city transfer~\cite{naeinian-cross-city-2026}. For generic large-scale pretraining, we use released ImageNet-scale checkpoints without additional driving-specific adaptation.
+The three pretraining recipes share a common substrate. The pretraining source is the nuScenes training split~\cite{caesar-nuscenes-2020}, expanded to all six camera rigs (\texttt{CAM\_FRONT}, \texttt{CAM\_FRONT\_LEFT}, \texttt{CAM\_FRONT\_RIGHT}, \texttt{CAM\_BACK}, \texttt{CAM\_BACK\_LEFT}, \texttt{CAM\_BACK\_RIGHT}) rather than the front camera alone. This yields \(168{,}780\) RGB frames. Using every camera matters for two reasons. It increases the pretraining signal roughly six-fold relative to a front-only protocol, and it exposes the encoder to the full driving field of view that downstream planners will see, including side and rear cameras whose statistics differ from front-facing ImageNet pretraining. All frames are normalized with the ImageNet RGB mean and standard deviation; no colour jitter, Gaussian blur, or heavy photometric augmentation is applied, because such augmentations bias the invariance set of the representation toward classification tasks and are not load-bearing for driving planning.
+
+The model architecture is ViT-S/14~\cite{dosovitskiy-vit-2021}: patch size \(14\), embedding dimension \(384\), depth \(12\), \(6\) heads. ViT-S/14 is deliberately smaller than the off-the-shelf ImageNet baselines used in the comparison (I-JEPA ViT-H/14, DINOv2 ViT-L/14, MAE ViT-L/16), because the domain-specific runs are compute-bounded on a single H200 and because the relevant question is whether driving-domain pretraining at a smaller scale can match or exceed a much larger generic pretraining under geographic transfer.
+
+The input geometry is a controlled variable. Each of the three SSL objectives is pretrained in two resolutions: a canonical \emph{square} \(224 \times 224\) crop that mirrors ImageNet convention, and a \emph{rectangular} \(224 \times 392\) crop whose aspect ratio matches the native driving cameras more closely. A rectangular pretraining ingests horizontal context (sidewalks, adjacent lanes, oncoming traffic) that a square crop discards; a square pretraining is cheaper and compatible with a larger pool of released ViT checkpoints. Both variants are trained to completion so that the subsequent transfer study can disentangle the contribution of the SSL objective from the contribution of input geometry. \reftab{tab:meth-ssl-common} summarizes the substrate.
+
+\begin{table}[ht]
+\centering
+\caption{Shared pretraining substrate for all three SSL objectives (I-JEPA, DINOv2, MAE).}
+\label{tab:meth-ssl-common}
+\small
+\renewcommand{\arraystretch}{1.2}
+\setlength{\tabcolsep}{6pt}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.8cm} >{\raggedright\arraybackslash}p{8.5cm}@{}}
+\toprule
+\textbf{Setting} & \textbf{Value} \\
+\midrule
+Source dataset            & nuScenes~\cite{caesar-nuscenes-2020} training split \\
+Camera views              & All six (\texttt{CAM\_FRONT}, \texttt{CAM\_FRONT\_\{LEFT,RIGHT\}}, \texttt{CAM\_BACK}, \texttt{CAM\_BACK\_\{LEFT,RIGHT\}}) \\
+Frames                    & 168{,}780 RGB images \\
+Normalization             & ImageNet mean / std \\
+Photometric augmentation  & None (no color jitter, no Gaussian blur) \\
+Backbone                  & ViT-S/14 (patch 14, $D{=}384$, $L{=}12$, $6$ heads) \\
+Input resolutions         & $224 \times 224$ (square) and $224 \times 392$ (rectangular) \\
+Epochs                    & 100 \\
+Optimizer                 & AdamW with cosine schedule \\
+Hardware                  & 1$\times$ H200 (80\,GB) per run \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{I-JEPA: Predictive Latent Pretraining}
+\label{sec:meth-ssl-ijepa}
+
+The I-JEPA implementation is a fork of the official Meta release~\cite{assran-ijepa-2023}, vendored into the pretraining repository and adapted to consume the nuScenes pickle instead of ImageNet. The objective is exactly the one introduced in Section~\ref{sec:bg-ijepa}: a context encoder $f_\theta$ processes a visible context block covering \(85\)--\(100\%\) of the image; a predictor $g_\phi$ uses the context features to predict the latent representations that a target encoder $f_{\bar\theta}$ computes for four target blocks, each covering \(15\)--\(20\%\) of the image, at aspect ratios sampled uniformly from \([0.75, 1.5]\). Target masking is spatially coherent rather than random per-patch, which biases the pretext task toward semantic layout. The loss is the MSE in latent space, and no pixel-level reconstruction path exists.
+
+The target encoder $f_{\bar\theta}$ is an exponential moving average of $f_\theta$ with a momentum scheduled linearly from \(0.996\) at iteration zero to \(1.0\) at the end of training. The optimizer is AdamW with base learning rate \(1 \times 10^{-3}\), warmup to \(2 \times 10^{-4}\) over 40 epochs, weight decay scheduled linearly from \(0.04\) to \(0.4\), and a final learning rate of \(1 \times 10^{-6}\). Checkpoints are serialized as \texttt{.pth.tar} files with keys \texttt{encoder}, \texttt{target\_encoder}, and \texttt{predictor}; downstream consumers load the \texttt{target\_encoder} weights, which match the published convention in~\cite{assran-ijepa-2023}.
+
+\subsection{DINOv2: Self-Distillation Pretraining}
+\label{sec:meth-ssl-dinov2}
+
+The DINOv2 implementation is a fork of the official Meta release~\cite{oquab-dinov2-2024}, modified to accept the nuScenes pickle via a \texttt{NuScenesFromPKL} wrapper and to fix the patch size to \(14\) (the stock release uses patch \(16\)) so that it matches the I-JEPA and MAE configurations. The objective is student--teacher self-distillation with multi-crop augmentation: two global crops at the native resolution and six local crops at \(96 \times 96\) are extracted per image; the student encoder processes all crops and the teacher encoder processes only the global ones; the student is trained to match the teacher's softmax-normalized prototype distribution with temperature \(0.1\) (student) and \(0.04\) (teacher). Patch-level iBOT loss is disabled in this configuration because its pretraining benefit does not transfer cleanly to the small driving corpus. The teacher is an EMA of the student at base momentum \(0.9985\).
+
+Optimization is AdamW at base learning rate \(2 \times 10^{-3}\) (single-GPU scale; the canonical multi-GPU recipe uses \(4 \times 10^{-3}\)), with a 10-epoch linear warmup, cosine decay, weight decay \(0.04 \to 0.4\), gradient clipping at \(3.0\), and FP16 mixed precision. Batch size is \(768\) per H200. Checkpoints are serialized as \texttt{.pth} with a \texttt{student} sub-dictionary (wrapped by \texttt{MultiCropWrapper}) and a \texttt{teacher} sub-dictionary; downstream transfer extracts the teacher backbone state.
+
+\subsection{MAE: Masked Reconstruction Pretraining}
+\label{sec:meth-ssl-mae}
+
+The MAE implementation is a fork of the official Meta release~\cite{he-mae-2022}, with a \texttt{Masked\-Autoencoder\-ViT} variant whose patch embedding and positional embeddings are adapted to the \(224 \times 392\) rectangular input. The objective is the canonical masked-patch pixel-reconstruction task. For each image, \(75\%\) of the patches are masked uniformly at random; the encoder processes only the visible patches; a lightweight decoder (depth \(8\), embedding \(512\), \(16\) heads) reconstructs the pixel values at the masked positions under an MSE loss. No EMA teacher is involved because the MAE objective is pixel-level and single-pathway.
+
+The optimizer is AdamW at base learning rate \(1.5 \times 10^{-4}\) with the standard linear scaling by effective batch size, cosine decay to a minimum learning rate of zero, a 40-epoch linear warmup, and weight decay \(0.05\). Batch size is \(768\) per H200; training uses 16 dataloader workers with pinned memory and a prefetch factor of 4. Checkpoints are serialized as \texttt{.pth} with a single \texttt{model} sub-dictionary; downstream transfer loads the encoder portion.
+
+\subsection{Method-Level Comparison}
+\label{sec:meth-ssl-compare}
+
+\reftab{tab:meth-ssl-methods} summarizes the three objectives along the axes that matter for downstream transfer: what is masked, where the loss lives, whether a teacher is involved, and how the pretrained checkpoint is consumed at transfer time. All three are trained on the same corpus, the same backbone, and the same schedule length, so differences reported in Chapter~\ref{chap:experiments} reflect differences in the objective rather than in data or capacity.
+
+\begin{table}[ht]
+\centering
+\caption{Domain-specific SSL pretraining configurations. All three runs use ViT-S/14 on nuScenes (168{,}780 frames, six cameras) for 100 epochs on one H200 GPU.}
+\label{tab:meth-ssl-methods}
+\small
+\renewcommand{\arraystretch}{1.2}
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{2.4cm} >{\raggedright\arraybackslash}p{3.4cm} >{\raggedright\arraybackslash}p{3.1cm} >{\raggedright\arraybackslash}p{3.6cm}@{}}
+\toprule
+\textbf{Axis} & \textbf{I-JEPA} & \textbf{DINOv2} & \textbf{MAE} \\
+\midrule
+Objective &
+  Predict target-block latents from context &
+  Match student-teacher softmax over prototypes &
+  Reconstruct masked pixels \\
+Loss domain &
+  Latent space (MSE) &
+  Cross-entropy on prototype distribution &
+  Pixel space (MSE) \\
+Masking / crops &
+  1 context block ($85$--$100\%$); 4 target blocks ($15$--$20\%$) &
+  2 global crops + 6 local $96{\times}96$ crops &
+  $75\%$ random patch mask \\
+Teacher &
+  EMA, momentum $0.996\!\to\!1.0$ &
+  EMA, base momentum $0.9985$ &
+  None \\
+Base LR &
+  $1\!\times\!10^{-3}$ &
+  $2\!\times\!10^{-3}$ &
+  $1.5\!\times\!10^{-4}$ \\
+Warmup &
+  40 epochs &
+  10 epochs &
+  40 epochs \\
+Weight decay &
+  $0.04 \to 0.4$ linear &
+  $0.04 \to 0.4$ linear &
+  $0.05$ \\
+Batch size &
+  128--512 (H200) &
+  768 (H200) &
+  768 (H200) \\
+Checkpoint key &
+  \texttt{target\_encoder} &
+  \texttt{teacher} (backbone) &
+  \texttt{model} (encoder) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Rectangular vs.\ Square Inputs}
+\label{sec:meth-ssl-rect}
+
+The rectangular-input variants exist because the three cross-city camera splits in Chapter~\ref{chap:experiments} are captured at native aspect ratios that are closer to \(16{:}9\) than to \(1{:}1\). Cropping driving frames to square either discards \(42\%\) of the horizontal field of view (if the crop is centered) or introduces a strong centering bias (if the crop is randomized). Both are representationally costly. The \(224 \times 392\) rectangular variant is therefore the configuration that actually matches the downstream planners' input; the \(224 \times 224\) square variant is kept as a control because it allows a like-for-like comparison with ImageNet-pretrained ViT checkpoints and because prior work~\cite{wang-drive-jepa} pretrained square.
+
+Implementing rectangular inputs requires two adjustments that the SSL libraries do not support out of the box. First, the patch embedding module is rewritten to accept a non-square grid: for \(224 \times 392\) at patch size \(14\), the patch grid is \(16 \times 28\) rather than \(16 \times 16\). Second, the positional embedding is regenerated at the rectangular grid rather than bicubically interpolated from a square pretraining, which preserves the exact \((x, y)\) prior rather than inheriting an anisotropically-warped one. Both adjustments land in the rectangular forks (\texttt{ijepa-rect/}, \texttt{dinov2-rect/}, \texttt{mae-rect/}) and are documented in~\cite{naeinian-cross-city-2026}. The downstream transfer code in Chapter~\ref{chap:methodology} consumes both variants through the same factory (Section~\ref{sec:meth-backbones}); the \texttt{vit\_backend}${=}\,\texttt{custom}$ path is the one that handles exact positional embeddings for rectangular pretrained checkpoints.
+
+\subsection{Reference ImageNet Checkpoints}
+\label{sec:meth-ssl-imagenet}
+
+For the large-scale ImageNet-pretrained baselines (I-JEPA ViT-H/14, DINOv2 ViT-L/14, MAE ViT-L/16) the thesis uses the original authors' released weights without additional pretraining. Including these baselines controls for the confound that any observed SSL advantage on nuScenes might simply reflect model scale rather than pretraining-domain match. Their exact model identifiers and feature dimensions are reused verbatim from \reftab{tab:backbones}.
 
 % ============================================================================
 \section{SSL Backbone Integration}
@@ -137,56 +410,160 @@ Because the backbones emit features with different dimensionality and structure,
 
 \begin{figure}[ht]
     \centering
+    \resizebox{\linewidth}{!}{%
     \begin{tikzpicture}[
-        node distance = 5mm and 7mm,
-        box/.style = {draw, rounded corners=2pt, minimum height=8mm, minimum width=26mm, align=center, font=\small},
-        shape/.style = {font=\scriptsize\ttfamily, gray},
-        arrow/.style = {-{Stealth[length=2mm]}, thick},
+        node distance = 4mm and 5mm,
+        box/.style = {draw, rounded corners=2pt, minimum height=7mm, minimum width=20mm, align=center, font=\scriptsize},
+        arrow/.style = {-{Stealth[length=1.8mm]}, thick},
     ]
         \node[box] (img) {Image\\$3 \times H_0 \times W_0$};
         \node[box, right=of img, fill=black!5] (vit) {ViT backbone\\(frozen)};
-        \node[box, right=of vit] (tok) {Patch tokens\\$B \times N \times C$};
+        \node[box, right=of vit] (tok) {Patch tokens\\$B{\times}N{\times}C$};
         \node[box, right=of tok] (rsh) {Reshape +\\linear proj.};
-        \node[box, right=of rsh, fill=black!5] (map) {Spatial map\\$B \times C' \times H \times W$};
+        \node[box, right=of rsh, fill=black!5] (map) {Spatial map\\$B{\times}C'{\times}H{\times}W$};
         \node[box, right=of map] (plan) {Planner\\(TF / LAW / DD)};
         \draw[arrow] (img) -- (vit);
         \draw[arrow] (vit) -- (tok);
         \draw[arrow] (tok) -- (rsh);
         \draw[arrow] (rsh) -- (map);
         \draw[arrow] (map) -- (plan);
-    \end{tikzpicture}
+    \end{tikzpicture}}
     \caption{Backbone adapter schematic. A frozen ViT encoder emits $N$ patch tokens; a lightweight reshape and linear projection restructure them into a spatial feature map whose shape matches what the downstream planner expects. ResNet-34 backbones already emit a spatial map and therefore skip the reshape step. This adapter is the only module that differs between Phase-1 TransFuser/LAW and Phase-2 DiffusionDrive runs.}
     \label{fig:method-adapter}
 \end{figure}
 
 % ============================================================================
-\section{Planning Architecture I: LAW with Swappable Backbones}
-\label{sec:meth-law}
+\section{Phase 1: Zero-Shot Cross-City Transfer}
+\label{sec:meth-phase1-cc}
 
-LAW (Latent World Model)~\cite{li-law} serves as the primary open-loop test bed for the cross-city SSL study. Following~\cite{naeinian-cross-city-2026}, the planner and training recipe are held fixed while only the backbone initialization changes. This isolates the representational contribution from downstream architectural confounders.
+Phase 1 is the controlled representation-versus-geography study introduced in the IROS benchmark paper~\cite{naeinian-cross-city-2026}, extended here with the full set of backbone configurations from~\ref{sec:meth-ssl-pretraining} and integrated through the same factory described in~\ref{sec:meth-backbones}. The question it answers is narrow and well-posed: holding the planner and training recipe fixed, does the choice of visual backbone change how a model behaves when it is trained in one city and evaluated in a different one? The protocol is split across two planner families --- an open-loop latent-world-model planner on nuScenes~\cite{caesar-nuscenes-2020} and closed-loop multi-modal / camera-only planners on NAVSIM~\cite{dauner-navsim-2024} --- so that the finding is not contingent on a single planner's inductive bias.
 
-\subsection{Architecture Overview}
-\label{sec:meth-law-arch}
+The collaboration split of labour matters for attribution. The open-loop LAW pipeline was implemented and run by Fatemeh Naeinian (first author of~\cite{naeinian-cross-city-2026}); it is described here only to the extent needed to interpret its numbers. The closed-loop NAVSIM pipeline, including the TransFuser / Latent TransFuser backbone-swap infrastructure and the configuration-hardening work that these variants required, is the author's contribution and is treated at more detail.
 
-The LAW experiments use the same downstream planner across all backbone variants. Its key components are:
-\begin{itemize}
-    \item Per-view spatial decoders (one per camera view)
-    \item LID (Lift, Image, Depth) depth encoding for 3D-aware features
-    \item Delta waypoint prediction (predicts offsets from previous waypoint)
-    \item TransformerDecoder latent world model (auxiliary training loss)
-\end{itemize}
+\subsection{Open-Loop Pipeline: LAW on nuScenes}
+\label{sec:meth-phase1-law}
 
-The auxiliary world-model loss is useful here because it regularizes features toward future-state prediction without changing the core planning objective. Even so, the thesis treats LAW primarily as a controlled test bed: because the planner is fixed, differences in cross-city behavior can be attributed mainly to the backbone.
+The open-loop leg uses LAW~\cite{li-law-2024} with its stock Swin-Transformer-Tiny image encoder replaced by each of the pretrained ViTs described in~\ref{sec:meth-backbones}. The planner --- per-view spatial decoders, LID depth encoding, delta-waypoint regression, and the auxiliary latent world-model head --- is held fixed across backbone variants; the only manipulated factor is the encoder initialization. This design follows~\cite{naeinian-cross-city-2026}. \reftab{tab:meth-phase1-train} summarizes the training recipe.
 
-\subsection{Training Configuration}
-\label{sec:meth-law-training}
+\subsection{Closed-Loop Pipeline: TransFuser and Latent TransFuser on NAVSIM}
+\label{sec:meth-phase1-tf}
 
-For the nuScenes open-loop experiments, LAW is trained for 12 epochs with AdamW, base learning rate $5\times 10^{-5}$, weight decay 0.01, cosine annealing with minimum ratio $10^{-3}$, and gradient clipping at maximum L2 norm 35~\cite{naeinian-cross-city-2026}. Training uses mixed precision on a single NVIDIA L40S GPU with batch size 2. Frozen and fully fine-tuned backbone variants are both evaluated to distinguish representational quality from adaptation capacity.
+The closed-loop leg evaluates the same representational question under NAVSIM's pseudo-simulation scorer, where the predicted trajectory is rolled out against log-replay agents and PDMS is computed from the resulting rollout (Section~\ref{sec:bg-navsim}). Two architectures are used side by side. \emph{TransFuser}~\cite{chitta-transfuser-2023} retains its original ResNet-34 LiDAR branch but replaces the ResNet-34 image branch with the SSL-pretrained encoder under test; the cross-modal fusion stack is unchanged. \emph{Latent TransFuser} is the same model with the LiDAR branch removed and replaced by a fixed learned latent, as in~\cite{dauner-navsim-2024}; it serves as the camera-only probe and is the critical variant for testing whether the representation effect survives without the geometric-sensing shortcut. Running both in the same table isolates the contribution of LiDAR from the contribution of the backbone.
 
-\subsection{TransFuser Baseline}
-\label{sec:meth-transfuser}
+Plugging a ViT encoder into a fusion stack that was designed around a CNN feature pyramid is not a one-line change. The image encoder must produce a four-stage pyramid whose channel dimensions match what the fusion stack consumes; the adapter used here is the one described in~\ref{sec:meth-feature-proj}. Position embeddings are regenerated at the native camera-crop grid (per the \texttt{vit\_backend}${=}\,\texttt{custom}$ path) rather than bicubically interpolated from a square pretraining, which matters for the rectangular nuScenes-pretrained ViT-S/14 variants. None of these changes alter the fusion layers, the waypoint decoder, or the training loss.
 
-TransFuser~\cite{chitta-transfuser} provides the closed-loop NAVSIM baseline. Its camera encoder is replaced by SSL-pretrained backbones while the LiDAR branch is either retained (TransFuser) or removed in favor of a positional latent (Latent TransFuser), following the setup in~\cite{naeinian-cross-city-2026}. The NAVSIM runs use Adam with learning rate $10^{-4}$, zero weight decay, no warmup or scheduler, gradient clipping at norm 1.0, 20 epochs of training, and an effective batch size of 128 across four H200 GPUs. This pair of architectures is important because it tests whether the representation effect persists when LiDAR is removed.
+The single non-trivial methodological note in this leg is a faithfulness issue specific to TransFuser. The original NAVSIM TransFuser recipe~\cite{dauner-navsim-2024} uses plain Adam at a constant learning rate of $10^{-4}$, zero weight decay, no scheduler or warmup, gradient clipping at L2 norm 1.0, an effective batch size of 128, and 100-epoch training for the full baseline (20 epochs for cheaper runs). Several defaults in modern Lightning / Hydra scaffolding (cosine schedulers, AdamW with non-zero decay, mismatched LiDAR-branch depth, accumulator double-counting) silently degrade this recipe by tens of PDMS points if imported unchanged. The NAVSIM v1.1 re-evaluation sidecar used later in the thesis preserves this recipe verbatim; the configuration is listed in \reftab{tab:meth-phase1-train}.
+
+\begin{table}[ht]
+\centering
+\caption{Training recipes for the two Phase~1 pipelines. The open-loop recipe matches~\cite{li-law-2024,naeinian-cross-city-2026}; the closed-loop recipe matches the original TransFuser / Latent TransFuser setup in~\cite{chitta-transfuser-2023,dauner-navsim-2024}.}
+\label{tab:meth-phase1-train}
+\small
+\renewcommand{\arraystretch}{1.2}
+\setlength{\tabcolsep}{5pt}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.3cm} >{\raggedright\arraybackslash}p{4.2cm} >{\raggedright\arraybackslash}p{4.6cm}@{}}
+\toprule
+\textbf{Setting} & \textbf{LAW (open-loop, nuScenes)} & \textbf{TransFuser / LatTF (closed-loop, NAVSIM)} \\
+\midrule
+Optimizer              & AdamW                            & Adam \\
+Base LR                & $5 \times 10^{-5}$                & $1 \times 10^{-4}$ (constant) \\
+Weight decay           & $0.01$                            & $0$ \\
+Scheduler              & Cosine, min-LR ratio $10^{-3}$    & None (no warmup) \\
+Gradient clip (L2)     & $35$                              & $1.0$ \\
+Epochs                 & $12$                              & $20$ (cheap) / $100$ (full) \\
+Batch size             & $2$ (single GPU)                  & $32$ per GPU (effective $128$) \\
+Hardware               & $1 \times$ NVIDIA L40S            & $4 \times$ NVIDIA H200 \\
+Precision              & Mixed (bfloat16)                  & Mixed (bfloat16) \\
+Backbone frozen/full   & Both evaluated                    & Both evaluated \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Backbone Matrix}
+\label{sec:meth-phase1-matrix}
+
+The backbone matrix is the one built in~\ref{sec:meth-ssl-pretraining} and~\ref{sec:meth-backbone-configs}. It includes the planner's default supervised baseline (Swin-T for LAW, ResNet-34 for TransFuser / LatTF), the three ImageNet-pretrained SSL variants at native capacity (I-JEPA ViT-H/14, DINOv2 ViT-S/14, MAE ViT-B/16), and the six capacity-matched ViT-S/14 backbones that Fatemeh pretrained on nuScenes under the three SSL objectives and the two input resolutions (square \(224 \times 224\) and rectangular \(224 \times 392\)). Every backbone is evaluated under both adaptation modes (\(\texttt{trainable\_backbone\_fraction} \in \{0.0, 1.0\}\)) so that representation quality and representation adaptability can be separated. \reftab{tab:meth-phase1-backbones} summarizes the matrix; the pretraining details for each row are in~\ref{sec:meth-ssl-common}.
+
+\begin{table}[ht]
+\centering
+\caption{Backbone matrix used in Phase~1. Every row is evaluated under both adaptation modes (frozen and fully unfrozen) in each of the two planners, giving a controlled substrate for the cross-city comparison.}
+\label{tab:meth-phase1-backbones}
+\small
+\renewcommand{\arraystretch}{1.2}
+\setlength{\tabcolsep}{5pt}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.0cm} >{\raggedright\arraybackslash}p{2.3cm} >{\raggedright\arraybackslash}p{2.7cm} >{\raggedright\arraybackslash}p{3.9cm}@{}}
+\toprule
+\textbf{Family} & \textbf{Capacity} & \textbf{Pre-training source} & \textbf{Role in Phase~1} \\
+\midrule
+Swin-T~\cite{liu-swin-2021}         & $T$        & ImageNet-1k (supervised) & LAW stock baseline \\
+ResNet-34~\cite{he-resnet-2016}     & $34$       & ImageNet-1k (supervised) & TransFuser / LatTF stock baseline \\
+I-JEPA~\cite{assran-ijepa-2023}     & ViT-H/14   & ImageNet-1k (SSL)         & Large-scale SSL reference \\
+DINOv2~\cite{oquab-dinov2-2024}     & ViT-S/14   & LVD-142M (SSL)            & Large-scale SSL reference \\
+MAE~\cite{he-mae-2022}              & ViT-B/16   & ImageNet-1k (SSL)         & Large-scale SSL reference \\
+\midrule
+I-JEPA (nuSc, sq) & ViT-S/14 & nuScenes $224{\times}224$ & Domain-matched, square \\
+I-JEPA (nuSc, rect) & ViT-S/14 & nuScenes $224{\times}392$ & Domain-matched, rectangular \\
+DINOv2 (nuSc, sq) & ViT-S/14 & nuScenes $224{\times}224$ & Domain-matched, square \\
+DINOv2 (nuSc, rect) & ViT-S/14 & nuScenes $224{\times}392$ & Domain-matched, rectangular \\
+MAE (nuSc, sq) & ViT-S/14 & nuScenes $224{\times}224$ & Domain-matched, square \\
+MAE (nuSc, rect) & ViT-S/14 & nuScenes $224{\times}392$ & Domain-matched, rectangular \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The capacity asymmetry in the top block of \reftab{tab:meth-phase1-backbones} is intentional and follows the IROS convention~\cite{naeinian-cross-city-2026}: the three ImageNet SSL entries are used \emph{at the capacity they were released at} rather than artificially shrunk to ViT-S/14, because those released weights are what a practitioner would actually deploy; the like-for-like objective comparison instead happens inside the bottom block, where architecture, data, schedule, and input resolution are held fixed across the three SSL families.
+
+\subsection{Geographic Transfer Protocol}
+\label{sec:meth-phase1-protocol}
+
+Both legs use strictly city-disjoint training and evaluation. For each training city, no frame from any other city is seen during training, no adaptation or test-time modification is allowed, and no hyperparameter is re-tuned for the target city. Evaluation uses the same splits, pre-processing, and eval scorer as the corresponding in-domain run; the only change is the set of scenarios. \reftab{tab:meth-phase1-splits} enumerates the exact training-test pairs.
+
+\begin{table}[ht]
+\centering
+\caption{Phase~1 transfer matrix. Every cell represents a full training run (train city) evaluated on every evaluation city listed, under the training recipes in \reftab{tab:meth-phase1-train}.}
+\label{tab:meth-phase1-splits}
+\small
+\renewcommand{\arraystretch}{1.2}
+\setlength{\tabcolsep}{5pt}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{2.7cm} >{\raggedright\arraybackslash}p{3.0cm} >{\raggedright\arraybackslash}p{3.1cm} >{\raggedright\arraybackslash}p{2.8cm}@{}}
+\toprule
+\textbf{Benchmark} & \textbf{Training city} & \textbf{Evaluation city} & \textbf{Pair count} \\
+\midrule
+nuScenes (LAW) & \{Boston, Singapore\} & \{Boston, Singapore\} & $2 \times 2 = 4$ (two in-domain + two cross-city) \\
+\addlinespace
+NAVSIM (TF, LatTF) & \{Boston, Las Vegas, Pittsburgh, Singapore\} & Same 4 & $4 \times 4 = 16$ (four in-domain + twelve cross-city) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Singapore plays a distinct role on both benchmarks because it is the only left-hand-traffic environment in either dataset and because, on NAVSIM, it is also the smallest training-data partition (Section~\ref{sec:meth-split-stats}). The IROS paper treats the right-hand to left-hand transfer as the structurally hardest direction~\cite{naeinian-cross-city-2026}, and the thesis reports the directional asymmetry as a first-class outcome variable in Chapter~\ref{chap:experiments}.
+
+\subsection{Generalization-Gap Metrics}
+\label{sec:meth-phase1-metrics}
+
+The in-domain to cross-city behavior is reduced to two scalar summaries that appear throughout Chapter~\ref{chap:experiments}; both follow~\cite{naeinian-cross-city-2026}.
+
+For open-loop error metrics (L2 displacement and collision rate on nuScenes), where lower is better, the transfer inflation from training city \(c_\text{train}\) to evaluation city \(c_\text{test}\) is reported as
+\begin{equation}
+\label{eq:meth-rerr}
+R_\text{err}(c_\text{train} \to c_\text{test})
+=
+\frac{E_\text{cross}(c_\text{train} \to c_\text{test})}
+     {E_\text{in}(c_\text{train} \to c_\text{train})},
+\end{equation}
+so that \(R_\text{err}=1\) indicates no degradation under transfer and \(R_\text{err}>1\) indicates degradation. Ratios are reported separately for L2 displacement and for collision rate.
+
+For closed-loop score metrics (PDMS on NAVSIM), where higher is better, we report the mean out-of-distribution PDMS of a training city,
+\begin{equation}
+\label{eq:meth-sood}
+S_\text{OOD}(c_i)
+=
+\frac{1}{|\mathcal{C}|-1}
+\sum_{c_j \neq c_i} S(c_i \to c_j),
+\end{equation}
+which averages the closed-loop scores across every unseen test city. \(S_\text{OOD}\) reduces the \(4\times 4\) NAVSIM matrix to one scalar per training city per backbone, which is the quantity plotted in the per-city panels of Chapter~\ref{chap:experiments}.
+
+Two practical notes. First, \(S_\text{OOD}\) averages over a heterogeneous set of test cities; it is not symmetric in the sense that training on a hard source and evaluating on easy targets can give the same mean as the reverse, so it is always reported alongside the full matrix rather than in isolation. Second, the ratio \(R_\text{err}\) is sensitive to the denominator: when the in-domain run itself has a degenerate score, the ratio becomes uninformative, and such runs are flagged in the tables of Chapter~\ref{chap:experiments} rather than silently included in ranked comparisons.
 
 % ============================================================================
 \section{Planning Architecture II: DiffusionDrive + SSL}
@@ -240,7 +617,7 @@ Phase 0 captures the original hypothesis behind the thesis. The initial setup, f
 \subsection{Phase 1: Cross-City SSL Benchmark}
 \label{sec:meth-phase1}
 
-Phase 1 aggregates the core benchmark first reported in~\cite{naeinian-cross-city-2026}. It combines open-loop LAW experiments on the two-city nuScenes split with closed-loop TransFuser and Latent TransFuser experiments on four-city NAVSIM. The backbone suite includes supervised baselines, ImageNet-pretrained SSL backbones, and domain-specific nuScenes-pretrained I-JEPA, DINOv2, and MAE variants under both frozen and fully fine-tuned downstream settings. The key output is not a single leaderboard score, but the change from in-domain to cross-city behavior.
+Phase 1 is described in full in~\ref{sec:meth-phase1-cc} (Phase 1: Zero-Shot Cross-City Transfer). This entry exists only to place it in the phase sequence: the open-loop LAW pipeline on nuScenes and the closed-loop TransFuser / Latent TransFuser pipeline on NAVSIM, both run under strict city-disjoint splits, together produce the backbone-by-city matrix that Chapter~\ref{chap:experiments} reports.
 
 \subsection{Phase 2: DiffusionDrive All-City}
 \label{sec:meth-phase2}

@@ -2,65 +2,231 @@
 \chapter{Background}
 \label{chap:background}
 
-This chapter introduces the technical foundations needed for the rest of the thesis: end-to-end autonomous driving, the NAVSIM benchmark, the visual backbone families considered in this work, and the planning architectures through which those representations are tested.
+This chapter develops the technical foundations that the rest of the thesis depends on. It introduces end-to-end autonomous driving and the imitation learning setting in which such models are trained, describes the NAVSIM benchmark and its scoring methodology in enough detail that later chapters can refer to individual sub-metrics, surveys the supervised and self-supervised visual backbones used throughout the experiments, and closes with the four planning architectures in which these backbones are evaluated. The goal is to give the reader enough context to follow the empirical chapters without turning this chapter into a literature survey, which is reserved for Chapter~\ref{chap:relatedwork}.
 
 % ============================================================================
 \section{End-to-End Autonomous Driving}
 \label{sec:bg-e2e}
 
-End-to-end autonomous driving learns a direct mapping from raw sensor observations to future vehicle motion. In the planning setting used throughout this thesis, the model consumes sensory context such as images, LiDAR, and ego state, and predicts a sequence of future waypoints for the ego vehicle. This differs from classical modular pipelines, which decompose the task into perception, prediction, and planning stages with explicit intermediate interfaces. The appeal of the end-to-end formulation is that the representation can be optimized jointly for the final driving objective, potentially reducing information loss between modules. Its main weaknesses are the converse of that advantage: internal representations are harder to interpret, training becomes strongly data-dependent, and failures under distribution shift are more difficult to diagnose.
+End-to-end autonomous driving learns a direct mapping from raw sensor observations to future vehicle motion \cite{bojarski-pilotnet-2016,chen-e2e-survey-2024}. In the planning setting used throughout this thesis, the model consumes sensory context such as images, LiDAR, and the ego state, and predicts a sequence of future waypoints for the ego vehicle. This differs from classical modular pipelines, which decompose the task into perception, prediction, and planning stages with explicit intermediate interfaces such as 3D object detections, occupancy grids, and lane graphs \cite{caesar-nuscenes-2020,karnchanachari-nuplan-2024}. The appeal of the end-to-end formulation is that the representation can be optimized jointly against the final driving objective, which reduces information loss between modules and avoids the cumulative errors that are characteristic of staged pipelines \cite{hu-uniad-2023,jiang-vad-2023}. Its main weaknesses are the converse of that advantage. Internal representations are harder to interpret, training becomes strongly data-dependent, and failures under distribution shift are more difficult to diagnose because no intermediate output can be inspected in isolation \cite{codevilla-limitations-2019,zhai-rethinking-2023}.
+
+The specific failure mode this thesis focuses on is geographic, or cross-city, generalization. A model that performs well on a benchmark whose training and test data are drawn from the same pool of cities may still fail when deployed in an unseen city. This thesis argues, and the experiments in Chapter~\ref{chap:experiments} demonstrate, that such failure is primarily driven by the visual backbone's sensitivity to city-specific appearance rather than by the expressive capacity of the downstream planner. Because this claim requires comparing backbones under identical planning pipelines, the sections that follow describe both backbones and planners at the level of detail required for such controlled swaps.
 
 \subsection{Imitation Learning for Trajectory Prediction}
 \label{sec:bg-il}
 
-Most modern end-to-end planners are trained with imitation learning. Given expert demonstrations $\{(o_t, a_t^\ast)\}$, the model learns a policy $\pi_\theta(a_t \mid o_t)$ that reproduces the expert trajectory from observation $o_t$. In NAVSIM and related benchmarks, the action is typically represented as a fixed-horizon sequence of future poses $(x, y, \psi)$. Training is usually open-loop: the model predicts a trajectory from logged observations and is supervised against the recorded future motion. Evaluation can also be open-loop, but increasingly uses simulator-based metrics that score the predicted plan for safety, legality, comfort, and route progress rather than just geometric closeness to the human trajectory. This matters because multiple trajectories can be acceptable in the same scene, so pure displacement error is an incomplete proxy for driving quality.
+Most modern end-to-end planners are trained with imitation learning, and in particular with behavioral cloning \cite{bojarski-pilotnet-2016,ross-dagger-2011}. Given a set of expert demonstrations $\{(o_t, a_t^\ast)\}_{t=1}^{N}$, the model learns a policy $\pi_\theta(a_t \mid o_t)$ that reproduces the expert action from observation $o_t$ by minimizing a regression or negative-log-likelihood loss. In NAVSIM, the observation $o_t$ consists of an eight-camera surround view, a merged LiDAR point cloud, a short history of ego kinematic states, and a route descriptor; the action $a_t$ is a fixed-horizon sequence of future poses $\tau_t = (x_i, y_i, \psi_i)_{i=1}^{H}$, typically with $H = 8$ waypoints sampled at $2$\,Hz over a four-second horizon and expressed in the current ego frame \cite{dauner-navsim-2024,chitta-transfuser-2023}. Training is open-loop: the model predicts a trajectory from logged sensor data and is supervised against the recorded future motion.
+
+Open-loop training is convenient but misaligned with the deployment setting in two respects. First, small prediction errors compound over time when the model is rolled out in closed loop, a problem that the original behavioral cloning literature describes as covariate shift \cite{ross-dagger-2011,codevilla-limitations-2019}. Second, displacement error against a single logged trajectory is an incomplete proxy for driving quality, because multiple trajectories can be acceptable in the same scene and a small L2 error does not guarantee that the predicted plan is collision-free, legal, or comfortable \cite{zhai-rethinking-2023,dauner-pdm-2023}. Simulator-based evaluation addresses the second issue by scoring the predicted plan against an explicit rule set that quantifies safety, legality, and comfort. NAVSIM is built around this idea.
 
 \subsection{The NAVSIM Benchmark}
 \label{sec:bg-navsim}
 
-NAVSIM is a data-driven planning benchmark built on real-world nuPlan/OpenScene logs and designed to evaluate end-to-end driving models under non-reactive simulation~\cite{dauner-navsim}. Each scenario provides camera images, LiDAR, ego state, route information, and future logged trajectories. The standard splits are \texttt{navtrain} and \texttt{navtest}, which are filtered to emphasize challenging driving situations rather than easy lane-following. The key evaluation metric is the Predictive Driver Model Score (PDMS), which aggregates no-at-fault collision, drivable-area compliance, ego progress, time-to-collision, and comfort into a single scalar. NAVSIM v2 extends this to EPDMS by adding richer rule-compliance and comfort terms, including driving-direction compliance, traffic-light compliance, lane keeping, and extended comfort.
+NAVSIM is a data-driven planning benchmark constructed on top of real-world nuPlan and OpenScene logs \cite{dauner-navsim-2024,karnchanachari-nuplan-2024,openscene-2023}. Each scenario provides eight surround-view camera images, a merged LiDAR point cloud assembled from the vehicle's roof-mounted and side-mounted sensors, a history of ego-state values including position, velocity, acceleration, and yaw rate, a future route defined as a sequence of reference points on the lane graph, and the logged future trajectory of the human driver. Scenarios are drawn from four cities: Boston, Pittsburgh, and Las Vegas in the United States, and Singapore, which uses left-hand driving. The standard splits are \texttt{navtrain} with approximately $103{,}000$ scenarios and \texttt{navtest} with approximately $12{,}000$ scenarios, both filtered from the underlying nuPlan logs to emphasize challenging driving situations such as intersections, lane changes, unprotected turns, and interactions with other road users \cite{dauner-navsim-2024}. A separate \texttt{navhard\_two\_stage} split is used for the extended evaluation introduced in NAVSIM v2. It is harder by construction because it draws on scenarios that are more difficult to plan even for the reference simulator planner, and because it is paired with the reactive two-stage evaluation protocol described below \cite{navsim-v2-2024}.
 
-For this thesis, one limitation of the benchmark is central: NAVSIM does not natively expose per-city train/test splits. Under the default protocol, data from Boston, Pittsburgh, Las Vegas, and Singapore are geographically mixed in both training and evaluation, which makes standard validation primarily a test of interpolation inside the pooled distribution. The city-split construction introduced later in Chapter~\ref{chap:methodology} is therefore not a minor implementation detail; it is the condition that makes geographic robustness measurable in the first place.
+The headline metric is the Predictive Driver Model Score, PDMS, which aggregates five sub-scores into a single scalar \cite{dauner-pdm-2023,dauner-navsim-2024}:
+\begin{equation}
+\label{eq:pdms}
+\mathrm{PDMS} \;=\; \underbrace{\prod_{m \in \mathcal{M}_{\mathrm{mul}}} s_m}_{\text{multiplicative terms}} \;\times\; \underbrace{\frac{\sum_{m \in \mathcal{M}_{\mathrm{avg}}} w_m \, s_m}{\sum_{m \in \mathcal{M}_{\mathrm{avg}}} w_m}}_{\text{weighted average}},
+\end{equation}
+where the multiplicative terms $\mathcal{M}_{\mathrm{mul}} = \{\mathrm{NC}, \mathrm{DAC}\}$ are safety-critical and force the overall score to zero if the plan violates them, and the weighted average is taken over $\mathcal{M}_{\mathrm{avg}} = \{\mathrm{EP}, \mathrm{TTC}, \mathrm{Comfort}\}$ with weights $w_{\mathrm{EP}} = 5$, $w_{\mathrm{TTC}} = 5$, and $w_{\mathrm{Comfort}} = 2$ \cite{dauner-pdm-2023}. The five sub-scores are: No at-fault Collision (NC), which penalizes collisions for which the ego is responsible under the traffic rules of the scenario; Drivable Area Compliance (DAC), which penalizes excursions off the drivable surface defined by the lane graph; Ego Progress (EP), which scores route progress relative to a reference planner that uses privileged information; Time To Collision (TTC), which penalizes trajectories that would collide with other agents within a short prediction horizon; and Comfort, which penalizes large longitudinal and lateral accelerations as well as jerk \cite{dauner-navsim-2024,dauner-pdm-2023}. NAVSIM v2 extends this to EPDMS by adding four further rule-compliance and comfort terms: Driving-Direction Compliance (DDC), Traffic-Light Compliance (TLC), Lane Keeping (LK), and Extended Comfort (EC) \cite{navsim-v2-2024}. Because the multiplicative safety terms dominate, a single at-fault collision or a single drivable-area violation is sufficient to drive PDMS to zero on that scenario, which makes the metric sensitive to rare but critical failures rather than only to typical-case accuracy.
+
+NAVSIM supports two evaluation modes. In the non-reactive mode used for the default \texttt{navtest} leaderboard, the predicted trajectory is rolled out against a log-replay world in which background agents follow their recorded future motion, and PDMS is computed from the resulting simulated rollout. In the reactive two-stage mode introduced with NAVSIM v2, background vehicles are replayed for a short horizon and then handed over to an IDM-based reactive policy so that their behavior can respond to the ego plan rather than being fixed ahead of time \cite{navsim-v2-2024,dauner-pdm-2023}. The two-stage protocol exposes planning failures that non-reactive evaluation cannot, because it requires the predicted plan to remain valid under modest perturbations of the surrounding agents. The schematic in Figure~\ref{fig:bg-navsim-pipeline} summarizes this evaluation flow and the relationship between PDMS and its sub-scores.
+
+\begin{figure}[ht]
+    \centering
+    \begin{tikzpicture}[
+        node distance = 5mm and 7mm,
+        obs/.style  = {draw, rounded corners=2pt, minimum height=7mm, minimum width=22mm, align=center, font=\scriptsize, fill=black!3},
+        agent/.style= {draw, rounded corners=2pt, minimum height=9mm, minimum width=22mm, align=center, font=\small, fill=black!7},
+        sim/.style  = {draw, rounded corners=2pt, minimum height=9mm, minimum width=26mm, align=center, font=\scriptsize},
+        score/.style= {draw, rounded corners=2pt, minimum height=6mm, minimum width=20mm, align=center, font=\scriptsize, fill=black!5},
+        final/.style= {draw, ellipse, minimum height=8mm, minimum width=18mm, align=center, font=\small},
+        arrow/.style = {-{Stealth[length=1.8mm]}, thin},
+    ]
+        % Inputs
+        \node[obs] (cam) {cameras (8)};
+        \node[obs, below=1mm of cam] (lid) {LiDAR};
+        \node[obs, below=1mm of lid] (ego) {ego state};
+        \node[obs, below=1mm of ego] (route) {route};
+        % Agent
+        \node[agent, right=8mm of lid] (agent) {planner $\pi_\theta$};
+        % Predicted trajectory
+        \node[obs, right=8mm of agent] (tau) {$\hat\tau_{t:t+H}$};
+        % Simulator
+        \node[sim, right=8mm of tau] (sim) {non-reactive or\\two-stage\\simulator};
+        % Sub-scores
+        \node[score, above right=2mm and 10mm of sim.east, anchor=west] (nc) {NC};
+        \node[score, below=1mm of nc] (dac) {DAC};
+        \node[score, below=1mm of dac] (ep) {EP};
+        \node[score, below=1mm of ep] (ttc) {TTC};
+        \node[score, below=1mm of ttc] (cmf) {Comfort};
+        % PDMS
+        \node[final, right=12mm of ep] (pdms) {PDMS};
+
+        % Arrows
+        \draw[arrow] (cam.east) -- (agent.west |- cam.east);
+        \draw[arrow] (lid.east) -- (agent.west |- lid.east);
+        \draw[arrow] (ego.east) -- (agent.west |- ego.east);
+        \draw[arrow] (route.east) -- (agent.west |- route.east);
+        \draw[arrow] (agent) -- (tau);
+        \draw[arrow] (tau) -- (sim);
+        \draw[arrow] (sim.east) -- (nc.west);
+        \draw[arrow] (sim.east) -- (dac.west);
+        \draw[arrow] (sim.east) -- (ep.west);
+        \draw[arrow] (sim.east) -- (ttc.west);
+        \draw[arrow] (sim.east) -- (cmf.west);
+        \draw[arrow] (nc.east) -- (pdms.west |- nc.east);
+        \draw[arrow] (dac.east) -- (pdms.west |- dac.east);
+        \draw[arrow] (ep.east) -- (pdms.west |- ep.east);
+        \draw[arrow] (ttc.east) -- (pdms.west |- ttc.east);
+        \draw[arrow] (cmf.east) -- (pdms.west |- cmf.east);
+    \end{tikzpicture}
+    \caption{NAVSIM evaluation pipeline. The planner receives sensor, ego, and route inputs and emits a predicted trajectory $\hat\tau_{t:t+H}$ of eight waypoints at 2\,Hz over a four-second horizon. The simulator rolls this trajectory either against log-replay agents (non-reactive, \texttt{navtest}) or against IDM-driven reactive agents (two-stage, \texttt{navhard\_two\_stage}), then computes the PDMS sub-scores in Equation~\ref{eq:pdms}. NC and DAC enter multiplicatively, so any at-fault collision or drivable-area violation zeroes the score on that scenario \cite{dauner-navsim-2024,dauner-pdm-2023}.}
+    \label{fig:bg-navsim-pipeline}
+\end{figure}
+
+One aspect of NAVSIM is central to this thesis. The benchmark does not natively expose per-city train/test splits. Under the default protocol, data from Boston, Pittsburgh, Las Vegas, and Singapore are pooled in both training and evaluation, which means standard validation primarily measures interpolation inside the combined distribution. The city-aware split construction introduced in Chapter~\ref{chap:methodology} is therefore a structural precondition for the experiments that follow, because it is the construction that makes geographic robustness measurable at all.
+
+\subsection{Open-Loop Evaluation on nuScenes}
+\label{sec:bg-nuscenes-ol}
+
+While closed-loop evaluation uses NAVSIM, the thesis also employs an open-loop setting on nuScenes \cite{caesar-nuscenes-2020}. nuScenes is a multi-city driving dataset with sensor data from Boston (right-hand driving) and Singapore (left-hand driving) and is the standard benchmark for open-loop cross-city comparison in prior work \cite{zhai-rethinking-2023,li-law-2024}. The open-loop setup evaluates predicted trajectories against the logged future motion using L2 displacement and a collision rate computed from object-level ground truth, without simulating the ego forward. This gives a fast and reproducible signal that is well suited to comparing backbones under a fixed planner, and it complements the closed-loop PDMS numbers on NAVSIM. Where ambiguity is possible, open-loop nuScenes results are referred to by L2 and collision rate, and closed-loop NAVSIM results are referred to by PDMS or EPDMS.
 
 % ============================================================================
-\section{Visual Backbone Architectures}
+\section{Supervised and Self-Supervised Visual Backbones}
 \label{sec:bg-backbones}
 
-\subsection{Convolutional Backbones (ResNet)}
+The central manipulated variable in this thesis is the visual backbone that produces the feature tensor consumed by the planning head. Every planner considered ships with a default supervised backbone, which is either a convolutional network or a hierarchical vision transformer depending on the architecture. TransFuser, Latent TransFuser, and DiffusionDrive use a ResNet-34 \cite{he-resnet-2016}, while LAW uses a Swin-Transformer-Tiny \cite{liu-swin-2021}. The self-supervised alternatives evaluated in this thesis are all plain Vision Transformers \cite{dosovitskiy-vit-2021}, either used off-the-shelf at their original capacity or pretrained on driving data in a controlled size. This section introduces each backbone family at the level of detail needed to describe controlled backbone swaps later on. Framing the thesis around supervised versus self-supervised pretraining, rather than around a specific CNN or a specific transformer, is deliberate. The experiments compare two supervised backbone families (ResNet and Swin) to the same three SSL objectives (I-JEPA, DINOv2, MAE), so that an observed SSL advantage is not contingent on a particular supervised default.
+
+\subsection{Convolutional Backbones: ResNet}
 \label{sec:bg-resnet}
 
-Supervised ResNet backbones have long been the default visual encoder in end-to-end driving. Their appeal is practical: they are stable to optimize, efficient at multiple resolutions, and already integrated into planning stacks such as TransFuser and related camera--LiDAR fusion models. In this thesis, ResNet-34 serves as the main supervised reference point. It represents the standard recipe against which self-supervised alternatives are compared. The cross-city question is therefore not whether ResNet is a weak baseline, but whether its supervised ImageNet features encourage reliance on city-specific appearance cues that are harmless on mixed-city validation yet brittle under geographic shift.
+Supervised ResNet backbones have long been a default visual encoder in end-to-end driving \cite{he-resnet-2016,chitta-transfuser-2023,jia-diffusiondrive-2025}. A ResNet learns a feature pyramid via stacked residual blocks, each of which adds a shortcut connection around a sequence of convolutions and batch normalizations. The shortcut is the core contribution: it allows gradients to flow directly through the block, which makes very deep networks trainable in practice \cite{he-resnet-2016}. Supervised pretraining is done on ImageNet-1k classification \cite{deng-imagenet-2009}, and the resulting weights are then either frozen or fine-tuned on the downstream task. In this thesis, ResNet-34 is the supervised reference point for TransFuser, Latent TransFuser, and DiffusionDrive. It is the backbone that supervised published results are reported against and therefore the correct control under which to evaluate self-supervised alternatives for those three architectures.
+
+\subsection{Hierarchical Vision Transformers: Swin Transformer}
+\label{sec:bg-swin}
+
+The Swin Transformer is a hierarchical vision transformer that computes self-attention inside non-overlapping local windows and shifts those windows between successive layers so that information can cross window boundaries \cite{liu-swin-2021}. Like a CNN feature pyramid, Swin produces representations at multiple resolutions through periodic patch merging, but the per-layer computation is attention rather than convolution. The design gives Swin the spatial inductive bias of a CNN while retaining the representational flexibility of attention, which is why it has been adopted as the visual encoder in LAW \cite{li-law-2024} and in several other recent end-to-end and BEV-based driving systems \cite{zhang-beverse-2022,liu-bevfusion-2023,kartiman-skgeswin-2025}. Swin-Transformer-Tiny is the default image backbone of LAW and therefore appears in this thesis as a second supervised baseline: LAW's open-loop evaluation pipeline is built around Swin-T, and the self-supervised variants are introduced as replacements for exactly this encoder. Swin-T plays the same role for LAW that ResNet-34 plays for TransFuser and DiffusionDrive. Both are supervised ImageNet-pretrained encoders, and both represent the supervised state of the art that self-supervised alternatives are measured against. The central comparison of this thesis, supervised versus self-supervised pretraining, therefore spans two different supervised backbone families. If the self-supervised advantage generalizes across both ResNet-based and Swin-based default pipelines, the effect is less likely to be an artifact of a particular backbone choice.
 
 \subsection{Vision Transformers (ViT)}
 \label{sec:bg-vit}
 
-Vision Transformers replace convolution with patch tokenization and global self-attention. An image is divided into fixed-size patches, linearly projected to token embeddings, combined with positional encodings, and processed through a stack of attention and feed-forward blocks. For downstream tasks, either the special CLS token or an average over spatial tokens can be used as the global representation. ViTs matter in this thesis because all three SSL families under study --- I-JEPA, DINOv2, and MAE --- are ViT-based. Their tokenized representation is also more flexible than CNN feature pyramids when testing lightweight heads, frozen-backbone regimes, and adapter-based integration into planners such as DiffusionDrive.
+Vision Transformers replace convolution with patch tokenization and global self-attention \cite{dosovitskiy-vit-2021}. An input image of resolution $H \times W$ is divided into a grid of fixed-size patches of side length $P$, typically $P \in \{14, 16\}$. Each patch is flattened and linearly projected to a token embedding of dimension $D$. A learnable classification token is prepended to the sequence, positional encodings are added, and the resulting $\lfloor H/P \rfloor \cdot \lfloor W/P \rfloor + 1$ tokens are processed by a stack of $L$ transformer blocks, each consisting of multi-head self-attention followed by a feed-forward network, with residual connections and layer normalization around each sublayer \cite{vaswani-attention-2017,dosovitskiy-vit-2021}. The output representation is obtained either from the classification token or by mean-pooling the spatial tokens. Figure~\ref{fig:bg-vit} shows the patch-to-token pipeline for reference.
+
+\begin{figure}[ht]
+    \centering
+    \begin{tikzpicture}[
+        node distance = 4mm and 6mm,
+        patch/.style = {draw, rectangle, minimum width=6mm, minimum height=6mm, fill=black!5, font=\tiny},
+        tok/.style   = {draw, rectangle, minimum width=6mm, minimum height=8mm, fill=black!10, font=\tiny},
+        block/.style = {draw, rounded corners=2pt, minimum height=9mm, minimum width=16mm, align=center, font=\scriptsize},
+        outnode/.style = {draw, ellipse, minimum height=7mm, minimum width=18mm, align=center, font=\scriptsize, fill=black!5},
+        arrow/.style = {-{Stealth[length=1.5mm]}, thin},
+    ]
+        \node[patch] (p1) {};
+        \node[patch, right=0.5mm of p1] (p2) {};
+        \node[patch, right=0.5mm of p2] (p3) {};
+        \node[patch, right=0.5mm of p3] (p4) {$\cdots$};
+        \node[patch, right=0.5mm of p4] (p5) {};
+        \node[font=\tiny, below=0.5mm of p3] {patches};
+
+        \node[block, right=8mm of p5] (proj) {linear proj.\\+ pos. enc.};
+
+        \node[tok, right=6mm of proj] (t0) {\texttt{CLS}};
+        \node[tok, right=0.5mm of t0] (t1) {$z_1$};
+        \node[tok, right=0.5mm of t1] (t2) {$z_2$};
+        \node[tok, right=0.5mm of t2] (t3) {$\cdots$};
+        \node[tok, right=0.5mm of t3] (tN) {$z_N$};
+
+        \node[block, below=8mm of t2] (enc) {transformer\\blocks $\times L$};
+
+        \node[outnode, below=8mm of enc] (feat) {global feature};
+
+        \draw[arrow] (p5.east) -- (proj.west);
+        \draw[arrow] (proj.east) -- (t0.west);
+        \draw[arrow] (t2.south) -- (enc.north);
+        \draw[arrow] (enc.south) -- (feat.north);
+    \end{tikzpicture}
+    \caption{Vision Transformer \cite{dosovitskiy-vit-2021}. An image is split into a grid of patches which are linearly projected to $D$-dimensional tokens and combined with positional encodings. A special \texttt{CLS} token is prepended and the full sequence is passed through $L$ stacked self-attention blocks. The final representation is obtained either from the \texttt{CLS} token or by mean-pooling the spatial tokens.}
+    \label{fig:bg-vit}
+\end{figure}
+
+The plain ViT is used in this thesis because the three self-supervised learning families studied, I-JEPA, DINOv2, and MAE, are all defined on top of it. Using a ViT is therefore the only way to compare their pretrained weights on equal footing. The tokenized representation is also more flexible than CNN feature pyramids when coupling lightweight heads onto frozen backbones, because individual patch tokens can be fed to a planner or adapter without a multi-scale decoder. Model capacity is parameterized by three scalars: the patch size $P$, the embedding dimension $D$, and the number of transformer blocks $L$. The standard configurations used here are ViT-S/14 ($P{=}14$, $D{=}384$, $L{=}12$), ViT-B/16 ($P{=}16$, $D{=}768$, $L{=}12$), and ViT-H/14 ($P{=}14$, $D{=}1280$, $L{=}32$).
 
 % ============================================================================
 \section{Self-Supervised Learning for Vision}
 \label{sec:bg-ssl}
 
-The thesis compares three SSL paradigms that differ in both objective and inductive bias. Predictive methods such as I-JEPA learn to infer latent semantics from context. Self-distillation methods such as DINOv2 align teacher and student representations without labels. Generative methods such as MAE learn from masked reconstruction. All three remove the need for manual annotation during pretraining, but they do not learn the same invariances. That difference becomes important under geographic transfer, where the model must preserve road-relevant structure while discarding city-specific texture and appearance.
+Self-supervised learning produces visual representations from images alone, without human annotations, by defining a pretext task whose supervision signal is extracted from the input itself \cite{lecun-ssl-path-2022,balestriero-ssl-cookbook-2023}. The modern SSL literature can be loosely divided into four families. Contrastive methods such as SimCLR and MoCo pull together representations of augmented views of the same image while pushing apart representations of different images \cite{chen-simclr-2020,he-moco-2020}. Self-distillation methods such as DINO and DINOv2 align a student representation with a momentum teacher representation without requiring explicit negatives \cite{caron-dino-2021,oquab-dinov2-2024}. Generative methods such as MAE mask part of the input and train a decoder to reconstruct the missing content at the pixel level \cite{he-mae-2022}. Predictive methods such as I-JEPA predict the representation of masked regions in latent space rather than at the pixel level \cite{assran-ijepa-2023}.
+
+This thesis compares one representative from each of the three families that have been shown to produce strong ViT features at scale: I-JEPA from the predictive family, DINOv2 from the self-distillation family, and MAE from the generative family. Contrastive methods are not evaluated directly because they have largely been superseded by self-distillation and masked-modeling approaches for ViT pretraining, but they share enough structural similarity with DINOv2 that its results can be read as informative about discriminative SSL more generally. All three objectives remove the need for manual labels during pretraining, but they do not learn the same invariances. That difference becomes important under geographic transfer, where the model must preserve road-relevant structure while discarding city-specific texture and appearance.
 
 \subsection{Joint-Embedding Predictive Architectures (I-JEPA)}
 \label{sec:bg-ijepa}
 
-I-JEPA learns by predicting the latent representation of masked image regions from visible context rather than reconstructing pixels~\cite{assran-ijepa}. The method uses a context encoder, a target encoder, and a predictor operating in representation space. Because the target is semantic rather than pixel-level, I-JEPA is biased toward abstractions that capture scene structure without over-committing to low-level texture. That property made it the starting point of the thesis: if a representation trained with a predictive objective is genuinely more transferable, it should remain useful even when paired with a deliberately weak planner head. In the experiments, I-JEPA appears both as large off-the-shelf ImageNet pretraining and as smaller driving-specific variants trained on nuScenes.
+I-JEPA is the starting point of this thesis and is covered in more detail than its peers. The method learns by predicting the representation of masked image regions from visible context \cite{assran-ijepa-2023} rather than by reconstructing pixels as in MAE \cite{he-mae-2022} or by matching augmented views as in contrastive and self-distillation methods \cite{he-moco-2020,chen-simclr-2020,caron-dino-2021,oquab-dinov2-2024}. It is a concrete instantiation of the Joint-Embedding Predictive Architecture principle proposed by LeCun \cite{lecun-ssl-path-2022}, which argues that effective self-supervised features should be obtained by predicting abstract latents rather than raw observations.
+
+The architecture consists of three networks. A context encoder $f_\theta$ processes a visible subset of image patches and produces a context representation. A target encoder $f_{\bar\theta}$, whose parameters $\bar\theta$ are maintained as an exponential moving average of $\theta$, processes a set of masked target regions and produces target representations. A predictor $g_\phi$ takes the context representation and, conditioned on the spatial position of each target region, predicts the target encoder's output at that region. The loss is the mean squared error between the predictor's output and the target encoder's output, computed entirely in representation space:
+\begin{equation}
+\label{eq:ijepa-loss}
+\mathcal{L}_{\text{I-JEPA}} \;=\; \frac{1}{M}\sum_{i=1}^{M} \bigl\| g_\phi\bigl(f_\theta(x_c),\, p_i\bigr) - \mathrm{sg}\bigl[f_{\bar\theta}(x_{t_i})\bigr] \bigr\|_2^2,
+\end{equation}
+where $x_c$ is the context, $x_{t_i}$ is the $i$-th target block, $p_i$ its spatial position, $M$ the number of target blocks, and $\mathrm{sg}[\cdot]$ the stop-gradient operator that prevents updates to the target encoder through the loss path. The target masking strategy samples four relatively large target blocks per image, each covering roughly 15--20\% of the image area, and uses the remaining spatially coherent region as context. This masking scheme biases the pretext task toward semantic rather than local-pixel prediction, because the model cannot rely on interpolating neighboring pixels to solve it.
+
+Three design choices distinguish I-JEPA from the other SSL families considered here. First, the loss lives in latent space, so the target representation is itself learned rather than fixed to pixels, and the model is never forced to encode high-frequency details that are irrelevant to the pretext task. Second, both encoders are instantiated as ViTs \cite{dosovitskiy-vit-2021} that operate directly on patch tokens, which makes masking a simple indexing operation and avoids the heavy convolutional decoders used by pixel reconstruction methods \cite{he-mae-2022}. Third, no hand-crafted image augmentations or contrastive negatives are required, so the inductive bias comes entirely from the architecture and the masking scheme rather than from a manually designed invariance set. These three choices together produce features that are biased toward abstract structure while remaining transferable across downstream tasks \cite{assran-ijepa-2023}. The architecture is illustrated in Figure~\ref{fig:bg-ijepa}.
+
+\begin{figure}[ht]
+    \centering
+    \begin{tikzpicture}[
+        node distance = 4mm and 7mm,
+        img/.style   = {draw, rectangle, minimum width=16mm, minimum height=16mm, font=\tiny, align=center, fill=black!5},
+        enc/.style   = {draw, rounded corners=2pt, minimum height=8mm, minimum width=22mm, align=center, font=\small},
+        pred/.style  = {draw, rounded corners=2pt, minimum height=8mm, minimum width=22mm, align=center, font=\small, fill=black!5},
+        loss/.style  = {draw, ellipse, minimum height=8mm, minimum width=20mm, align=center, font=\small},
+        arrow/.style = {-{Stealth[length=1.8mm]}, thin},
+    ]
+        \node[img] (xc) {context $x_c$};
+        \node[img, right=22mm of xc] (xt) {targets $x_{t_i}$};
+
+        \node[enc, below=of xc] (fc) {context enc. $f_\theta$};
+        \node[enc, below=of xt] (ft) {target enc. $f_{\bar\theta}$};
+
+        \node[pred, below=of fc, xshift=17mm] (g) {predictor $g_\phi$};
+
+        \node[loss, below=of g] (L) {$\|\cdot\|_2^2$ in latent space};
+
+        \draw[arrow] (xc) -- (fc);
+        \draw[arrow] (xt) -- (ft);
+        \draw[arrow] (fc.south) |- (g.west);
+        \draw[arrow] (ft.south) |- (g.east);
+        \draw[arrow] (g) -- (L);
+        \draw[arrow, dashed] (ft.south) -- ++(0,-2mm) -| (L.east);
+
+        \node[font=\scriptsize, right=2mm of L] {stop-grad};
+    \end{tikzpicture}
+    \caption{Image Joint-Embedding Predictive Architecture (I-JEPA) \cite{assran-ijepa-2023}. The context encoder $f_\theta$ processes the visible patches $x_c$. The target encoder $f_{\bar\theta}$, updated as an exponential moving average of $f_\theta$, processes masked target blocks $x_{t_i}$. The predictor $g_\phi$ maps context features to target features using the target position as a query, and the loss is the mean squared error in latent space, with a stop-gradient on the target branch.}
+    \label{fig:bg-ijepa}
+\end{figure}
+
+Two variants of I-JEPA appear in the experiments. The first is the ImageNet-pretrained ViT-H/14 release from Assran et al. \cite{assran-ijepa-2023}, which is used off the shelf and represents large-scale generic pretraining. The second is a set of smaller ViT-S/14 checkpoints pretrained on nuScenes driving frames under a controlled recipe, which represents domain-matched but lower-capacity pretraining. The contrast between these two variants is used throughout Chapter~\ref{chap:experiments} to separate the contribution of pretraining scale from the contribution of pretraining domain. Related work has shown that the JEPA objective transfers to LiDAR \cite{zhu-adljepa-2025} and to video \cite{bardes-vjepa-2024}, with an early application to full end-to-end driving appearing in Drive-JEPA \cite{wang-drive-jepa}. This thesis does not build on the video or LiDAR JEPA variants directly, but they are useful points of reference for why the predictive-latent objective is worth studying in the driving setting.
 
 \subsection{DINOv2}
 \label{sec:bg-dinov2}
 
-DINOv2 is a self-distillation method in which a student network is trained to match a momentum teacher under carefully stabilized target distributions~\cite{oquab-dinov2}. It is attractive as a generic backbone because its features transfer well across a wide range of downstream tasks and because it avoids explicit negative sampling. In the context of this thesis, DINOv2 is useful as a strong non-predictive SSL baseline. If DINOv2 and I-JEPA both outperform supervised baselines under cross-city transfer, then the robustness gain is not unique to one architecture family. If I-JEPA consistently leads, then the predictive objective itself becomes a plausible part of the explanation.
+DINOv2 is a self-distillation method in which a student network is trained to match the output distribution of a momentum teacher under carefully stabilized target statistics \cite{oquab-dinov2-2024,caron-dino-2021}. Given two augmented views of the same image, the student and teacher each produce feature vectors. Those vectors are projected to a probability distribution over a learnable prototype codebook, and the student is trained to minimize the cross-entropy between its distribution and the teacher's. The teacher weights are maintained as an exponential moving average of the student, and centering and sharpening operations on the teacher output prevent the trivial collapse solution in which both networks predict the same constant. DINOv2 scales this recipe to large curated datasets such as LVD-142M and produces features that transfer competitively across classification, retrieval, segmentation, and monocular depth benchmarks \cite{oquab-dinov2-2024}.
+
+DINOv2 is useful in this thesis as a strong non-predictive SSL baseline. If DINOv2 and I-JEPA both outperform supervised pretraining under cross-city transfer, then the robustness gain is a property of self-supervision in general rather than of the predictive objective in particular. If I-JEPA consistently leads, then the predictive objective itself becomes a plausible part of the explanation. This decomposition is what the experiments in Chapter~\ref{chap:experiments}, Phase 1, are set up to test.
 
 \subsection{Masked Autoencoders (MAE)}
 \label{sec:bg-mae}
 
-MAE masks a large fraction of image patches and trains a lightweight decoder to reconstruct the missing pixels from the visible subset~\cite{he-mae}. It is generative rather than predictive or distillative. In driving, this creates an interesting tension. On one hand, reconstruction can yield strong generic visual features. On the other, pixel prediction may force the model to encode details that are unnecessary for planning and possibly harmful under domain shift. The MAE results in this thesis are therefore informative even when MAE is not the top performer: they help distinguish whether the gain from SSL comes from scale alone or from the kind of invariance imposed by the objective.
+Masked Autoencoders \cite{he-mae-2022} formulate self-supervision as an asymmetric encoder-decoder reconstruction task. A large fraction of image patches, typically 75\%, are masked uniformly at random. A ViT encoder processes only the visible patches, which keeps the encoder pass cheap. A lightweight decoder is then given the encoded visible tokens along with a shared learnable mask token at each masked position, and is trained to reconstruct the pixel values of the masked patches under an L2 loss on normalized pixels. The encoder is used as the downstream representation after pretraining; the decoder is discarded. MAE is generative, rather than predictive like I-JEPA or distillative like DINOv2, and it is trained with a pixel-level reconstruction loss. In driving, this creates a tension. Reconstruction can produce strong generic visual features, as shown on ImageNet and on downstream detection and segmentation tasks \cite{he-mae-2022}. At the same time, pixel prediction requires the model to encode appearance details that may be irrelevant to planning, and may even be harmful under domain shift because such details are precisely what differs between cities. The MAE results in this thesis are therefore informative even where MAE is not the top performer, because they help distinguish whether the gain from SSL comes from scale alone or from the kind of invariance imposed by the objective.
 
 \subsection{Comparison of SSL Paradigms}
 \label{sec:bg-ssl-compare}
 
-The three paradigms can be summarized by the invariances they encourage. I-JEPA is predictive and latent-space oriented, which should help it ignore superficial texture while retaining semantic layout. DINOv2 is discriminative and tends to produce highly transferable visual embeddings, but it is not explicitly aligned to future prediction. MAE is generative and may preserve broader scene detail, though not always in the way most useful for planning. The central empirical question of the thesis is whether these differences matter only for mixed-city benchmark performance or whether they become much larger once the model is evaluated under zero-shot transfer to unseen cities.
+The three paradigms can be summarized by the invariances they encourage. I-JEPA is predictive and latent-space oriented, which biases its features toward semantic layout and away from low-level texture. DINOv2 is discriminative and produces features optimized for global image identity under augmentation, which has been shown to yield strong off-the-shelf transfer across many tasks, though the training signal is not explicitly aligned with future prediction. MAE is generative and preserves broader scene detail, including texture, because the loss is defined on pixels. The central empirical question for this thesis is whether these differences matter only for mixed-city benchmark performance, where all three paradigms perform competitively, or whether they become pronounced once the model is evaluated under zero-shot transfer to unseen cities.
 
 \begin{figure}[ht]
     \centering
@@ -107,7 +273,7 @@ The three paradigms can be summarized by the invariances they encourage. I-JEPA 
         \draw[arrow] (mad) -- (mal);
         \node[font=\scriptsize, above=1mm of max] {\textbf{MAE}};
     \end{tikzpicture}
-    \caption{The three SSL objectives compared in this thesis. \textbf{I-JEPA} (left): context and target encoders extract features; a predictor maps context latents to target latents and the loss is in representation space~\cite{assran-ijepa}. \textbf{DINOv2} (middle): a student and a momentum teacher process the same image; the student is trained to match the teacher's soft output distribution~\cite{oquab-dinov2,caron-dino-2021}. \textbf{MAE} (right): a large fraction of image patches is masked and a lightweight decoder is trained to reconstruct pixels from the visible encoded patches~\cite{he-mae}. The three objectives encourage different invariances, which is the central variable varied under cross-city transfer in Phase~4 (\refsec{sec:exp-why-ssl}).}
+    \caption{The three SSL objectives compared in this thesis. \textbf{I-JEPA} (left): context and target encoders extract features, a predictor maps context latents to target latents, and the loss is in representation space \cite{assran-ijepa-2023}. \textbf{DINOv2} (middle): a student and a momentum teacher process augmented views of the same image, and the student is trained to match the teacher's softmax output \cite{oquab-dinov2-2024,caron-dino-2021}. \textbf{MAE} (right): a large fraction of image patches is masked and a lightweight decoder reconstructs the masked pixels from the encoded visible patches \cite{he-mae-2022}. The three objectives encourage different invariances, which is the central variable varied under cross-city transfer in Phase~4 (Section~\ref{sec:exp-why-ssl}).}
     \label{fig:bg-ssl-family}
 \end{figure}
 
@@ -115,10 +281,14 @@ The three paradigms can be summarized by the invariances they encourage. I-JEPA 
 \section{Planning Architectures}
 \label{sec:bg-planning}
 
+The thesis evaluates visual backbones inside four planning architectures, each of which serves a distinct diagnostic role. TransFuser provides a strong multi-modal closed-loop reference point. A perception-free MLP head provides the cleanest possible test of whether a backbone alone is sufficient to drive performance. LAW provides a stable open-loop setting in which only the encoder changes. DiffusionDrive provides a generative planning head that substitutes for the regression-based heads used by the other three. Together these four cover the main planner families relevant to NAVSIM, and holding planner identity fixed while varying backbone is what makes the thesis' central question experimentally tractable.
+
 \subsection{TransFuser}
 \label{sec:bg-transfuser}
 
-TransFuser is a representative multi-modal end-to-end planner that fuses camera and LiDAR features through transformer-style cross-modal interaction before regressing future waypoints~\cite{chitta-transfuser}. In this thesis it serves two roles. First, it is a strong closed-loop baseline on NAVSIM. Second, it exposes an important practical issue in early SSL experiments: swapping a ViT image encoder into a fusion stack designed around CNN geometry is not a pure test of representation quality. This is one reason the thesis began with lightweight perception-free heads and only later returned to multi-modal planners under a more controlled benchmark.
+TransFuser is a representative multi-modal end-to-end planner that fuses camera and LiDAR features through transformer-style cross-modal attention before regressing a future trajectory \cite{chitta-transfuser-2023,prakash-transfuser-2021}. The model processes each modality with its own convolutional backbone, typically ResNet-34 for both streams in NAVSIM. It inserts transformer blocks at four resolution scales to allow image and LiDAR tokens to attend to one another, aggregates the fused feature map into a compact scene embedding, and decodes a sequence of future waypoints with a GRU-based autoregressive head conditioned on ego status and a discrete driving command \cite{chitta-transfuser-2023}. In NAVSIM, TransFuser is a standard reference baseline on \texttt{navtest}, where it reaches $84.0$ PDMS (NC $97.7$, DAC $92.8$, TTC $92.8$, Comf.\ $100$, EP $79.2$), while its camera-only variant Latent TransFuser (LTF) reaches $83.8$ PDMS (NC $97.4$, DAC $92.8$, TTC $92.4$, Comf.\ $100$, EP $79.0$) \cite{dauner-navsim-2024}. The gap between the two baselines is approximately $0.2$ PDMS, which is well within the single-run standard deviation of $\pm 0.56$ PDMS reported across training seeds \cite{dauner-navsim-2024}. The authors train both agents for $100$ epochs on \texttt{navtrain} using a ResNet-34 image encoder, three stitched front-facing cameras at $1024 \times 256$ covering an approximate FOV of $140^{\circ}$, an Adam optimizer with a constant learning rate of $1\mathrm{e}{-4}$, batch size $96$, and a single NVIDIA A5000 GPU for roughly one day of training \cite{dauner-navsim-2024}.
+
+TransFuser plays two roles in this thesis. First, it is a strong closed-loop reference point on NAVSIM, which allows self-supervised backbones to be evaluated under a realistic planner rather than a toy head. Second, it exposes a practical issue that matters for the rest of the thesis: inserting a ViT image encoder into a fusion stack designed around CNN geometry is not a pure test of representation quality, because the fusion layers themselves must be adapted to a new feature shape. This is one reason the thesis started with lightweight perception-free heads, and only later returned to multi-modal planners under a more controlled benchmark. The architecture is summarized in Figure~\ref{fig:bg-transfuser}.
 
 \begin{figure}[ht]
     \centering
@@ -142,19 +312,23 @@ TransFuser is a representative multi-modal end-to-end planner that fuses camera 
         \draw[arrow] (fuse) -- (head);
         \draw[arrow] (head) -- (out);
     \end{tikzpicture}
-    \caption{TransFuser schematic (adapted from~\cite{chitta-transfuser}). Camera and LiDAR streams are encoded independently, fused through repeated cross-modal attention, and decoded to a waypoint sequence. This thesis varies only the Image enc.\ block; everything to the right of fusion is held fixed.}
+    \caption{TransFuser schematic adapted from Chitta et al. \cite{chitta-transfuser-2023}. Camera and LiDAR streams are encoded independently, fused through repeated cross-modal attention, and decoded into a waypoint sequence by a GRU head conditioned on ego status and driving command. This thesis varies only the Image encoder block; the fusion stack and GRU head are held fixed.}
     \label{fig:bg-transfuser}
 \end{figure}
+
+A camera-only variant, Latent TransFuser (LatTF), replaces the LiDAR input with a fixed positional encoding that serves as a learned latent tensor, so the rest of the fusion stack can be reused without modification \cite{chitta-transfuser-2023,dauner-navsim-2024}. LatTF is important in the cross-city setting of this thesis because its behavior under geographic shift differs systematically from TransFuser's. In particular, the LiDAR branch in TransFuser can overfit to city-specific geometric structure when trained on small single-city datasets, and LatTF's removal of that branch acts as an implicit regularizer. This effect is quantified empirically in Chapter~\ref{chap:experiments}.
 
 \subsection{Lightweight Perception-Free Heads}
 \label{sec:bg-lightweight-heads}
 
-The stripped-down regime studied in Phase 0 combines a pretrained visual encoder with a minimal planning head, usually an MLP waypoint regressor or a small transformer decoder over image features and ego state. The point of this regime is diagnostic clarity. If a frozen or lightly tuned SSL backbone improves performance even when the downstream planner is intentionally simple, the effect is easier to attribute to representation quality rather than to heavy planner engineering. This logic motivated the original course-project stage of the thesis and later aligned naturally with Drive-JEPA, whose perception-free results showed that strong JEPA-style pretraining can make lightweight decoders surprisingly competitive.
+The lightweight regime combines a pretrained visual encoder with a minimal planning head. The head is either an MLP waypoint regressor or a small transformer decoder that attends over image tokens and ego state, with no LiDAR input, no cross-modal fusion, and no auxiliary perception tasks. The purpose of this regime is diagnostic clarity. If a frozen or lightly tuned SSL backbone improves performance even when the downstream planner is deliberately simple, then the improvement is easier to attribute to representation quality rather than to planner engineering. This is the logic that motivated the original course-project stage of the thesis, in which an I-JEPA ViT-B/16 encoder was combined with an MLP trajectory head and a minimal ego-state featurizer. The lightweight regime also aligns with the perception-free setup in Drive-JEPA \cite{wang-drive-jepa}, whose results indicate that strong JEPA-style pretraining makes lightweight decoders surprisingly competitive on NAVSIM.
 
 \subsection{Latent World Model (LAW)}
 \label{sec:bg-law}
 
-LAW augments end-to-end planning with a latent world-model objective that encourages the network to predict future feature dynamics while still outputting a single future trajectory~\cite{li-law}. It is especially useful for the thesis because it provides a stable open-loop test bed in which the downstream planner can be held fixed while only the backbone initialization changes. That makes LAW the cleanest architecture for isolating whether cross-city failure comes from the representation or from the planning head.
+LAW augments end-to-end planning with a latent world-model objective that encourages the network to predict future feature dynamics while still outputting a single future trajectory \cite{li-law-2024}. At time $t$, the encoder produces a latent representation $z_t$ of the current observation. A world-model predictor is trained to forecast the next-step latent $\hat{z}_{t+1}$, and a planner head regresses a waypoint sequence from $z_t$. The world-model objective shapes the encoder toward features that are predictable under ego motion, while the planner head is trained jointly with an imitation loss against the logged human trajectory. LAW's default image encoder is Swin-Transformer-Tiny pretrained on ImageNet \cite{liu-swin-2021,li-law-2024}, and the supervised baseline reported in this thesis corresponds to that default. The self-supervised variants replace the Swin-T encoder with one of the pretrained ViTs described above while keeping the world-model predictor and planner head fixed. Because the variable in this comparison is supervised versus self-supervised pretraining, the fact that LAW's default is Swin-T while TransFuser's default is ResNet-34 is not a confounder. It is instead an additional control, because consistent SSL advantages across both supervised families strengthen the conclusion that the effect comes from the SSL pretraining objective rather than from a specific backbone architecture.
+
+LAW is especially useful for this thesis because it provides a stable open-loop test bed in which the downstream planner can be held fixed while only the backbone initialization changes. That makes LAW the cleanest architecture for isolating whether cross-city failure originates in the representation or in the planning head. The structure is shown in Figure~\ref{fig:bg-law}.
 
 \begin{figure}[ht]
     \centering
@@ -165,7 +339,7 @@ LAW augments end-to-end planning with a latent world-model objective that encour
         arrow/.style = {-{Stealth[length=2mm]}, thick},
     ]
         \node[box] (img) {Image $o_t$};
-        \node[box, right=of img] (enc) {Encoder\\(backbone)};
+        \node[box, right=of img] (enc) {Encoder\\(Swin-T / ViT)};
         \node[pill, right=of enc] (lat) {Latent $z_t$};
         \node[box, right=of lat] (pred) {World-model\\predictor};
         \node[pill, right=of pred] (latp) {$\hat z_{t+1}$};
@@ -175,17 +349,19 @@ LAW augments end-to-end planning with a latent world-model objective that encour
         \draw[arrow] (enc) -- (lat);
         \draw[arrow] (lat) -- (pred);
         \draw[arrow] (pred) -- (latp);
-        \draw[arrow] (lat.south) |- (plan.west);
+        \draw[arrow] (lat.south) -- (plan.north);
         \draw[arrow] (plan) -- (act);
     \end{tikzpicture}
-    \caption{LAW schematic (adapted from~\cite{li-law}). The encoder produces a latent $z_t$ from the current observation; a world-model predictor is trained to forecast the next-step latent $\hat z_{t+1}$, while the planner head regresses a waypoint sequence from the same $z_t$. In this thesis the encoder is the variable component; the predictor and planner head are held fixed across backbones.}
+    \caption{LAW schematic adapted from Li et al. \cite{li-law-2024}. The encoder produces a latent $z_t$ from the current observation. A world-model predictor forecasts the next-step latent $\hat z_{t+1}$, while the planner head regresses a waypoint sequence from the same $z_t$. The default encoder is Swin-Transformer-Tiny pretrained on ImageNet; the SSL variants of this thesis substitute it with a pretrained ViT. In both cases the predictor and planner head are held fixed across backbones.}
     \label{fig:bg-law}
 \end{figure}
 
 \subsection{Truncated Diffusion Planning (DiffusionDrive)}
 \label{sec:bg-diffusiondrive}
 
-DiffusionDrive represents a different planning family. Rather than directly regressing a single trajectory, it refines trajectory proposals through a truncated diffusion process initialized from anchor trajectories rather than pure Gaussian noise. This design preserves much of the multi-modal expressiveness of diffusion planning while remaining fast enough for realistic deployment. In this thesis, DiffusionDrive matters because it tests whether the representation-centric findings from LAW and TransFuser survive a substantial change in planner head. If SSL continues to help when the head becomes generative rather than regressive, the thesis claim becomes much stronger.
+DiffusionDrive represents a different planning family \cite{jia-diffusiondrive-2025}. Rather than regressing a single trajectory, it refines trajectory proposals through a truncated diffusion process initialized from a bank of anchor trajectories obtained by $K$-means clustering of expert trajectories in the training set, typically with $K = 20$ anchors. At inference, the model runs only a small number of denoising steps, usually two, which preserves much of the multi-modal expressiveness of diffusion planning while remaining fast enough for realistic deployment at around 45 FPS on a single RTX 3090. The scene features that condition the denoising are produced by a backbone-adapter pair; in the default configuration, a ResNet-34 produces a spatial feature map, and a cross-attention conditioner injects it into every denoising block. Conceptually, DiffusionDrive combines the sample-diversity advantages of trajectory diffusion models \cite{janner-diffuser-2022,chi-diffusion-policy-2023} with the inference-time efficiency of anchor-based proposal methods \cite{hydra-mdp-2024}.
+
+DiffusionDrive matters in this thesis because it tests whether the representation-centric findings obtained with LAW and TransFuser survive a substantial change in planner head. A diffusion head is generative and preserves multi-modal trajectory structure, whereas a regression head collapses the distribution to a single trajectory. If SSL continues to help when the head becomes generative, then the thesis claim that cross-city failure is primarily a representation problem, not a planning-architecture problem, becomes considerably stronger. The schematic in Figure~\ref{fig:bg-diffusiondrive} shows the truncated denoising pipeline and the anchor-conditioned initialization used here.
 
 \begin{figure}[ht]
     \centering
@@ -210,17 +386,19 @@ DiffusionDrive represents a different planning family. Rather than directly regr
         \draw[arrow] (den1) -- (den2);
         \draw[arrow] (den2) -- (out);
     \end{tikzpicture}
-    \caption{Truncated DiffusionDrive schematic (adapted from~\cite{jia-diffusiondrive-2025}). A $K$-means anchor bank $\{\tau_k\}$ replaces the usual Gaussian noise initialization; only two denoising steps are used at inference, giving real-time throughput while retaining the multi-modality of diffusion planning. The SSL variants in this thesis substitute the Scene-feats block with a frozen ViT encoder and its ViT-to-CNN adapter.}
+    \caption{Truncated DiffusionDrive schematic adapted from Jia et al. \cite{jia-diffusiondrive-2025}. A $K$-means anchor bank $\{\tau_k\}_{k=1}^{K}$ replaces the usual Gaussian noise initialization, and only two denoising steps are used at inference, giving real-time throughput while retaining the multi-modality of diffusion planning. The SSL variants in this thesis substitute the Scene-feats block with a frozen ViT encoder and its ViT-to-CNN adapter.}
     \label{fig:bg-diffusiondrive}
 \end{figure}
 
 \subsection{DiffusionDriveV2 and RL Post-Training}
 \label{sec:bg-ddv2}
 
-Recent work extends diffusion planners with reinforcement-learning-style post-training that optimizes simulator-derived rewards directly. In the terminology of this thesis, such methods matter less for the primary claim than for a follow-on question: once a representation is strong, do policy-improvement gains transfer across cities or do they overfit to the reward landscape of the training city? That question remains exploratory here, but it is a natural next step once representation robustness has been established.
+Recent work extends diffusion planners with reinforcement-learning-style post-training that optimizes simulator-derived rewards directly on top of an imitation-pretrained policy, including DPO-based fine-tuning for driving \cite{rafailov-dpo-2023,drivedpo-2025} and group-relative policy optimization variants \cite{grpo-2024}. DiffusionDriveV2 is the most visible representative of this line and has been reported to improve PDMS by several points over the imitation-only baseline \cite{liang-diffusiondrive-v2-2025}. For the primary claim of this thesis, RL post-training matters less than the representation question itself, but it opens a follow-on question that remains exploratory here. Once a representation is strong under cross-city evaluation, do policy-improvement gains transfer across cities, or do they overfit to the reward landscape of the training city? This question is not the focus of Chapter~\ref{chap:experiments}, but it is a natural extension once representation robustness has been established.
 
 % ============================================================================
 \section{Domain Generalization in Autonomous Driving}
 \label{sec:bg-domain-gen}
 
-Domain generalization asks whether a model trained on one distribution remains effective on unseen but related domains without adaptation. In autonomous driving, prior work has focused heavily on weather, lighting, seasonal change, or sim-to-real transfer. Those are important shifts, but they primarily affect appearance. Geographic transfer is broader: it changes lane structure, intersection topology, road markings, map priors, traffic density, and sometimes even driving convention. Most existing driving work studies such shifts at the perception level, using metrics like detection mAP or segmentation IoU. This thesis instead studies domain generalization at the planning level, using PDMS and EPDMS under explicit city-disjoint evaluation, which makes the representation question much harder and more practically relevant.
+Domain generalization asks whether a model trained on one distribution remains effective on unseen but related domains without further adaptation \cite{wang-domain-gen-survey-2022,zhou-domain-gen-survey-2023}. The zero-shot variant used in this thesis is the strictest setting of the problem. A model trained on data from a source distribution $\mathcal{D}_s$ is evaluated on a target distribution $\mathcal{D}_t \neq \mathcal{D}_s$ without fine-tuning, without test-time adaptation, and without any access to target-domain samples during training. Prior work on domain generalization in autonomous driving has focused most heavily on weather, lighting, seasonal change, and sim-to-real transfer \cite{sakaridis-acdc-2021,pan-cycada-2018,dosovitskiy-carla-2017}. These are important shifts, and they are well-studied, but they primarily affect the appearance channel of the input while leaving road layout and driving convention intact.
+
+Geographic transfer is broader. Changing the city changes lane structure, intersection topology, road markings, map priors, traffic density, vehicle fleet composition, and in some cases driving convention such as left-hand versus right-hand traffic. Most existing driving work studies such shifts at the perception level, using metrics like detection mAP or segmentation IoU \cite{caesar-nuscenes-2020,sun-waymo-2020}. This thesis studies domain generalization one step further down the pipeline, at the planning level, using PDMS and EPDMS in closed loop and L2 displacement and collision rate in open loop, both under explicit city-disjoint evaluation. The framing makes the representation question harder, because planning objectives are more sensitive to small errors than perception objectives, and it is also more practically relevant, because the deployment failure mode that matters to an autonomous vehicle operator is a failed maneuver, rather than a missed bounding box.

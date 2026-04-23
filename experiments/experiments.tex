@@ -34,33 +34,80 @@ These references establish two points used throughout the rest of the chapter. F
 \section{Phase 0: Lightweight-Head SSL Motivation}
 \label{sec:exp-phase0}
 
-This thesis did not begin with city splits. The original working hypothesis was simpler: if representation quality is genuinely central to end-to-end driving, then replacing a supervised image backbone with a self-supervised one should already help even when the planner head is intentionally weak. The earliest exploratory runs therefore paired SSL backbones with a simple MLP waypoint regressor in a perception-free setting, first in the course-project report~\cite{hamza-sanchez-navsim-report} and then in the larger pilot ladder summarized here. The value of this regime was not leaderboard ambition, but causal cleanliness: with as little planner machinery as possible, any gain could be interpreted primarily as a gain in representation quality.
+This thesis did not begin with city splits. The original working hypothesis was simpler: if representation quality is genuinely central to end-to-end driving, then replacing a supervised image backbone with a self-supervised one should already help even when the planner head is intentionally weak. The exploratory regime of~\ref{sec:meth-lightweight-head} operationalizes this hypothesis through the \texttt{LightweightPlanningAgent}: eleven backbones, two adaptation modes, the same MLP head, the same training recipe, the same 20-epoch budget on the pooled \texttt{navtest} split. Its purpose is not leaderboard ambition but causal cleanliness.
+
+\subsection{Priority-1 Backbone Sweep (Frozen, Front-1, MLP)}
+\label{sec:exp-phase0-p1}
+
+The Priority-1 sweep holds the planner at its minimum capacity --- a single front camera, frozen backbone, $1288{\to}256{\to}256{\to}T{\cdot}3$ MLP --- and varies only the backbone. \reftab{tab:exp-phase0-p1} reports the ten Priority-1 results harvested to date, ranked by PDMS. One run (\texttt{LH-B1-IJH-hf-frozen}, I-JEPA ViT-H/14 from the Meta IN1k \(300\)-epoch checkpoint) is still under evaluation at the time of writing.
 
 \begin{table}[ht]
 \centering
-\caption{Selected Phase 0 pilot results on standard NAVSIM. These runs are used as formative evidence rather than as the final benchmark basis of the thesis.}
-\label{tab:phase0-pilots}
-\begin{tabular}{llc}
+\caption{Priority-1 lightweight-head sweep on \texttt{navtest}, pooled all-city. All rows use the same frozen encoder, single-front-camera, MLP$(256,256)$ head, AdamW, 20-epoch recipe from~\ref{sec:meth-lh-recipe}. PDMS is one-stage, devkit v1.0.}
+\label{tab:exp-phase0-p1}
+\small
+\renewcommand{\arraystretch}{1.2}
+\setlength{\tabcolsep}{5pt}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.8cm} >{\raggedright\arraybackslash}p{3.2cm} >{\raggedright\arraybackslash}p{3.2cm} c@{}}
 \toprule
-\textbf{Configuration} & \textbf{Inputs / setting} & \textbf{PDMS} \\
+\textbf{Experiment} & \textbf{Backbone} & \textbf{Pre-training} & \textbf{PDMS} \\
 \midrule
-Ego-status MLP & Ego only & 65.99 \\
-TransFuser baseline & Camera + LiDAR & 81.68 \\
-I-JEPA + MLP & Single front camera, frozen encoder & 75.24 \\
-I-JEPA + MLP & Single front camera, partial fine-tuning & 79.78 \\
-I-JEPA + MLP & Three front cameras + fusion & 82.09 \\
-Supervised ViT + MLP & Three front cameras + fusion & 75.52 \\
+\texttt{LH-B1-MAE-hf-frozen}  & MAE ViT-B/16    & ImageNet-1k SSL         & $0.775$ \\
+\texttt{LH-B1-MAE-s-frozen}   & MAE ViT-S/14    & nuScenes, $224{\times}224$   & $0.749$ \\
+\texttt{LH-B1-MAE-r-frozen}   & MAE ViT-S/14    & nuScenes, $224{\times}392$   & $0.738$ \\
+\texttt{LH-B1-IJS-s-frozen}   & I-JEPA ViT-S/14 & nuScenes, $224{\times}224$   & $0.716$ \\
+\texttt{LH-B1-Dv2-r-frozen}   & DINOv2 ViT-S/14 & nuScenes, $224{\times}392$   & $0.698$ \\
+\texttt{LH-B1-Dv2-s-frozen}   & DINOv2 ViT-S/14 & nuScenes, $224{\times}224$   & $0.697$ \\
+\texttt{LH-B1-Rn34-frozen}    & ResNet-34       & ImageNet-1k supervised  & $0.687$ \\
+\texttt{LH-B1-Dv2-hf-frozen}  & DINOv2 ViT-S/14 & LVD-142M SSL            & $0.668$ \\
+\texttt{LH-B1-IJS-r-frozen}   & I-JEPA ViT-S/14 & nuScenes, $224{\times}392$   & $0.654$ \\
+\texttt{LH-B1-IJH-hf-frozen}  & I-JEPA ViT-H/14 & ImageNet-1k SSL (Meta)  & pending \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-The Phase 0 pilot ladder produced three findings that shaped the rest of the thesis. First, SSL already mattered before sophisticated planners entered the picture. A frozen I-JEPA encoder paired with an MLP was far stronger than ego-only prediction, and partial fine-tuning or modest multi-camera fusion pushed the same simple head into the low-80 PDMS range. Second, the gain did not come from arbitrarily increasing planner capacity. In the original pilot runs, adding temporal ego history helped the dynamic sub-metrics more reliably than simply making the MLP deeper, and the largest MLP variant did not improve overall behavior~\cite{hamza-sanchez-navsim-report}. Third, a supervised ViT with the same lightweight head lagged substantially behind the I-JEPA variants, which suggested that the pretraining objective, not merely the transformer architecture, was doing useful work.
+\subsection{Findings}
+\label{sec:exp-phase0-findings}
 
-The same pilot stage also exposed a limitation. Directly swapping ViT backbones into TransFuser did not provide a clean answer by itself: frozen I-JEPA and DINO-style image towers initially underperformed the native ResNet branch, and partial unfreezing recovered only most of the gap. In hindsight this was useful. It showed that mixed-city PDMS in a heavy multi-modal planner conflates representation quality with camera--LiDAR fusion geometry, preprocessing, and adaptation details. That ambiguity is one reason the thesis ultimately pivoted toward explicit geographic transfer, where the planner can be held fixed and the backbone effect becomes much easier to isolate.
+The sweep produces four observations relevant to the rest of the thesis.
 
-The research landscape changed during the project. Drive-JEPA~\cite{wang-drive-jepa} showed that V-JEPA-based video pretraining can support far stronger mixed-city performance than a thesis centered only on lightweight-head accuracy could reasonably claim as novel. In its full setting, Drive-JEPA reports 93.3 PDMS on NAVSIM v1 and 87.8 EPDMS on NAVSIM v2; in the perception-free setting, a V-JEPA encoder with a simple transformer decoder reaches 89.0 PDMS~\cite{wang-drive-jepa}. Two conclusions follow from that result. First, it validates the initial thesis intuition: representation learning alone can materially improve end-to-end driving. Second, it makes raw in-distribution PDMS an insufficient differentiator for this thesis.
+\paragraph{Self-supervised pretraining beats supervised ResNet-34 under the same head.} Six of nine fully-harvested SSL variants exceed the supervised ResNet-34 baseline ($0.687$): MAE ImageNet ($+8.8$\,pp), MAE nuScenes square ($+6.2$\,pp), MAE nuScenes rectangular ($+5.1$\,pp), I-JEPA nuScenes square ($+2.9$\,pp), and both DINOv2 nuScenes variants ($+1.0$\,pp). Only three SSL rows trail ResNet-34: the off-the-shelf DINOv2 LVD-142M checkpoint ($-1.9$\,pp) and the I-JEPA ViT-S/14 rectangular variant ($-3.3$\,pp). Every configuration shares the same head, loss, and 20-epoch schedule, so the ordering is attributable to the pretrained representation rather than to adaptation capacity.
 
-The remainder of the chapter is therefore organized around the post-Drive-JEPA question. If mixed-city benchmark gains can already be achieved with strong JEPA-style pretraining, what unique insight can a representation-centered thesis still provide? The answer pursued here is threefold: explicit cross-city evaluation, architectural transfer of the SSL effect to DiffusionDrive, and a mechanistic account of why SSL features generalize better.
+\paragraph{MAE leads the objective comparison.} Among the capacity-matched ViT-S/14 nuScenes-pretrained rows (\ref{sec:meth-ssl-pretraining}), MAE dominates both square and rectangular inputs ($0.749$ and $0.738$), I-JEPA takes the middle band ($0.716$ square; the rectangular variant underperforms at $0.654$), and DINOv2 sits lowest of the three ($\approx 0.698$ on both resolutions). MAE also tops the ImageNet SSL column via the native-capacity ViT-B/16 release. The I-JEPA ViT-H/14 (\texttt{IJH-hf}) result is still running; under the IROS capacity-asymmetry convention~\cite{naeinian-cross-city-2026}, it is the only row where a direct SSL-against-SSL ranking at the larger $(1280$\nobreakdash-$d)$ embedding is possible.
+
+\paragraph{Rectangular pretraining does not help pooled in-domain PDMS.} Table~\ref{tab:exp-phase0-p1} has every rectangular-input ViT-S/14 below its square counterpart for MAE and I-JEPA, and tied within $0.001$ for DINOv2. This is consistent with the IROS finding~\cite{naeinian-cross-city-2026} that rectangular pretraining's advantage is specific to cross-city generalization and does not appear on pooled in-domain evaluation. It also motivates the city-disjoint evaluation in~\ref{sec:exp-phase1}, where the rectangular-versus-square comparison is expected to invert.
+
+\paragraph{Lightweight-head absolute PDMS is below heavier planners, as designed.} The top Priority-1 row ($0.775$) sits well below the TransFuser camera-plus-LiDAR baseline (\reftab{tab:baselines}, $0.817$) and the DiffusionDrive baseline ($0.881$). This is the intended regime: the sweep is constructed to discriminate backbones under minimum planner capacity rather than to compete with multi-modal planners. The relevant quantity is the $8.8$-point spread between top and bottom of Table~\ref{tab:exp-phase0-p1}, not the absolute score.
+
+\subsection{In-Flight Phase-0 Experiments}
+\label{sec:exp-phase0-inflight}
+
+Three additional blocks from the Priority-2 through Priority-4 matrix of~\ref{sec:meth-lh-taxonomy} are currently executing on the cluster and will be reported as they complete.
+
+\begin{table}[ht]
+\centering
+\caption{Phase-0 experiments in flight as of writing.}
+\label{tab:exp-phase0-inflight}
+\small
+\renewcommand{\arraystretch}{1.2}
+\setlength{\tabcolsep}{5pt}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.0cm} l >{\raggedright\arraybackslash}p{6.5cm}@{}}
+\toprule
+\textbf{Block} & \textbf{Count} & \textbf{Description} \\
+\midrule
+Priority 3       & 10 & \texttt{LH-B1-*-full}: the same eleven-backbone sweep as Priority~1 with \(\texttt{trainable\_backbone\_fraction}{=}1.0\). Tests whether the ordering in Table~\ref{tab:exp-phase0-p1} is preserved when the encoder is allowed to adapt. \\
+Priority 4       & 9  & \texttt{LH-B16 / B17 / B19 / B20 / B21 / B23}: front-3 and six-camera variants under mean / weighted-mean / cross-attention fusion, plus the transformer-head ablation. Tests whether a different fusion rule or a richer head changes the representational ordering. \\
+Priority 2 (CC)  & 16 & \texttt{LH-CC-*}: four backbones (ResNet-34, DINOv2 ViT-S/14 LVD-142M, I-JEPA ViT-H/14, MAE ViT-B/16) $\times$ four training cities, frozen, front-1, MLP. Provides a first cross-city readout at minimum planner capacity; feeds directly into the analysis in~\ref{sec:exp-phase1}. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Drive-JEPA and the Post-Saturation Reframe}
+\label{sec:exp-phase0-drivejepa}
+
+The spread in Table~\ref{tab:exp-phase0-p1} is consistent with the thesis claim that representations dominate planner capacity in the lightweight regime, but it is not by itself a novel contribution on pooled NAVSIM. Drive-JEPA~\cite{wang-drive-jepa} reports that a V-JEPA video encoder paired with a simple transformer decoder reaches $89.0$ PDMS on the same benchmark, far above any single-image SSL configuration in Table~\ref{tab:exp-phase0-p1}, and the full Drive-JEPA system reaches $93.3$ PDMS on NAVSIM v1 and $87.8$ EPDMS on v2. That result validates the representation-centric direction behind Phase 0 but makes raw pooled PDMS an insufficient differentiator for the thesis as a whole.
+
+Phase 0 therefore plays the role stated in~\ref{sec:meth-lh-role}: a diagnostic substrate that establishes what a minimum-capacity planner can discriminate about the backbone, with the city-disjoint evaluation in~\ref{sec:exp-phase1} serving as the main vehicle for the novel claim. The remainder of the chapter is structured around that pivot: explicit cross-city evaluation (Phase 1), architectural transfer of the representation effect to DiffusionDrive (Phases 2--3), and a mechanistic account of why SSL features transfer more gracefully (Phase 4).
 
 % ============================================================================
 \section{Phase 1: Cross-City SSL Benchmark (IROS Results)}
@@ -138,7 +185,7 @@ Transfer asymmetry is not noise; it is one of the most important findings of the
 \begin{figure}[ht]
     \centering
     \includegraphics[width=0.7\textwidth]{iros/fig8_asymmetry.pdf}
-    \caption{Boston$\leftrightarrow$Singapore transfer asymmetry. Bars are OOD PDMS at the destination; the grouped comparison isolates the direction of transfer. Boston$\rightarrow$Singapore is the harsher direction for every backbone, consistent with the dataset-scale and traffic-convention asymmetry discussed in-text. The absolute asymmetry gap is smaller for frozen SSL than for supervised ResNet-34. Source: Fig.~8 of~\cite{naeinian-cross-city-2026}.}
+    \caption[Boston--Singapore transfer asymmetry (bar chart).]{Boston$\leftrightarrow$Singapore transfer asymmetry. Bars are OOD PDMS at the destination; the grouped comparison isolates the direction of transfer. Boston$\rightarrow$Singapore is the harsher direction for every backbone, consistent with the dataset-scale and traffic-convention asymmetry discussed in-text. The absolute asymmetry gap is smaller for frozen SSL than for supervised ResNet-34. Source: Fig.~8 of~\cite{naeinian-cross-city-2026}.}
     \label{fig:iros-asymmetry}
 \end{figure}
 
@@ -266,7 +313,14 @@ We probe 13 trained TransFuser / Latent TransFuser checkpoints (Tier-A) spanning
 \subsection{Representation Similarity Across Cities (CKA)}
 \label{sec:exp-cka}
 
-Linear CKA is defined on two representations of the same samples, so we use the cross-dataset form that compares feature second-moment structures: for cities $A$ and $B$ with centered feature matrices $X_A$, $X_B$, we report $\mathrm{CKA}(X_A, X_B) = \langle X_A^\top X_A, X_B^\top X_B \rangle_F / \lVert X_A^\top X_A \rVert_F \lVert X_B^\top X_B \rVert_F$. This is bounded in $[0, 1]$, invariant to orthogonal rotations of the feature basis, and agnostic to different sample counts across cities.
+Linear CKA is defined on two representations of the same samples, so we use the cross-dataset form that compares feature second-moment structures. For cities $A$ and $B$ with centered feature matrices $X_A$ and $X_B$, we report
+\begin{equation}
+\mathrm{CKA}(X_A, X_B)
+=
+\frac{\langle X_A^\top X_A,\; X_B^\top X_B \rangle_F}
+     {\lVert X_A^\top X_A \rVert_F \,\lVert X_B^\top X_B \rVert_F},
+\end{equation}
+which is bounded in $[0, 1]$, invariant to orthogonal rotations of the feature basis, and agnostic to different sample counts across cities.
 
 Mean off-diagonal CKA across the four cities is uniformly high --- family-level averages range from 0.74 (ResNet-34) through 0.77 (MAE frozen) and 0.79--0.83 (I-JEPA, DINOv2 frozen) to 0.86 (DINOv2 trainable TF) --- and does not cleanly separate supervised from SSL backbones. Both families encode similar covariance structure across cities, so covariance alignment alone is not the discriminating mechanism. Per-run heatmaps (Fig.~\ref{fig:cka-grid}) show city-pair asymmetries consistent with the raw scenario distributions: Boston $\leftrightarrow$ Pittsburgh are closest, Singapore is the outlier for every backbone.
 
@@ -342,7 +396,7 @@ Family-level mean MMD\textsuperscript{2} across all 188 runs: MAE 0.09--0.11, Re
 \subsection{Feature-Covariance Rank (Implicit Regularization)}
 \label{sec:exp-implicit-reg}
 
-The original plan was to measure the effective rank of learned planning-head weights. With frozen SSL backbones the planning head is the only drift vector, which would make it a clean test; however, for supervised ResNet-34 the backbone itself is trainable, so planning-head rank alone cannot be compared fairly. We instead report the effective rank of the \emph{feature covariance} for each (run, city) pair: per-city features are centered, $\sigma_i$ denotes the $i$-th singular value of the centered matrix, and we report $\exp\!\bigl(-\sum_i (\tilde\sigma_i^2) \log (\tilde\sigma_i^2)\bigr)$ with $\tilde\sigma_i$ the $\ell_2$-normalized singular values~\cite{roy-vetterli-effective-rank}. This probes representational structure rather than downstream-head capacity.
+The original plan was to measure the effective rank of learned planning-head weights. With frozen SSL backbones the planning head is the only drift vector, which would make it a clean test; however, for supervised ResNet-34 the backbone itself is trainable, so planning-head rank alone cannot be compared fairly. We instead report the effective rank of the \emph{feature covariance} for each (run, city) pair: per-city features are centered, $\sigma_i$ denotes the $i$-th singular value of the centered matrix, and we report $\exp\!\bigl(-\sum_i (\tilde\sigma_i^2) \log (\tilde\sigma_i^2)\bigr)$ with $\tilde\sigma_i$ the $\ell_2$-normalized singular values~\cite{roy-effrank-2007}. This probes representational structure rather than downstream-head capacity.
 
 Family-level effective ranks (Table~\ref{tab:family-aggregate}) separate the SSL objectives cleanly. MAE frozen TF retains the highest effective rank at 80.3, larger than trainable ResNet-34 (69.7) or I-JEPA frozen (66.2--69.0), with DINOv2 frozen a notch below (58.6--61.5). Fine-tuning reduces rank universally --- MAE trainable collapses to 47--49, I-JEPA trainable to 47--53, DINOv2 trainable stays at 52--65. The three most extreme collapses across the whole roster (effective rank $<5$) all involve trainable or single-city runs on large pretrained ViTs: A7-b (DINOv2 ViT-S trainable all-city TF, rank 1.2), A6-b (I-JEPA ViT-H trainable all-city TF, rank 2.9), and P1-D2 (DINOv2 frozen LV-only TF, rank 3.4). Feature-rank collapse is therefore not a quirk of one I-JEPA run; it is a systemic risk of fine-tuning high-capacity SSL backbones on modest driving datasets.
 

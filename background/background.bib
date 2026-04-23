@@ -1,1 +1,371 @@
-%% References are consolidated in thesis.bib
+% ============================================================================
+% background/background.bib
+% Bibliography entries for Chapter: Background
+% Cite keys are IEEEtran-compatible and follow the scheme author-shortname-year
+% ============================================================================
+
+% ---------- End-to-end driving and survey ----------
+
+@article{bojarski-pilotnet-2016,
+  title   = {End to end learning for self-driving cars},
+  author  = {Bojarski, Mariusz and Del Testa, Davide and Dworakowski, Daniel and Firner, Bernhard and Flepp, Beat and Goyal, Prasoon and Jackel, Lawrence D and Monfort, Mathew and Muller, Urs and Zhang, Jiakai and Zhang, Xin and Zhao, Jake and Zieba, Karol},
+  journal = {arXiv preprint arXiv:1604.07316},
+  year    = {2016}
+}
+
+@article{chen-e2e-survey-2024,
+  title   = {End-to-end autonomous driving: Challenges and frontiers},
+  author  = {Chen, Li and Wu, Penghao and Chitta, Kashyap and Jaeger, Bernhard and Geiger, Andreas and Li, Hongyang},
+  journal = {IEEE Transactions on Pattern Analysis and Machine Intelligence (TPAMI)},
+  year    = {2024}
+}
+
+@inproceedings{codevilla-limitations-2019,
+  title     = {Exploring the limitations of behavior cloning for autonomous driving},
+  author    = {Codevilla, Felipe and Santana, Eder and L{\'o}pez, Antonio M and Gaidon, Adrien},
+  booktitle = {Proceedings of the IEEE/CVF International Conference on Computer Vision (ICCV)},
+  year      = {2019}
+}
+
+@inproceedings{ross-dagger-2011,
+  title     = {A reduction of imitation learning and structured prediction to no-regret online learning},
+  author    = {Ross, St{\'e}phane and Gordon, Geoffrey J and Bagnell, J Andrew},
+  booktitle = {Proceedings of the International Conference on Artificial Intelligence and Statistics (AISTATS)},
+  year      = {2011}
+}
+
+@article{zhai-rethinking-2023,
+  title   = {Rethinking the open-loop evaluation of end-to-end autonomous driving in {nuScenes}},
+  author  = {Zhai, Jiang-Tian and Feng, Ze and Du, Jinhao and Mao, Yongqiang and Liu, Jiang-Jiang and Tan, Zichang and Zhang, Yifu and Ye, Xiaoqing and Wang, Jingdong},
+  journal = {arXiv preprint arXiv:2305.10430},
+  year    = {2023}
+}
+
+@inproceedings{hu-uniad-2023,
+  title     = {Planning-oriented autonomous driving},
+  author    = {Hu, Yihan and Yang, Jiazhi and Chen, Li and Li, Keyu and Sima, Chonghao and Zhu, Xizhou and Chai, Siqi and Du, Senyao and Lin, Tianwei and Wang, Wenhai and others},
+  booktitle = {Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)},
+  year      = {2023}
+}
+
+@inproceedings{jiang-vad-2023,
+  title     = {{VAD}: Vectorized scene representation for efficient autonomous driving},
+  author    = {Jiang, Bo and Chen, Shaoyu and Xu, Qing and Liao, Bencheng and Chen, Jiajie and Zhou, Helong and Zhang, Qian and Liu, Wenyu and Huang, Chang and Wang, Xinggang},
+  booktitle = {Proceedings of the IEEE/CVF International Conference on Computer Vision (ICCV)},
+  year      = {2023}
+}
+
+% ---------- Datasets and NAVSIM ----------
+
+@inproceedings{dauner-navsim-2024,
+  title     = {{NAVSIM}: Data-driven non-reactive autonomous vehicle simulation and benchmarking},
+  author    = {Dauner, Daniel and Hallgarten, Marcel and Li, Tianyu and Weng, Xinshuo and Huang, Zhiyu and Yang, Zetong and Li, Hongyang and Gilitschenski, Igor and Ivanovic, Boris and Pavone, Marco and Geiger, Andreas and Chitta, Kashyap},
+  booktitle = {Advances in Neural Information Processing Systems (NeurIPS)},
+  year      = {2024}
+}
+
+@inproceedings{dauner-pdm-2023,
+  title     = {Parting with misconceptions about learning-based vehicle motion planning},
+  author    = {Dauner, Daniel and Hallgarten, Marcel and Geiger, Andreas and Chitta, Kashyap},
+  booktitle = {Proceedings of the 7th Conference on Robot Learning (CoRL)},
+  year      = {2023}
+}
+
+@misc{navsim-v2-2024,
+  title        = {{NAVSIM} v2: Extended evaluation with reactive traffic and {MTGS} synthetic observations},
+  author       = {{NAVSIM Contributors}},
+  howpublished = {\url{https://github.com/autonomousvision/navsim}},
+  year         = {2024},
+  note         = {NAVSIM v2 release notes and extended evaluation protocol documentation}
+}
+
+@misc{openscene-2023,
+  title        = {{OpenScene}: The largest up-to-date 3{D} occupancy prediction benchmark in autonomous driving},
+  author       = {{OpenScene Contributors}},
+  howpublished = {\url{https://github.com/OpenDriveLab/OpenScene}},
+  year         = {2023}
+}
+
+@inproceedings{caesar-nuscenes-2020,
+  title     = {{nuScenes}: A multimodal dataset for autonomous driving},
+  author    = {Caesar, Holger and Bankiti, Varun and Lang, Alex H and Vora, Sourabh and Liong, Venice Erin and Xu, Qiang and Krishnan, Anush and Pan, Yu and Baldan, Giancarlo and Beijbom, Oscar},
+  booktitle = {Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)},
+  year      = {2020}
+}
+
+@inproceedings{karnchanachari-nuplan-2024,
+  title     = {Towards learning-based planning: The {nuPlan} benchmark for real-world autonomous driving},
+  author    = {Karnchanachari, Napat and Geromichalos, Dimitris and Tan, Kok Seang and Li, Nanxiang and Eriksen, Christopher and Yaghoubi, Shakiba and Mehdipour, Noushin and Bernasconi, Gianmarco and Fong, Whye Kit and Guo, Yiluan and Caesar, Holger},
+  booktitle = {Proceedings of the IEEE International Conference on Robotics and Automation (ICRA)},
+  year      = {2024}
+}
+
+@inproceedings{sun-waymo-2020,
+  title     = {Scalability in perception for autonomous driving: {Waymo} open dataset},
+  author    = {Sun, Pei and Kretzschmar, Henrik and Dotiwalla, Xerxes and Chouard, Aurelien and Patnaik, Vijaysai and Tsui, Paul and Guo, James and Zhou, Yin and Chai, Yuning and Caine, Benjamin and others},
+  booktitle = {Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)},
+  year      = {2020}
+}
+
+% ---------- Backbones ----------
+
+@inproceedings{he-resnet-2016,
+  title     = {Deep residual learning for image recognition},
+  author    = {He, Kaiming and Zhang, Xiangyu and Ren, Shaoqing and Sun, Jian},
+  booktitle = {Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR)},
+  year      = {2016}
+}
+
+@inproceedings{deng-imagenet-2009,
+  title     = {{ImageNet}: A large-scale hierarchical image database},
+  author    = {Deng, Jia and Dong, Wei and Socher, Richard and Li, Li-Jia and Li, Kai and Fei-Fei, Li},
+  booktitle = {Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR)},
+  year      = {2009}
+}
+
+@inproceedings{dosovitskiy-vit-2021,
+  title     = {An image is worth 16x16 words: Transformers for image recognition at scale},
+  author    = {Dosovitskiy, Alexey and Beyer, Lucas and Kolesnikov, Alexander and Weissenborn, Dirk and Zhai, Xiaohua and Unterthiner, Thomas and Dehghani, Mostafa and Minderer, Matthias and Heigold, Georg and Gelly, Sylvain and Uszkoreit, Jakob and Houlsby, Neil},
+  booktitle = {Proceedings of the International Conference on Learning Representations (ICLR)},
+  year      = {2021}
+}
+
+@inproceedings{liu-swin-2021,
+  title     = {{Swin Transformer}: Hierarchical vision transformer using shifted windows},
+  author    = {Liu, Ze and Lin, Yutong and Cao, Yue and Hu, Han and Wei, Yixuan and Zhang, Zheng and Lin, Stephen and Guo, Baining},
+  booktitle = {Proceedings of the IEEE/CVF International Conference on Computer Vision (ICCV)},
+  year      = {2021}
+}
+
+@inproceedings{vaswani-attention-2017,
+  title     = {Attention is all you need},
+  author    = {Vaswani, Ashish and Shazeer, Noam and Parmar, Niki and Uszkoreit, Jakob and Jones, Llion and Gomez, Aidan N and Kaiser, Lukasz and Polosukhin, Illia},
+  booktitle = {Advances in Neural Information Processing Systems (NeurIPS)},
+  year      = {2017}
+}
+
+% ---------- Self-supervised learning ----------
+
+@misc{lecun-ssl-path-2022,
+  title        = {A path towards autonomous machine intelligence},
+  author       = {LeCun, Yann},
+  howpublished = {Open Review preprint, version 0.9.2},
+  year         = {2022}
+}
+
+@article{balestriero-ssl-cookbook-2023,
+  title   = {A cookbook of self-supervised learning},
+  author  = {Balestriero, Randall and Ibrahim, Mark and Sobal, Vlad and Morcos, Ari and Shekhar, Shashank and Goldstein, Tom and Bordes, Florian and Bardes, Adrien and Mialon, Gr{\'e}goire and Tian, Yuandong and Schwarzschild, Avi and Wilson, Andrew Gordon and Geiping, Jonas and Garrido, Quentin and Fernandez, Pierre and Bar, Amir and Pirsiavash, Hamed and LeCun, Yann and Goldblum, Micah},
+  journal = {arXiv preprint arXiv:2304.12210},
+  year    = {2023}
+}
+
+@inproceedings{assran-ijepa-2023,
+  title     = {Self-supervised learning from images with a joint-embedding predictive architecture},
+  author    = {Assran, Mahmoud and Duval, Quentin and Misra, Ishan and Bojanowski, Piotr and Vincent, Pascal and Rabbat, Michael and LeCun, Yann and Ballas, Nicolas},
+  booktitle = {Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)},
+  year      = {2023}
+}
+
+@article{oquab-dinov2-2024,
+  title   = {{DINOv2}: Learning robust visual features without supervision},
+  author  = {Oquab, Maxime and Darcet, Timoth{\'e}e and Moutakanni, Th{\'e}o and Vo, Huy and Szafraniec, Marc and Khalidov, Vasil and Fernandez, Pierre and Haziza, Daniel and Massa, Francisco and El-Nouby, Alaaeldin and Assran, Mahmoud and Ballas, Nicolas and Galuba, Wojciech and Howes, Russell and Huang, Po-Yao and Li, Shang-Wen and Misra, Ishan and Rabbat, Michael and Sharma, Vasu and Synnaeve, Gabriel and Xu, Hu and Jegou, Herv{\'e} and Mairal, Julien and Labatut, Patrick and Joulin, Armand and Bojanowski, Piotr},
+  journal = {Transactions on Machine Learning Research (TMLR)},
+  year    = {2024}
+}
+
+@inproceedings{caron-dino-2021,
+  title     = {Emerging properties in self-supervised vision transformers},
+  author    = {Caron, Mathilde and Touvron, Hugo and Misra, Ishan and J{\'e}gou, Herv{\'e} and Mairal, Julien and Bojanowski, Piotr and Joulin, Armand},
+  booktitle = {Proceedings of the IEEE/CVF International Conference on Computer Vision (ICCV)},
+  year      = {2021}
+}
+
+@inproceedings{he-mae-2022,
+  title     = {Masked autoencoders are scalable vision learners},
+  author    = {He, Kaiming and Chen, Xinlei and Xie, Saining and Li, Yanghao and Doll{\'a}r, Piotr and Girshick, Ross},
+  booktitle = {Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)},
+  year      = {2022}
+}
+
+@inproceedings{he-moco-2020,
+  title     = {Momentum contrast for unsupervised visual representation learning},
+  author    = {He, Kaiming and Fan, Haoqi and Wu, Yuxin and Xie, Saining and Girshick, Ross},
+  booktitle = {Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)},
+  year      = {2020}
+}
+
+@inproceedings{chen-simclr-2020,
+  title     = {A simple framework for contrastive learning of visual representations},
+  author    = {Chen, Ting and Kornblith, Simon and Norouzi, Mohammad and Hinton, Geoffrey},
+  booktitle = {Proceedings of the 37th International Conference on Machine Learning (ICML)},
+  year      = {2020}
+}
+
+% ---------- JEPA extensions in driving ----------
+
+@article{zhu-adljepa-2025,
+  title   = {{AD-L-JEPA}: Self-supervised spatial world models with joint embedding predictive architecture for autonomous driving with {LiDAR} data},
+  author  = {Zhu, Haoran and Dong, Zhenyuan and Topollai, Kristi and Choromanska, Anna},
+  journal = {arXiv preprint arXiv:2501.04969},
+  year    = {2025}
+}
+
+@article{bardes-vjepa-2024,
+  title   = {Revisiting feature prediction for learning visual representations from video},
+  author  = {Bardes, Adrien and Garrido, Quentin and Ponce, Jean and Chen, Xinlei and Rabbat, Michael and LeCun, Yann and Assran, Mahmoud and Ballas, Nicolas},
+  journal = {Transactions on Machine Learning Research (TMLR)},
+  year    = {2024}
+}
+
+@misc{drive-jepa-2026,
+  title        = {{Drive-JEPA}: Joint-embedding predictive architectures for end-to-end autonomous driving},
+  author       = {{Drive-JEPA Authors}},
+  howpublished = {arXiv preprint},
+  year         = {2026},
+  note         = {Placeholder citation; replace with final reference when available}
+}
+
+% ---------- Planning architectures ----------
+
+@article{chitta-transfuser-2023,
+  title   = {{TransFuser}: Imitation with transformer-based sensor fusion for autonomous driving},
+  author  = {Chitta, Kashyap and Prakash, Aditya and Jaeger, Bernhard and Yu, Zehao and Renz, Katrin and Geiger, Andreas},
+  journal = {IEEE Transactions on Pattern Analysis and Machine Intelligence (TPAMI)},
+  year    = {2023}
+}
+
+@inproceedings{prakash-transfuser-2021,
+  title     = {Multi-modal fusion transformer for end-to-end autonomous driving},
+  author    = {Prakash, Aditya and Chitta, Kashyap and Geiger, Andreas},
+  booktitle = {Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)},
+  year      = {2021}
+}
+
+@inproceedings{li-law-2024,
+  title     = {Enhancing end-to-end autonomous driving with latent world model},
+  author    = {Li, Yingyan and Yang, Lue and Wang, Yifei and Zhang, Haifeng and Liu, Jianyi and Feng, Yuxin and Su, Hang and Zhu, Jun},
+  booktitle = {Proceedings of the International Conference on Learning Representations (ICLR)},
+  year      = {2024}
+}
+
+@inproceedings{jia-diffusiondrive-2025,
+  title     = {{DiffusionDrive}: Truncated diffusion model for end-to-end autonomous driving},
+  author    = {Jia, Fan and Mao, Weixin and Liu, Yingfei and Zhao, Yucheng and Wen, Yuqing and Zhang, Chi and Zhang, Xiangyu and Wang, Tiancai},
+  booktitle = {Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)},
+  year      = {2025}
+}
+
+@article{diffusiondrivev2-2025,
+  title   = {{DiffusionDriveV2}: Reinforcement post-training for diffusion-based planning},
+  author  = {{DiffusionDriveV2 Authors}},
+  journal = {arXiv preprint},
+  year    = {2025},
+  note    = {Placeholder; replace with final reference when available}
+}
+
+% ---------- Diffusion planning context ----------
+
+@inproceedings{janner-diffuser-2022,
+  title     = {Planning with diffusion for flexible behavior synthesis},
+  author    = {Janner, Michael and Du, Yilun and Tenenbaum, Joshua B and Levine, Sergey},
+  booktitle = {Proceedings of the 39th International Conference on Machine Learning (ICML)},
+  year      = {2022}
+}
+
+@inproceedings{chi-diffusion-policy-2023,
+  title     = {Diffusion policy: Visuomotor policy learning via action diffusion},
+  author    = {Chi, Cheng and Feng, Siyuan and Du, Yilun and Xu, Zhenjia and Cousineau, Eric and Burchfiel, Benjamin and Song, Shuran},
+  booktitle = {Proceedings of Robotics: Science and Systems (RSS)},
+  year      = {2023}
+}
+
+@article{hydra-mdp-2024,
+  title   = {{Hydra-MDP}: End-to-end multimodal planning with multi-target hydra-distillation},
+  author  = {Li, Zhenxin and Yu, Kailin and Cheng, Shiyi and Dong, Runjian and Zhong, Yunze and Yin, Junjie and Guo, Zhiqi and Cao, Pengkai and Wang, Peng and Chen, Hao and others},
+  journal = {arXiv preprint arXiv:2406.06978},
+  year    = {2024}
+}
+
+% ---------- RL post-training for driving ----------
+
+@inproceedings{rafailov-dpo-2023,
+  title     = {Direct preference optimization: Your language model is secretly a reward model},
+  author    = {Rafailov, Rafael and Sharma, Archit and Mitchell, Eric and Manning, Christopher D and Ermon, Stefano and Finn, Chelsea},
+  booktitle = {Advances in Neural Information Processing Systems (NeurIPS)},
+  year      = {2023}
+}
+
+@article{drivedpo-2025,
+  title   = {{DriveDPO}: Direct preference optimization for end-to-end autonomous driving},
+  author  = {{DriveDPO Authors}},
+  journal = {arXiv preprint},
+  year    = {2025},
+  note    = {Placeholder; replace with final reference when available}
+}
+
+@article{grpo-2024,
+  title   = {{DeepSeekMath}: Pushing the limits of mathematical reasoning in open language models},
+  author  = {Shao, Zhihong and Wang, Peiyi and Zhu, Qihao and Xu, Runxin and Song, Junxiao and Zhang, Mingchuan and Li, YK and Wu, Y and Guo, Daya},
+  journal = {arXiv preprint arXiv:2402.03300},
+  year    = {2024},
+  note    = {Original GRPO proposal}
+}
+
+% ---------- Domain generalization ----------
+
+@article{wang-domain-gen-survey-2022,
+  title   = {Generalizing to unseen domains: A survey on domain generalization},
+  author  = {Wang, Jindong and Lan, Cuiling and Liu, Chang and Ouyang, Yidong and Qin, Tao and Lu, Wang and Chen, Yiqiang and Zeng, Wenjun and Yu, Philip S},
+  journal = {IEEE Transactions on Knowledge and Data Engineering (TKDE)},
+  year    = {2022}
+}
+
+@article{zhou-domain-gen-survey-2023,
+  title   = {Domain generalization: A survey},
+  author  = {Zhou, Kaiyang and Liu, Ziwei and Qiao, Yu and Xiang, Tao and Loy, Chen Change},
+  journal = {IEEE Transactions on Pattern Analysis and Machine Intelligence (TPAMI)},
+  year    = {2023}
+}
+
+@inproceedings{sakaridis-acdc-2021,
+  title     = {{ACDC}: The adverse conditions dataset with correspondences for semantic driving scene understanding},
+  author    = {Sakaridis, Christos and Dai, Dengxin and Van Gool, Luc},
+  booktitle = {Proceedings of the IEEE/CVF International Conference on Computer Vision (ICCV)},
+  year      = {2021}
+}
+
+@inproceedings{pan-cycada-2018,
+  title     = {{CyCADA}: Cycle-consistent adversarial domain adaptation},
+  author    = {Hoffman, Judy and Tzeng, Eric and Park, Taesung and Zhu, Jun-Yan and Isola, Phillip and Saenko, Kate and Efros, Alexei and Darrell, Trevor},
+  booktitle = {Proceedings of the 35th International Conference on Machine Learning (ICML)},
+  year      = {2018}
+}
+
+@inproceedings{dosovitskiy-carla-2017,
+  title     = {{CARLA}: An open urban driving simulator},
+  author    = {Dosovitskiy, Alexey and Ros, German and Codevilla, Felipe and Lopez, Antonio and Koltun, Vladlen},
+  booktitle = {Proceedings of the 1st Annual Conference on Robot Learning (CoRL)},
+  year      = {2017}
+}
+
+@article{zhang-beverse-2022,
+  title   = {{BEVerse}: Unified perception and prediction in birds-eye-view for vision-centric autonomous driving},
+  author  = {Zhang, Yunpeng and Zhu, Zheng and Zheng, Wenzhao and Huang, Junjie and Huang, Guan and Zhou, Jie and Lu, Jiwen},
+  journal = {arXiv preprint arXiv:2205.09743},
+  year    = {2022}
+}
+
+@inproceedings{liu-bevfusion-2023,
+  title     = {{BEVFusion}: Multi-task multi-sensor fusion with unified bird's-eye view representation},
+  author    = {Liu, Zhijian and Tang, Haotian and Amini, Alexander and Yang, Xinyu and Mao, Huizi and Rus, Daniela L and Han, Song},
+  booktitle = {Proceedings of the IEEE International Conference on Robotics and Automation (ICRA)},
+  year      = {2023}
+}
+
+@article{kartiman-skgeswin-2025,
+  title   = {{SKGE-SWIN}: End-to-end autonomous vehicle waypoint prediction and navigation using skip stage {Swin Transformer}},
+  author  = {Kartiman, Fachri Najm Noer and Rasim and Wihardi, Yaya and Aulia, Fira Nurahmadi Akbar and Kamal, Ridho Dedy Arief and Shafa, Nayel Zhafirah and Juliansyah, Muhammad Afif},
+  journal = {arXiv preprint arXiv:2508.20762},
+  year    = {2025}
+}

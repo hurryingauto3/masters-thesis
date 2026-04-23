@@ -12,6 +12,7 @@
 *.synctex.gz
 *.nav
 *.snm
+*.pdf
 *.vrb
 
 # Compiled PDF (rebuild from source)

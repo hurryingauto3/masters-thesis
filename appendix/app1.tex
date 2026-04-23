@@ -16,7 +16,7 @@ Both tables share the same layout. Every row is one trained checkpoint; each cel
 
 NAVSIM's aggregate PDMS is the product of five sub-scores: No at-fault Collisions (NC), Drivable Area Compliance (DAC), Ego Progress (EP), Time-To-Collision (TTC), and Comfort. The main-text matrices report only the aggregate; in this appendix we decompose the Tier-A rows into their five components to expose which failure modes dominate cross-city transfer.
 
-\textbf{Status note:} the full per-metric decomposition requires access to the per-scenario evaluation JSONs on the NYU Greene HPC cluster (\texttt{/scratch/ah7072/experiments/evaluations/}), which were temporarily unreachable at the time this first-pass manuscript was compiled. The decomposition pipeline is implemented (\texttt{scripts/phase4\_mechanistic/extract\_per\_metric.py}) and will populate the 5-panel table and figure below once the cluster is reachable again:
+\textbf{Status note:} the full per-metric decomposition requires access to the per-scenario evaluation JSONs on the NYU Greene HPC cluster, stored under the \texttt{experiments/evaluations/} tree in the author's scratch directory, which were temporarily unreachable at the time this first-pass manuscript was compiled. The decomposition pipeline is implemented at \path{scripts/phase4_mechanistic/extract_per_metric.py} and will populate the 5-panel table and figure below once the cluster is reachable again:
 
 \begin{itemize}
     \item \textbf{DAC and EP} are expected to degrade the most under geographic transfer because both are lane-geometry-aware and lane paint, lane width, and turn radii differ systematically between the four cities.
