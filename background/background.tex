@@ -155,7 +155,11 @@ The manipulated variable throughout the thesis is the visual backbone. Two super
 \subsection{Vision Transformers (ViT)}
 \label{sec:bg-vit}
 
-Vision Transformers replace convolution with patch tokenisation and global self-attention~\cite{dosovitskiy-vit-2021}. An image of resolution $H \times W$ is divided into patches of side length $P$, linearly projected to tokens of dimension $D$, and processed by a stack of $L$ transformer blocks (multi-head self-attention followed by a feed-forward network, with residual connections and layer normalisation)~\cite{vaswani-attention-2017}. The output representation is read from the \texttt{CLS} token or by mean-pooling the patch tokens. Figure~\ref{fig:bg-vit} shows the pipeline.
+Vision Transformers use patch tokens and global self-attention \cite{dosovitskiy-vit-2021}.
+An image of resolution $H \times W$ is divided into patches of side length $P$, projected to tokens of dimension $D$, and processed by a stack of $L$ transformer blocks \cite{vaswani-attention-2017}.
+Each block applies multi-head self-attention followed by a feed-forward network, with residual connections and layer normalisation.
+The output representation is read from the \texttt{CLS} token or by mean-pooling the patch tokens.
+Figure~\ref{fig:bg-vit} shows the pipeline.
 
 \begin{figure}[ht]
     \centering

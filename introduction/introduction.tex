@@ -90,9 +90,9 @@ Two classes of prior-work components are used inside the study and are named her
 The remainder of the thesis is organised as follows.
 
 \begin{itemize}
-    \item \textbf{Chapter~\ref{chap:background}} covers background on end-to-end autonomous driving, the NAVSIM benchmark, the self-supervised pre-training objectives evaluated (I-JEPA, DINOv2, MAE), and the planning architectures used (LAW, TransFuser, Latent TransFuser, DiffusionDrive).
-    \item \textbf{Chapter~\ref{chap:relatedwork}} reviews related work in self-supervised learning for driving, cross-city generalisation, and diffusion-based planning, including how Drive-JEPA altered the in-distribution performance landscape during the course of the work.
-    \item \textbf{Chapter~\ref{chap:methodology}} presents the methodology: NAVSIM City Splits construction, the shared backbone-adapter interface, the cross-city evaluation protocol, the DiffusionDrive integration framed as a backbone-attenuating planner test, and the active-validation specification for the cross-city generative study.
-    \item \textbf{Chapter~\ref{chap:experiments}} reports the completed experimental evidence: the exploratory lightweight-head study, the cross-city SSL benchmark, the mixed-city DiffusionDrive integration, and the mechanistic analysis.
-    \item \textbf{Chapter~\ref{chap:conclusions}} summarises the completed contributions, states the claim boundaries, and identifies the open validation and follow-on questions.
+    \item \textbf{Chapter~\ref{chap:background}} covers the technical background needed to read the experiments: end-to-end driving, NAVSIM, the self-supervised objectives evaluated (I-JEPA, DINOv2, MAE), and the planner families used later in the thesis.
+    \item \textbf{Chapter~\ref{chap:relatedwork}} reviews the surrounding literature in self-supervised learning for driving, cross-city generalisation, and diffusion-based planning, and explains why Drive-JEPA moved pooled NAVSIM performance out of the center of the thesis question.
+    \item \textbf{Chapter~\ref{chap:methodology}} follows the study sequence used in the defense: first the lightweight-head regime, then the TransFuser / Latent TransFuser cross-city benchmark, then DiffusionDrive as a second anchor planner, and finally the mechanistic tools used to interpret the gains.
+    \item \textbf{Chapter~\ref{chap:experiments}} reports the results in the same order: lightweight-head results, TransFuser / Latent TransFuser cross-city results, DiffusionDrive results, mechanistic evaluation, and a discussion section that interprets the practical implications.
+    \item \textbf{Chapter~\ref{chap:conclusions}} closes with the thesis contributions, key findings, industrial implications, limitations, and future work.
 \end{itemize}

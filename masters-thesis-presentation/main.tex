@@ -19,10 +19,12 @@
 \usepackage{colortbl}
 \usepackage{appendixnumberbeamer}
 
-\usetikzlibrary{arrows.meta, positioning, fit, patterns}
+\usetikzlibrary{arrows.meta, positioning, fit, patterns, calc, shapes.geometric}
 
 \definecolor{ssl}{RGB}{90, 35, 140}
 \definecolor{sup}{RGB}{180, 45, 45}
+\definecolor{avgray}{RGB}{120, 120, 120}
+\definecolor{nyuviolet}{RGB}{87, 6, 140}
 
 \newcommand{\cmark}{\textcolor{ssl}{\ding{51}}}
 \newcommand{\xmark}{\textcolor{sup}{\ding{55}}}
@@ -45,13 +47,13 @@
    Committee: Prof.\ Ludovic Righetti, Prof.\ David Fouhey}
 }
 \date{April 2026}
-\titlegraphic{\hfill\includegraphics[height=1.2cm]{nyu_stacked_color}}
+\titlegraphic{\hfill\includegraphics[height=0.9cm]{nyu_stacked_color}}
 
 \begin{document}
 
 \section{Introduction}
 
-\begin{frame}
+\begin{frame}[plain]
   \titlepage
 \end{frame}
 
@@ -59,9 +61,9 @@
   \begin{enumerate}
     \item Introduction
     \item Background and related work
-    \item Methodology
-    \item Experiments
-    \item Discussion
+    \item Methodology and study design
+    \item Experimental results
+    \item Discussion, industrial implications, and future work
   \end{enumerate}
 \end{frame}
 
@@ -82,6 +84,7 @@
 
 \begin{frame}{Open-loop evidence of geographic transfer failure}
   \centering
+  \resizebox{0.88\linewidth}{!}{%
   \begin{tikzpicture}[y=0.24cm]
     \draw[->] (0,0) -- (0,11.5) node[above, font=\scriptsize] {L2 inflation ratio $B{\to}S$ (lower is better)};
     \foreach \y in {1,5,10} \node[font=\tiny, anchor=east] at (-0.05,\y) {$\y\times$};
@@ -101,8 +104,8 @@
     \draw[fill=ssl!80, draw=ssl]  (6.7,0)  rectangle (7.7,1.20);
     \node[font=\scriptsize, anchor=south, text=ssl] at (7.2,1.24) {$\mathbf{1.20}$};
     \node[font=\tiny, anchor=north, align=center] at (7.2,-0.1) {I-JEPA S/14\\(nuSc rect, frozen)};
-  \end{tikzpicture}
-  \vspace{8pt}
+  \end{tikzpicture}}
+  \vspace{4pt}
   \begin{itemize}\footnotesize
     \item Boston-to-Singapore open-loop transfer under LAW changes by nearly an order of magnitude when only the image backbone changes.
     \item This is the empirical starting point for the thesis: the visual representation can dominate cross-city failure.
@@ -146,34 +149,83 @@
 
 \sectiondivider{Background}
 
-\begin{frame}{NAVSIM task and city-disjoint splits}
+\begin{frame}[shrink=5]{NAVSIM task and city-disjoint splits}
+  \centering
+  \resizebox{0.92\linewidth}{!}{%
+  \begin{tikzpicture}[
+      obs/.style    = {draw, rounded corners=2pt, minimum height=5mm, minimum width=14mm, align=center, font=\tiny, fill=black!3},
+      agent/.style  = {draw, rounded corners=2pt, minimum height=22mm, minimum width=14mm, align=center, font=\scriptsize, fill=black!7},
+      trjbox/.style = {draw, rounded corners=2pt, minimum height=7mm, minimum width=14mm, align=center, font=\tiny},
+      sim/.style    = {draw, rounded corners=2pt, minimum height=22mm, minimum width=18mm, align=center, font=\tiny},
+      score/.style  = {draw, rounded corners=2pt, minimum height=4mm, minimum width=12mm, align=center, font=\tiny, fill=black!5},
+      final/.style  = {draw, ellipse, minimum height=9mm, minimum width=13mm, align=center, font=\scriptsize, fill=black!10},
+      arrow/.style  = {-{Stealth[length=1.6mm]}, thin},
+      stub/.style   = {thin},
+  ]
+      \node[obs] (cam)   {cameras};
+      \node[obs, below=0.8mm of cam]   (lid)   {LiDAR};
+      \node[obs, below=0.8mm of lid]   (ego)   {ego};
+      \node[obs, below=0.8mm of ego]   (route) {route};
+      \coordinate (inputs-mid) at ($(cam.east)!0.5!(route.east)$);
+      \node[agent, right=10mm of inputs-mid, anchor=west] (plan) {planner\\$\pi_\theta$};
+      \node[trjbox, right=5mm of plan] (tau) {$\hat\tau$};
+      \node[sim, right=5mm of tau] (sim) {simulator};
+      \node[score, right=10mm of sim, anchor=west, yshift=9mm] (nc)  {NC};
+      \node[score, below=0.8mm of nc]  (dac) {DAC};
+      \node[score, below=0.8mm of dac] (ep)  {EP};
+      \node[score, below=0.8mm of ep]  (ttc) {TTC};
+      \node[score, below=0.8mm of ttc] (cmf) {Comfort};
+      \coordinate (scores-mid) at ($(nc.east)!0.5!(cmf.east)$);
+      \node[final, right=8mm of scores-mid, anchor=west] (pdms) {PDMS};
+      \coordinate (in-rail)  at ($(cam.east)!0.5!(plan.west)$);
+      \draw[stub] (cam.east -| in-rail) -- (route.east -| in-rail);
+      \draw[stub] (cam.east)   -- (cam.east   -| in-rail);
+      \draw[stub] (lid.east)   -- (lid.east   -| in-rail);
+      \draw[stub] (ego.east)   -- (ego.east   -| in-rail);
+      \draw[stub] (route.east) -- (route.east -| in-rail);
+      \draw[arrow] (in-rail |- plan.west) -- (plan.west);
+      \draw[arrow] (plan.east) -- (tau.west);
+      \draw[arrow] (tau.east)   -- (sim.west);
+      \coordinate (out-rail) at ($(sim.east)!0.5!(nc.west)$);
+      \draw[arrow] (sim.east) -- (out-rail |- sim.east);
+      \draw[stub]  (sim.east -| out-rail) ++(0,1.1cm) -- ++(0,-2.5cm);
+      \draw[arrow] (out-rail |- nc)  -- (nc.west);
+      \draw[arrow] (out-rail |- dac) -- (dac.west);
+      \draw[arrow] (out-rail |- ep)  -- (ep.west);
+      \draw[arrow] (out-rail |- ttc) -- (ttc.west);
+      \draw[arrow] (out-rail |- cmf) -- (cmf.west);
+      \coordinate (pdms-rail) at ($(nc.east)!0.5!(pdms.west)$);
+      \draw[stub] (nc.east)  -- (nc.east  -| pdms-rail);
+      \draw[stub] (dac.east) -- (dac.east -| pdms-rail);
+      \draw[stub] (ep.east)  -- (ep.east  -| pdms-rail);
+      \draw[stub] (ttc.east) -- (ttc.east -| pdms-rail);
+      \draw[stub] (cmf.east) -- (cmf.east -| pdms-rail);
+      \draw[stub] (nc.east -| pdms-rail) -- (cmf.east -| pdms-rail);
+      \draw[arrow] (pdms-rail |- pdms.west) -- (pdms.west);
+  \end{tikzpicture}}
+  \vspace{4pt}
   \begin{columns}[T]
-    \column{0.52\textwidth}
+    \column{0.58\textwidth}
     \textbf{Task definition}
     \begin{itemize}\footnotesize
       \item Inputs: 8 cameras, merged LiDAR, ego state, route.
       \item Output: $8$ future poses over $4$\,s at $2$\,Hz.
-      \item Scoring:
-      \[
-      \mathrm{PDMS} = \mathrm{NC}\!\cdot\!\mathrm{DAC}\!\cdot\!\tfrac{5\,\mathrm{EP}+5\,\mathrm{TTC}+2\,\mathrm{C}}{12}
-      \]
-      \item NC and DAC are multiplicative. A single severe violation zeros the scenario.
+      \item $\mathrm{PDMS} = \mathrm{NC}\!\cdot\!\mathrm{DAC}\!\cdot\!\tfrac{5\,\mathrm{EP}+5\,\mathrm{TTC}+2\,\mathrm{C}}{12}$; NC and DAC are multiplicative, so a single severe violation zeros the scenario.
     \end{itemize}
-    \column{0.48\textwidth}
+    \column{0.42\textwidth}
     \textbf{City partition}
     \centering
     \begin{tikzpicture}[
-        city/.style = {draw, rounded corners=2pt, minimum width=22mm, minimum height=9mm, font=\scriptsize, align=center},
+        city/.style = {draw, rounded corners=2pt, minimum width=20mm, minimum height=7mm, font=\scriptsize, align=center},
       ]
       \node[city, fill=red!10] (lv) {Las Vegas\\{\tiny $818\,/\,50$}};
-      \node[city, fill=red!10, below=2mm of lv] (bos) {Boston\\{\tiny $255\,/\,62$}};
-      \node[city, fill=red!10, below=2mm of bos] (pit) {Pittsburgh\\{\tiny $140\,/\,22$}};
+      \node[city, fill=red!10, below=1.5mm of lv] (bos) {Boston\\{\tiny $255\,/\,62$}};
+      \node[city, fill=red!10, below=1.5mm of bos] (pit) {Pittsburgh\\{\tiny $140\,/\,22$}};
       \node[city, fill=blue!10, right=6mm of bos] (sg) {Singapore\\{\tiny $97\,/\,13$}};
       \node[font=\tiny, above=0mm of lv] {right-hand traffic};
       \node[font=\tiny, above=0mm of sg] {left-hand traffic};
     \end{tikzpicture}
-    \smallskip
-    \\{\footnotesize Singapore is the smallest source city and the only left-hand-traffic city.}
+    \\{\footnotesize Singapore is the smallest source and the only left-hand-traffic city.}
   \end{columns}
 \end{frame}
 
@@ -201,7 +253,7 @@
 
 \sectiondivider{Related Work}
 
-\begin{frame}{Related work and motivating gap}
+\begin{frame}{Related work and motivating question}
   \begin{columns}[T]
     \column{0.33\textwidth}
     \textbf{Pooled planner benchmarks}
@@ -229,6 +281,14 @@
   \begin{block}{Gap}
     The unresolved question is whether cross-city failure is principally a representation issue once the planner and the training city are controlled.
   \end{block}
+\end{frame}
+
+\begin{frame}{Drive-JEPA and the shift to geographic transfer}
+  \begin{itemize}
+    \item The thesis began with a narrower question: can a frozen self-supervised encoder already improve a lightweight end-to-end planner on pooled NAVSIM?
+    \item Drive-JEPA then showed that JEPA-style pretraining is already very strong on pooled NAVSIM, so mixed-city PDMS became a weak discriminator for a representation-focused thesis.
+    \item The thesis therefore shifts from asking whether SSL helps in distribution to asking where it matters most and why, with city-disjoint transfer as the main test bed.
+  \end{itemize}
 \end{frame}
 
 \section{Methodology}
@@ -279,19 +339,79 @@
   \end{columns}
 \end{frame}
 
+\begin{frame}{Planner selection and comparative roles}
+  \begin{columns}[T]
+    \column{0.5\textwidth}
+    \textbf{Planner progression}
+    \begin{itemize}\footnotesize
+      \item Lightweight head: minimum-capacity diagnostic for the representation.
+      \item TransFuser: closed-loop multimodal baseline with a published reference point.
+      \item Latent TransFuser: same planner family, but camera only.
+      \item DiffusionDrive: generative planner with stronger built-in priors.
+    \end{itemize}
+    \column{0.5\textwidth}
+    \textbf{Why this sequence matters}
+    \begin{itemize}\footnotesize
+      \item It tests the backbone question under progressively stronger heads.
+      \item TF and LatTF show whether the result depends on the LiDAR branch.
+      \item DiffusionDrive asks whether the same signal remains visible under a planner designed to attenuate backbone differences.
+    \end{itemize}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Mechanistic evaluation protocol}
+  \begin{columns}[T]
+    \column{0.5\textwidth}
+    \begin{itemize}\footnotesize
+      \item \textbf{Linear probe}: how linearly decodable city identity is from the feature vector.
+      \item \textbf{Effective rank}: how many useful directions remain in the feature covariance.
+      \item \textbf{CKA}: covariance similarity across cities.
+      \item \textbf{MMD}: distribution shift across city-pair feature sets.
+    \end{itemize}
+    \column{0.5\textwidth}
+    \begin{block}{Interpretation rule}
+      \footnotesize Probe accuracy and effective rank are the primary readouts. CKA and MMD are supporting diagnostics. The mechanistic claim is made from matched comparisons and from the frozen-versus-trainable contrast, not from one pooled correlation.
+    \end{block}
+  \end{columns}
+\end{frame}
+
 \section{Experiments}
 
-\sectiondivider{Experiments}
+\sectiondivider{Experimental Results}
 
 \begin{frame}{Study I: lightweight-head design}
-  \begin{itemize}
+  \centering
+  \resizebox{0.95\linewidth}{!}{%
+  \begin{tikzpicture}[
+      node distance = 4mm and 5mm,
+      box/.style = {draw, rounded corners=2pt, minimum height=8mm, minimum width=18mm, align=center, font=\scriptsize},
+      sslbox/.style = {fill=ssl!12, draw=ssl!70},
+      arrow/.style = {-{Stealth[length=1.8mm]}, thick},
+  ]
+      \node[box] (cams) {Cameras\\$V \in \{1,3,6\}$};
+      \node[box, right=of cams, sslbox] (enc) {Backbone\\(ResNet / ViT)};
+      \node[box, right=of enc] (tok) {Tokens\\$B{\times}V{\times}N{\times}C$};
+      \node[box, right=of tok, sslbox] (fus) {View fusion\\$f_\text{view}$};
+      \node[box, right=of fus] (vis) {Visual\\$B{\times}C$};
+      \node[box, below=8mm of fus] (ego) {Ego\\$B{\times}8$};
+      \node[box, right=of vis, sslbox] (head) {Head\\(MLP / Tx.)};
+      \node[box, right=of head] (traj) {Trajectory\\$B{\times}T{\times}3$};
+      \draw[arrow] (cams) -- (enc);
+      \draw[arrow] (enc) -- (tok);
+      \draw[arrow] (tok) -- (fus);
+      \draw[arrow] (fus) -- (vis);
+      \draw[arrow] (vis) -- (head);
+      \draw[arrow] (ego) -| (head);
+      \draw[arrow] (head) -- (traj);
+  \end{tikzpicture}}
+  \vspace{4pt}
+  \begin{itemize}\footnotesize
     \item Front camera only, 2-layer MLP trajectory head, $L_1$ loss.
     \item Planner capacity is intentionally minimal, so any PDMS spread is primarily a representation spread.
     \item 45 runs under a shared configuration: 11 backbones, frozen and trainable variants.
   \end{itemize}
-  \vspace{6pt}
   \begin{block}{Purpose}
-    This study asks whether the representation signal is already visible before introducing a strong planner.
+    \footnotesize This study asks whether the representation signal is already visible before introducing a strong planner. Shaded boxes are the components swapped during ablations.
   \end{block}
 \end{frame}
 
@@ -344,31 +464,49 @@
 \end{frame}
 
 \begin{frame}{Study II: cross-city benchmark design}
+  \centering
+  \resizebox{0.92\linewidth}{!}{%
+  \begin{tikzpicture}[
+      node distance = 3mm and 5mm,
+      box/.style = {draw, rounded corners=2pt, minimum height=8mm, minimum width=20mm, align=center, font=\scriptsize},
+      sslbox/.style = {fill=ssl!12, draw=ssl!70},
+      arrow/.style = {-{Stealth[length=1.8mm]}, thick},
+  ]
+      \node[box] (img) {Image\\$3{\times}H_0{\times}W_0$};
+      \node[box, right=of img, sslbox] (vit) {ViT backbone\\(frozen or full)};
+      \node[box, right=of vit] (tok) {Patch tokens\\$B{\times}N{\times}C$};
+      \node[box, right=of tok] (rsh) {Reshape +\\linear proj.};
+      \node[box, right=of rsh, sslbox] (map) {Spatial map\\$B{\times}C'{\times}H{\times}W$};
+      \node[box, right=of map] (plan) {Planner\\(LAW / TF / DD)};
+      \draw[arrow] (img) -- (vit);
+      \draw[arrow] (vit) -- (tok);
+      \draw[arrow] (tok) -- (rsh);
+      \draw[arrow] (rsh) -- (map);
+      \draw[arrow] (map) -- (plan);
+  \end{tikzpicture}}
+  \vspace{4pt}
   \begin{columns}[T]
     \column{0.5\textwidth}
     \textbf{Open-loop benchmark}
     \begin{itemize}\footnotesize
-      \item LAW on nuScenes.
-      \item Boston and Singapore transfer in both directions.
+      \item LAW on nuScenes, Boston and Singapore, both directions.
       \item Identical planner and training recipe across backbones.
     \end{itemize}
-    \medskip
     \textbf{Closed-loop benchmark}
     \begin{itemize}\footnotesize
-      \item TransFuser and Latent TransFuser on NAVSIM.
-      \item Full $4\times4$ training-city by evaluation-city matrix.
-      \item All results in this talk come from the canonical thesis matrix under NAVSIM v1.1.
+      \item TransFuser and Latent TransFuser on NAVSIM, full $4\times4$ matrix.
+      \item Results read from the canonical thesis matrix under NAVSIM v1.1.
     \end{itemize}
     \column{0.5\textwidth}
     \textbf{Backbone roster}
     \begin{itemize}\footnotesize
       \item Supervised defaults plus ImageNet SSL and nuScenes SSL checkpoints.
       \item Frozen and fully trainable variants where available.
-      \item Exact backbone swaps under the same planner are the core controlled comparison.
+      \item Backbone is the only manipulated axis; the adapter above is identical across planners.
     \end{itemize}
   \end{columns}
-  \vspace{6pt}
-  \footnotesize LAW is included as an external baseline. The NAVSIM experiments, re-evaluations, and interpretations are thesis results.
+  \vspace{4pt}
+  \footnotesize LAW is included as an external baseline. The NAVSIM experiments, evaluations, and interpretations are thesis results.
 \end{frame}
 
 \begin{frame}{Study IIa: LAW transfer from Boston to Singapore}
@@ -478,17 +616,17 @@
   \end{itemize}
 \end{frame}
 
-\begin{frame}{Study III: cross-city DiffusionDrive transfer}
+\begin{frame}[shrink=5]{Study III: cross-city DiffusionDrive transfer}
   \centering
-  \includegraphics[width=0.90\textwidth]{../../navsim-ssl-city-generalization/fig/navsim/dd_cc_interim/dd_cc_transfer_matrix.pdf}
-  \vspace{4pt}
+  \includegraphics[width=0.82\textwidth]{../../navsim-ssl-city-generalization/fig/navsim/dd_cc_interim/dd_cc_transfer_matrix.pdf}
+  \vspace{1pt}
   \begin{itemize}\scriptsize
     \item The current thesis record includes Boston-trained and Pittsburgh-trained ResNet-34 rows, and a matched Pittsburgh-trained frozen I-JEPA row.
     \item Across the available rows, Singapore is the weakest destination column.
   \end{itemize}
 \end{frame}
 
-\begin{frame}{Study III: matched Pittsburgh comparison}
+\begin{frame}{Study III: matched Pittsburgh cross-city comparison}
   \begin{columns}[T]
     \column{0.56\textwidth}
     \centering\scriptsize
@@ -525,22 +663,83 @@
 \end{frame}
 
 \begin{frame}{Study IV: mechanistic analysis protocol}
-  \begin{itemize}
-    \item \textbf{Linear city-identification probe.} Measures how much city identity is linearly decodable from the learned features.
-    \item \textbf{Effective rank of the feature covariance.} Measures whether the representation collapses onto a small subspace.
-    \item \textbf{CKA and MMD.} Auxiliary diagnostics of cross-city similarity and distribution shift.
-    \item \textbf{Attention maps.} Qualitative backup only.
-  \end{itemize}
-  \vspace{6pt}
-  \begin{block}{Primary evidence}
-    The primary mechanistic evidence in this defense is the training-city-stratified probe pattern, the full-roster summaries, the matched Boston comparison, and the rank contrast between frozen and trainable rows.
-  \end{block}
+  \centering
+  \resizebox{0.98\linewidth}{!}{%
+  \begin{tikzpicture}[
+      ckp/.style   = {draw, rounded corners=2pt, minimum height=7mm, minimum width=22mm, align=center, font=\scriptsize, fill=black!4},
+      cache/.style = {draw, rounded corners=2pt, minimum height=9mm, minimum width=24mm, align=center, font=\scriptsize, fill=black!8},
+      loadbearing/.style = {draw, rounded corners=2pt, minimum height=7mm, minimum width=26mm, align=center, font=\scriptsize, fill=ssl!15, draw=ssl, line width=0.5pt},
+      supporting/.style  = {draw, rounded corners=2pt, minimum height=7mm, minimum width=26mm, align=center, font=\scriptsize, fill=black!3, dashed, draw=black!40},
+      syn/.style   = {draw, rounded corners=2pt, minimum height=9mm, minimum width=28mm, align=center, font=\scriptsize, fill=black!12},
+      arrow/.style = {-{Stealth[length=1.6mm]}, thin},
+      darrow/.style = {-{Stealth[length=1.6mm]}, thin, dashed, draw=black!45},
+  ]
+      \node[ckp] (ckpt) {188 trained\\checkpoints};
+      \node[cache, right=7mm of ckpt] (cache) {Cached features\\$(B, 512)$ per city};
+      \node[loadbearing, right=10mm of cache, yshift=14mm] (probe) {Linear city-ID probe};
+      \node[supporting, right=10mm of cache, yshift=4mm] (cka) {Cross-city CKA};
+      \node[supporting, right=10mm of cache, yshift=-5mm] (mmd) {City-pair MMD$^2$};
+      \node[loadbearing, right=10mm of cache, yshift=-14mm] (rank) {Effective rank};
+      \node[syn, right=10mm of probe, yshift=-9mm] (syn) {Synthesis\\table and claim};
+      \draw[arrow] (ckpt) -- (cache);
+      \draw[arrow] (cache.east) -- (probe.west);
+      \draw[darrow] (cache.east) -- (cka.west);
+      \draw[darrow] (cache.east) -- (mmd.west);
+      \draw[arrow] (cache.east) -- (rank.west);
+      \draw[arrow] (probe.east) -- (syn.west);
+      \draw[darrow] (cka.east) -- (syn.west);
+      \draw[darrow] (mmd.east) -- (syn.west);
+      \draw[arrow] (rank.east) -- (syn.west);
+  \end{tikzpicture}}
+  \vspace{2pt}
+  \begin{columns}[T]
+    \column{0.52\textwidth}
+    \begin{itemize}\footnotesize
+      \item \textbf{Linear city-ID probe.} How much city identity is linearly decodable from the features.
+      \item \textbf{Effective rank.} Whether the feature covariance collapses onto a small subspace.
+      \item \textbf{CKA / MMD.} Supporting diagnostics of cross-city similarity and distribution shift.
+    \end{itemize}
+    \column{0.48\textwidth}
+    \begin{block}{Primary evidence}
+      \footnotesize Training-city-stratified probe pattern, full-roster summaries, matched Boston comparison, and the rank contrast between frozen and trainable rows.
+    \end{block}
+  \end{columns}
 \end{frame}
 
-\begin{frame}{Mechanistic evidence: probe accuracy and OOD loss by training city}
+\begin{frame}[shrink=13]{Mechanistic evidence: probe accuracy and OOD loss by training city}
   \centering
-  \includegraphics[width=0.92\textwidth]{../fig/phase4/scatter_probe_vs_ood_by_training_city.pdf}
-  \vspace{4pt}
+  \includegraphics[width=0.68\textwidth]{../fig/phase4/scatter_probe_vs_ood_by_training_city.pdf}
+  \vspace{2pt}
+  \\{\tiny\textit{Schematic: why pooling destroys the trend that the panels above recover}}
+  \\
+  \resizebox{0.78\linewidth}{!}{%
+  \begin{tikzpicture}[
+      panel/.style = {draw, minimum width=28mm, minimum height=18mm, rounded corners=1pt},
+  ]
+      \node[panel] (a) {};
+      \foreach \i in {1,...,25} {
+        \pgfmathsetmacro{\xx}{rand * 1.1}
+        \pgfmathsetmacro{\yy}{rand * 0.7}
+        \fill[black!55] ([xshift=\xx cm, yshift=\yy cm] a.center) circle (0.35mm);
+      }
+      \node[font=\tiny, anchor=north] at (a.south) {(a) pooled};
+      \node[panel, right=4mm of a] (b) {};
+      \foreach \i in {1,...,8} { \pgfmathsetmacro{\xx}{rand * 0.5 - 0.5} \pgfmathsetmacro{\yy}{rand * 0.4 - 0.2} \fill[sup] ([xshift=\xx cm, yshift=\yy cm] b.center) circle (0.35mm); }
+      \foreach \i in {1,...,8} { \pgfmathsetmacro{\xx}{rand * 0.5 + 0.2} \pgfmathsetmacro{\yy}{rand * 0.4 + 0.3} \fill[ssl] ([xshift=\xx cm, yshift=\yy cm] b.center) circle (0.35mm); }
+      \foreach \i in {1,...,8} { \pgfmathsetmacro{\xx}{rand * 0.4 + 0.1} \pgfmathsetmacro{\yy}{rand * 0.3 - 0.4} \fill[nyuviolet] ([xshift=\xx cm, yshift=\yy cm] b.center) circle (0.35mm); }
+      \node[font=\tiny, anchor=north] at (b.south) {(b) coloured};
+      \node[panel, right=4mm of b] (c) {};
+      \foreach \row in {-1, 1} { \foreach \col in {-1, 1} {
+        \pgfmathsetmacro{\cx}{\col * 0.55} \pgfmathsetmacro{\cy}{\row * 0.35}
+        \foreach \t in {0,0.3,...,1.0} {
+          \pgfmathsetmacro{\xx}{\cx - 0.3 + \t*0.6}
+          \pgfmathsetmacro{\yy}{\cy - 0.2 + \t*0.4}
+          \fill[black!55] ([xshift=\xx cm, yshift=\yy cm] c.center) circle (0.3mm);
+        }
+      }}
+      \node[font=\tiny, anchor=north] at (c.south) {(c) stratified};
+  \end{tikzpicture}}
+  \\
   \begin{itemize}\footnotesize
     \item Boston, Pittsburgh, and Las Vegas show the expected upward trend: higher city-decodability corresponds to larger out-of-distribution loss.
     \item Singapore is the exception: the relationship is largely flat in the smallest and most confounded training regime.
@@ -609,6 +808,38 @@
   \end{itemize}
 \end{frame}
 
+\begin{frame}{What effective rank actually measures}
+  \centering
+  \resizebox{0.95\linewidth}{!}{%
+  \begin{tikzpicture}[
+      panel/.style = {draw, minimum width=45mm, minimum height=32mm, rounded corners=1pt},
+  ]
+      \node[panel] (a) {};
+      \draw[fill=sup!70, draw=sup] (a.south west) ++(4mm,0) rectangle ++(4mm,2.8cm);
+      \foreach \k in {1,...,9} {
+        \draw[fill=black!20, draw=black!50] (a.south west) ++(4mm + \k*4mm,0) rectangle ++(4mm,0.12cm);
+      }
+      \node[font=\footnotesize, anchor=north] at (a.south) {(a) spike: eff.\ rank $\approx 1.0$};
+      \node[panel, right=7mm of a] (b) {};
+      \foreach \k in {0,...,9} {
+        \draw[fill=ssl!60, draw=ssl] (b.south west) ++(4mm + \k*4mm,0) rectangle ++(4mm,1.7cm);
+      }
+      \node[font=\footnotesize, anchor=north] at (b.south) {(b) uniform over 10: eff.\ rank $\approx 10.0$};
+      \node[panel, right=7mm of b] (c) {};
+      \foreach \k in {0,...,9} {
+        \pgfmathsetmacro{\hh}{2.8 * exp(-0.35*\k)}
+        \draw[fill=avgray!60, draw=avgray] (c.south west) ++(4mm + \k*4mm,0) rectangle ++(4mm,\hh cm);
+      }
+      \node[font=\footnotesize, anchor=north] at (c.south) {(c) decay: eff.\ rank $\approx 3.8$};
+  \end{tikzpicture}}
+  \vspace{6pt}
+  \begin{itemize}\footnotesize
+    \item Roy--Vetterli effective rank: $\exp\!\bigl(-\sum_i \tilde\sigma_i^2 \log \tilde\sigma_i^2\bigr)$, with $\tilde\sigma_i$ the $\ell_2$-normalised squared singular values.
+    \item It collapses the per-city feature spectrum to a single number: close to $1$ when the features live on one direction, close to $k$ when they spread uniformly across $k$ directions.
+    \item The next slide reports this number for a real checkpoint, frozen and fully fine-tuned.
+  \end{itemize}
+\end{frame}
+
 \begin{frame}{Feature-rank collapse under fine-tuning}
   \centering
   \includegraphics[width=0.44\textwidth]{../fig/phase4/spectrum_A6.pdf}
@@ -616,7 +847,7 @@
   \includegraphics[width=0.44\textwidth]{../fig/phase4/spectrum_A6-b.pdf}
   \vspace{6pt}
   \begin{itemize}\footnotesize
-    \item For all-city I-JEPA ViT-H/14, moving from frozen to fully trainable reduces effective rank from $36.6$ to $2.9$ and reduces probe accuracy from $0.94$ to $0.38$.
+    \item For all-city I-JEPA ViT-H/14, moving from frozen (left) to fully trainable (right) reduces effective rank from $36.6$ to $2.9$ and reduces probe accuracy from $0.94$ to $0.38$.
     \item Fine-tuning can therefore erase useful pretrained structure even when mixed-city fit remains acceptable.
   \end{itemize}
 \end{frame}
@@ -632,6 +863,15 @@
     \item The completed DiffusionDrive rows are directionally consistent with the completed regression-planner results.
     \item The mechanistic evidence supports freezing as an operational choice: transfer degrades when the representation collapses onto city-specific directions.
   \end{enumerate}
+\end{frame}
+
+\begin{frame}{Industrial implications}
+  \begin{itemize}
+    \item Cross-city robustness is a deployment problem, not only a benchmark problem. Fleets are expanded city by city, often under limited local labels.
+    \item A frozen SSL backbone offers a practical trade-off: a small in-distribution cost in exchange for a smaller degradation when the operating city changes.
+    \item The camera-only results matter operationally because they speak to lower-cost sensing stacks. The current evidence says better image representations help, but they do not fully replace missing geometry.
+    \item The broader implication is methodological: benchmark selection should include explicit geographic holdouts, not only pooled leaderboard PDMS.
+  \end{itemize}
 \end{frame}
 
 \begin{frame}{Contributions and scope of the claim}
@@ -661,6 +901,15 @@
     \item The same directional pattern appears in DiffusionDrive on the available cross-city rows.
     \item Mechanistically, better transfer aligns with lower city-decodability in matched settings and with preservation of feature rank under freezing.
   \end{enumerate}
+\end{frame}
+
+\begin{frame}{Future work}
+  \begin{itemize}
+    \item Extend the same protocol to video SSL, especially V-JEPA-style backbones.
+    \item Complete the full cross-city DiffusionDrive matrix and test whether the matched Pittsburgh result generalizes across all source cities.
+    \item Evaluate the same backbone choices under a stronger interactive closed-loop simulator.
+    \item Scale the benchmark beyond four cities and study domain-specific pretraining at larger scale.
+  \end{itemize}
 \end{frame}
 
 \begin{frame}{Conclusion}
@@ -782,21 +1031,83 @@
 \end{frame}
 
 \begin{frame}{A8. Linear probe protocol}
-  \begin{itemize}
-    \item Multinomial logistic regression on standardised backbone features.
-    \item Four-way city target: Las Vegas, Boston, Pittsburgh, Singapore.
-    \item $80/20$ stratified split on cached features.
-    \item Negative control: random-Gaussian features produce probe accuracy $0.254$.
-    \item The probe measures linearly decodable city identity; it is not a new planner.
+  \centering
+  \resizebox{0.95\linewidth}{!}{%
+  \begin{tikzpicture}[
+      city/.style = {draw, rounded corners=2pt, minimum width=20mm, minimum height=6mm, align=center, font=\scriptsize, fill=black!5},
+      split/.style = {draw, rounded corners=2pt, minimum width=18mm, minimum height=7mm, align=center, font=\scriptsize, fill=black!3},
+      lr/.style = {draw, rounded corners=2pt, minimum width=24mm, minimum height=10mm, align=center, font=\scriptsize, fill=ssl!15, draw=ssl},
+      acc/.style = {draw, rounded corners=2pt, minimum width=22mm, minimum height=8mm, align=center, font=\scriptsize, fill=black!10},
+      ctrl/.style = {draw, rounded corners=2pt, minimum width=22mm, minimum height=7mm, align=center, font=\scriptsize, dashed, fill=black!2},
+      arrow/.style = {-{Stealth[length=1.6mm]}, thin},
+  ]
+      \node[city] (lv) {LV features};
+      \node[city, below=1mm of lv] (b)  {B features};
+      \node[city, below=1mm of b]  (p)  {P features};
+      \node[city, below=1mm of p]  (s)  {S features};
+      \node[split, right=8mm of b] (pool) {pool + $z$-score};
+      \node[split, right=5mm of pool] (stratsplit) {80/20 split};
+      \node[lr, right=6mm of stratsplit] (clf) {multinomial\\logistic reg.};
+      \node[acc, right=8mm of clf] (acc) {probe acc.};
+      \node[ctrl, below=4mm of acc] (rand) {Gaussian: $0.254$};
+      \draw[arrow] (lv.east) -- (pool.west);
+      \draw[arrow] (b.east)  -- (pool.west);
+      \draw[arrow] (p.east)  -- (pool.west);
+      \draw[arrow] (s.east)  -- (pool.west);
+      \draw[arrow] (pool) -- (stratsplit);
+      \draw[arrow] (stratsplit) -- (clf);
+      \draw[arrow] (clf) -- (acc);
+      \draw[arrow, dashed] (clf.south) |- (rand.west);
+  \end{tikzpicture}}
+  \vspace{4pt}
+  \begin{itemize}\footnotesize
+    \item Multinomial logistic regression on standardised backbone features; four-way city target.
+    \item $80/20$ stratified split on cached features; random-Gaussian control yields accuracy $0.254$.
+    \item The probe measures linearly decodable city identity, not a new planner.
   \end{itemize}
 \end{frame}
 
 \begin{frame}{A9. CKA and MMD diagnostics}
-  \begin{itemize}
-    \item \textbf{CKA} is descriptive: cross-city covariance alignment is high for both supervised and SSL families.
-    \item \textbf{MMD\textsuperscript{2}} is an auxiliary diagnostic: useful within matched comparisons, not as a global transfer predictor.
-    \item \textbf{Effective rank} is the most interpretable structural measurement for the frozen-versus-trainable contrast.
-    \item Attention maps are retained as qualitative backup and are not part of the primary evidence.
+  \centering
+  \resizebox{0.9\linewidth}{!}{%
+  \begin{tikzpicture}[
+      cov/.style   = {draw, minimum width=15mm, minimum height=15mm, align=center, font=\tiny, fill=black!8},
+      lbl/.style   = {font=\tiny},
+      arrow/.style = {-{Stealth[length=1.4mm]}, thin},
+  ]
+      % CKA side (left block)
+      \node[font=\scriptsize\bfseries] (ckatitle) {Linear CKA: covariance alignment};
+      \node[cov, below=2mm of ckatitle.west, anchor=north west] (ca) {$X_A^{\top}\!X_A$};
+      \node[cov, right=4mm of ca] (cb) {$X_B^{\top}\!X_B$};
+      \node[lbl, below=0.5mm of ca] {city $A$};
+      \node[lbl, below=0.5mm of cb] {city $B$};
+      \node[draw, rounded corners, minimum width=45mm, minimum height=8mm, align=center, font=\tiny, below=5mm of $(ca)!0.5!(cb)$, fill=black!10]
+        (ckaeq) {$\mathrm{CKA}=\frac{\langle C_A, C_B\rangle_F}{\lVert C_A\rVert_F\,\lVert C_B\rVert_F}$};
+      \draw[arrow] (ca.south) -- (ckaeq.north -| ca);
+      \draw[arrow] (cb.south) -- (ckaeq.north -| cb);
+      % MMD side (right block)
+      \node[font=\scriptsize\bfseries, right=38mm of ckatitle] (mmdtitle) {MMD$^2$: distribution distance};
+      \draw[dashed, black!30] ([yshift=-2mm] mmdtitle.south -| mmdtitle.west) rectangle ++(55mm, -20mm);
+      \foreach \i in {1,...,10} {
+        \pgfmathsetmacro{\xx}{rand * 0.6 - 1.2}
+        \pgfmathsetmacro{\yy}{rand * 0.5 - 0.6}
+        \fill[sup!80] ([xshift=\xx cm, yshift=\yy cm - 1.1cm] mmdtitle.east) circle (0.5mm);
+      }
+      \foreach \i in {1,...,10} {
+        \pgfmathsetmacro{\xx}{rand * 0.6 + 0.4}
+        \pgfmathsetmacro{\yy}{rand * 0.5 - 0.4}
+        \fill[ssl!80] ([xshift=\xx cm, yshift=\yy cm - 1.1cm] mmdtitle.east) circle (0.5mm);
+      }
+      \draw[gray!70, densely dashed] ([xshift=-0.9cm, yshift=-1.7cm] mmdtitle.east) ellipse (0.8 and 0.55);
+      \draw[gray!70, densely dashed] ([xshift= 0.8cm, yshift=-1.5cm] mmdtitle.east) ellipse (0.8 and 0.55);
+      \node[font=\tiny, below=22mm of mmdtitle, align=center, text width=52mm]
+        {$\sigma^2 = \mathrm{median}\,\lVert x_i - x_j\rVert^2$, distances clamped at $0$};
+  \end{tikzpicture}}
+  \vspace{2pt}
+  \begin{itemize}\footnotesize
+    \item CKA compares the $d\times d$ feature-covariance matrices of two cities; it is high when the variance-carrying directions coincide.
+    \item MMD$^2$ measures the RBF-kernel distance between per-city feature distributions at the median-heuristic bandwidth.
+    \item Both are supporting diagnostics in this thesis; the load-bearing probes are the city-ID linear probe and the effective rank.
   \end{itemize}
 \end{frame}
 
@@ -815,6 +1126,162 @@
     \item The earlier joint paper is Naeinian, Hamza, Zhu, Choromanska (2026).
     \item LAW and the domain-specific pretraining pipeline come from that collaboration.
     \item This thesis contributes the NAVSIM evaluation pipeline, the planner integrations, the lightweight-head study, and the mechanistic analysis.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{A12. ViT primer}
+  \centering
+  \resizebox{0.9\linewidth}{!}{%
+  \begin{tikzpicture}[
+      node distance = 3mm and 5mm,
+      patch/.style = {draw, rectangle, minimum width=6mm, minimum height=6mm, fill=black!5, font=\tiny},
+      tok/.style   = {draw, rectangle, minimum width=6mm, minimum height=8mm, fill=black!10, font=\tiny},
+      block/.style = {draw, rounded corners=2pt, minimum height=9mm, minimum width=16mm, align=center, font=\scriptsize},
+      outnode/.style = {draw, ellipse, minimum height=7mm, minimum width=18mm, align=center, font=\scriptsize, fill=black!5},
+      arrow/.style = {-{Stealth[length=1.5mm]}, thin},
+  ]
+      \node[patch] (p1) {};
+      \node[patch, right=0.5mm of p1] (p2) {};
+      \node[patch, right=0.5mm of p2] (p3) {};
+      \node[patch, right=0.5mm of p3] (p4) {$\cdots$};
+      \node[patch, right=0.5mm of p4] (p5) {};
+      \node[font=\tiny, below=0.5mm of p3] {image patches};
+      \node[block, right=8mm of p5] (proj) {linear proj.\\+ pos.\ enc.};
+      \node[tok, right=6mm of proj] (t0) {\texttt{CLS}};
+      \node[tok, right=0.5mm of t0] (t1) {$z_1$};
+      \node[tok, right=0.5mm of t1] (t2) {$z_2$};
+      \node[tok, right=0.5mm of t2] (t3) {$\cdots$};
+      \node[tok, right=0.5mm of t3] (tN) {$z_N$};
+      \node[block, below=8mm of t2] (enc) {transformer\\blocks $\times L$};
+      \node[outnode, below=6mm of enc] (feat) {global feature};
+      \draw[arrow] (p5.east) -- (proj.west);
+      \draw[arrow] (proj.east) -- (t0.west);
+      \draw[arrow] (t2.south) -- (enc.north);
+      \draw[arrow] (enc.south) -- (feat.north);
+  \end{tikzpicture}}
+  \vspace{4pt}
+  \begin{itemize}\footnotesize
+    \item Image is split into a grid of patches; each patch is linearly projected to a $D$-dim token and combined with a positional encoding.
+    \item A \texttt{CLS} token is prepended; the sequence is processed by $L$ self-attention blocks.
+    \item Configurations used: ViT-S/14, ViT-B/16, ViT-H/14.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[plain]{A13. I-JEPA objective}
+  \centering
+  \resizebox{!}{0.52\textheight}{%
+  \begin{tikzpicture}[
+      node distance = 3mm and 6mm,
+      img/.style   = {draw, rectangle, minimum width=14mm, minimum height=14mm, font=\tiny, align=center, fill=black!5},
+      enc/.style   = {draw, rounded corners=2pt, minimum height=7mm, minimum width=20mm, align=center, font=\scriptsize},
+      pred/.style  = {draw, rounded corners=2pt, minimum height=7mm, minimum width=20mm, align=center, font=\scriptsize, fill=black!5},
+      loss/.style  = {draw, ellipse, minimum height=7mm, minimum width=18mm, align=center, font=\scriptsize},
+      arrow/.style = {-{Stealth[length=1.6mm]}, thin},
+  ]
+      \node[img] (xc) {context $x_c$};
+      \node[img, right=18mm of xc] (xt) {targets $x_{t_i}$};
+      \node[enc, below=of xc] (fc) {context enc.\ $f_\theta$};
+      \node[enc, below=of xt] (ft) {target enc.\ $f_{\bar\theta}$};
+      \node[pred, below=of fc, xshift=14mm] (g) {predictor $g_\phi$};
+      \node[loss, below=of g] (L) {$\|\cdot\|_2^2$ (latent)};
+      \draw[arrow] (xc) -- (fc);
+      \draw[arrow] (xt) -- (ft);
+      \draw[arrow] (fc.south) |- (g.west);
+      \draw[arrow] (ft.south) |- (g.east);
+      \draw[arrow] (g) -- (L);
+      \draw[arrow, dashed] (ft.south) -- ++(0,-2mm) -| (L.east);
+      \node[font=\tiny, right=2mm of L] {stop-grad};
+  \end{tikzpicture}}
+  \vspace{2pt}
+  \begin{itemize}\scriptsize
+    \item Predict latent representations of masked target regions from visible context.
+    \item Target encoder is an EMA of the context encoder; loss is MSE in representation space.
+    \item No pixel reconstruction, no contrastive negatives, no hand-designed augmentations.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[plain]{A14. Planner schematics (TransFuser, LAW, DiffusionDrive)}
+  \centering
+  \resizebox{!}{0.64\textheight}{%
+  \begin{tikzpicture}[
+      node distance = 3mm and 4mm,
+      box/.style = {draw, rounded corners=2pt, minimum height=6mm, minimum width=14mm, align=center, font=\tiny},
+      pill/.style = {draw, rounded corners=3pt, minimum height=6mm, minimum width=16mm, align=center, font=\tiny, fill=black!5},
+      arrow/.style = {-{Stealth[length=1.4mm]}, thin},
+  ]
+      % --- TransFuser
+      \node[font=\scriptsize\bfseries] (tftitle) {TransFuser};
+      \node[box, below=2mm of tftitle.west, anchor=north west] (cam) {Cams};
+      \node[box, below=1mm of cam] (lid) {LiDAR};
+      \node[box, right=3mm of cam] (venc) {Img enc.};
+      \node[box, right=3mm of lid] (lenc) {LiDAR enc.};
+      \node[box, right=4mm of venc, minimum width=18mm, yshift=-3mm] (fuse) {Attn fusion};
+      \node[box, right=3mm of fuse] (head) {GRU head};
+      \node[box, right=3mm of head] (out) {Traj};
+      \draw[arrow] (cam) -- (venc);
+      \draw[arrow] (lid) -- (lenc);
+      \draw[arrow] (venc.east) -- (fuse.west |- venc);
+      \draw[arrow] (lenc.east) -- (fuse.west |- lenc);
+      \draw[arrow] (fuse) -- (head);
+      \draw[arrow] (head) -- (out);
+      % --- LAW
+      \node[font=\scriptsize\bfseries, below=8mm of out.south -| tftitle] (lawtitle) {LAW};
+      \node[box, below=2mm of lawtitle.west, anchor=north west] (li) {Image};
+      \node[box, right=3mm of li] (le) {Encoder};
+      \node[pill, right=3mm of le] (lz) {$z_t$};
+      \node[box, right=3mm of lz] (lp) {World-model};
+      \node[pill, right=3mm of lp] (lzn) {$\hat z_{t+1}$};
+      \node[box, below=4mm of lz] (lpl) {Planner};
+      \node[box, right=4mm of lpl] (lout) {Traj};
+      \draw[arrow] (li) -- (le);
+      \draw[arrow] (le) -- (lz);
+      \draw[arrow] (lz) -- (lp);
+      \draw[arrow] (lp) -- (lzn);
+      \draw[arrow] (lz.south) -- (lpl.north);
+      \draw[arrow] (lpl) -- (lout);
+      % --- DiffusionDrive
+      \node[font=\scriptsize\bfseries, below=8mm of lout.south -| lawtitle] (ddtitle) {DiffusionDrive};
+      \node[box, below=2mm of ddtitle.west, anchor=north west] (ds) {Scene};
+      \node[box, right=3mm of ds] (dc) {Cross-attn\\cond.};
+      \node[box, right=3mm of dc] (dd1) {Denoise 1};
+      \node[box, right=3mm of dd1] (dd2) {Denoise 2};
+      \node[box, right=3mm of dd2] (dout) {Traj};
+      \node[draw, circle, minimum size=4mm, inner sep=0, fill=black!10, font=\tiny, below=3mm of dd1] (aa) {$\tau_k$};
+      \draw[arrow] (ds) -- (dc);
+      \draw[arrow] (dc) -- (dd1);
+      \draw[arrow] (aa.north) -- (dd1.south);
+      \draw[arrow] (dd1) -- (dd2);
+      \draw[arrow] (dd2) -- (dout);
+  \end{tikzpicture}}
+  \vspace{2pt}
+  \begin{itemize}\scriptsize
+    \item \textbf{TransFuser}: camera + LiDAR with attention fusion, GRU waypoint head. Latent TransFuser drops the LiDAR branch.
+    \item \textbf{LAW} (external baseline): world-model auxiliary on top of an encoder; trajectory head reads $z_t$.
+    \item \textbf{DiffusionDrive}: two-step denoising initialised from K-means anchor trajectories $\{\tau_k\}$.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[plain]{A15. Exploratory experiment matrix}
+  \centering
+  \resizebox{!}{0.52\textheight}{%
+  \begin{tikzpicture}[
+      tier/.style = {draw, rounded corners=2pt, minimum width=80mm, minimum height=10mm, align=left, font=\scriptsize, inner sep=4pt},
+      t1/.style = {fill=black!8},
+      t2/.style = {fill=black!4},
+      arrow/.style = {-{Stealth[length=1.6mm]}, thick},
+  ]
+      \node[tier, t1] (p1) {\textbf{Priority 1}\hspace{3mm} 10 backbones $\times$ frozen, front-1, MLP, 20 epochs (10 runs)};
+      \node[tier, t2, below=of p1] (p2) {\textbf{Priority 2}\hspace{3mm} 4 backbones $\times$ 4 training cities + 4 fusion-ablation variants (20 runs)};
+      \node[tier, below=of p2] (p3) {\textbf{Priority 3}\hspace{3mm} 11 backbones $\times$ fully unfrozen, MLP, front-1 (10 runs)};
+      \node[tier, below=of p3] (p4) {\textbf{Priority 4}\hspace{3mm} 3-cam / 6-cam / cross-attn / transformer head, fully unfrozen (5 runs)};
+      \draw[arrow] (p1) -- (p2);
+      \draw[arrow] (p2) -- (p3);
+      \draw[arrow] (p3) -- (p4);
+  \end{tikzpicture}}
+  \vspace{2pt}
+  \begin{itemize}\scriptsize
+    \item Four-tier matrix, 45 runs total. Tier order enforced at submission so Priority-1 resolves the backbone-controlled claim first.
+    \item Heavier tiers restricted to higher-memory GPUs because fully unfrozen ViT-H/14 does not fit on 48\,GB cards.
   \end{itemize}
 \end{frame}
 

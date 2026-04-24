@@ -6,6 +6,8 @@
 %% Structure: 4 phases matching the methodology, plus "Why SSL Works" analysis.
 %% Approx. 20 pages (the core of the thesis).
 
+This chapter follows the same order used in the defense. It starts with baseline validation and the lightweight-head study, then moves to the main cross-city TransFuser and Latent TransFuser benchmark, then to DiffusionDrive as a second planner family, and finally to the mechanistic analysis that explains the observed transfer gains. The chapter closes with a discussion of the practical implications, including what the completed evidence does and does not justify for deployment.
+
 % ============================================================================
 \section{Baseline Validation}
 \label{sec:exp-baselines}
@@ -14,7 +16,7 @@ Before interpreting cross-city behavior, we first establish the scale of the tas
 
 \begin{table}[H]
 \centering
-\caption[Reference baselines on NAVSIM (mixed-city split).]{Reference baselines on NAVSIM under the standard mixed-city navtest split. The upper block gives non-learning and low-capacity references: a constant-velocity controller, which ignores the image entirely, and a small MLP that reads only the ego state. Both anchor the lower bound of the benchmark. The middle block gives the published TransFuser and Latent TransFuser means and their seed standard deviations as reported in the NAVSIM paper~\cite{dauner-navsim-2024}. The bottom block gives an internal $100$-epoch reproduction of the same TF and LatTF checkpoints, evaluated under both NAVSIM v1.1 and NAVSIM v2.2, together with the published DiffusionDrive reference~\cite{jia-diffusiondrive-2025}. How to read it: the v1.1 re-evaluations land within the published TF and LatTF ranges, which is the primary implementation check. The same checkpoints score about two points higher under v2.2 for both architectures, so the devkit shift is systematic rather than architecture-specific. The thesis uses v1.1 for canonical closed-loop claims and retains v2.2 for direct comparison with the companion cross-city paper.}
+\caption[Reference baselines on NAVSIM (mixed-city split).]{Reference baselines on NAVSIM under the standard mixed-city \texttt{navtest} split. The table anchors the benchmark scale with lower-bound, published, internal-validation, and DiffusionDrive reference rows.}
 \label{tab:baselines}
 \small
 \renewcommand{\arraystretch}{1.15}
@@ -38,7 +40,7 @@ DiffusionDrive (ResNet-34, C+L)                      & Published~\cite{jia-diffu
 \end{tabular}
 \end{table}
 
-The v1.1 validation is the load-bearing sanity check, because the canonical cross-city matrix later in this chapter is also scored under v1.1. On that devkit, TF reaches $83.22$ and LatTF reaches $83.18$, both within the ranges reported in the NAVSIM paper~\cite{dauner-navsim-2024}. Re-evaluating the same checkpoints under v2.2 shifts both scores upward by about two points, to $85.3$ and $84.9$, which indicates a systematic devkit offset rather than a pipeline error tied to one planner family.
+The upper block gives non-learning and low-capacity references; the middle block gives the published TransFuser and Latent TransFuser means; the bottom block gives internal $100$-epoch validation runs and the published DiffusionDrive reference~\cite{dauner-navsim-2024,jia-diffusiondrive-2025}. The v1.1 validation is the load-bearing sanity check, because the canonical cross-city matrix later in this chapter is also scored under v1.1. On that devkit, TF reaches $83.22$ and LatTF reaches $83.18$, both within the published ranges. Re-evaluating the same checkpoints under v2.2 shifts both scores upward by about two points, to $85.3$ and $84.9$, which indicates a systematic devkit offset rather than a planner-specific pipeline error.
 
 Experiment identifiers in this chapter are labels that pick out a single trained model within each study, not hyperparameters. Each label is built from a family prefix plus a short suffix: the prefix names the study (all-city, single-city, lightweight-head, generative planning), and the suffix selects a specific backbone or adaptation variant. Table~\ref{tab:exp-id-guide} is the small legend needed to read those labels when they appear in a results table. Readers who do not wish to trace individual rows can safely ignore the labels; the thesis claims are developed at the level of backbone families (ResNet-34, I-JEPA, DINOv2, MAE) rather than individual run identifiers.
 
@@ -487,6 +489,43 @@ These rows are supportive, not decisive. The pre-registered criterion in~\refsec
 
 The earlier phases establish the phenomenon. This section addresses the mechanism. The analyses below require no additional model training; they operate on cached features extracted from already trained checkpoints and ask a simple question: what is different about the feature space of SSL models that makes city transfer easier?
 
+\reffig{fig:exp-mech-pipeline} sketches the shared pipeline for the four probes used in the rest of the section. One cached feature tensor per (checkpoint, city) pair feeds four parallel analyses; their outputs meet in the synthesis table at the end of the section.
+
+\begin{figure}[ht]
+    \centering
+    \resizebox{\linewidth}{!}{%
+    \begin{tikzpicture}[
+        node distance = 4mm and 5mm,
+        ckp/.style   = {draw, rounded corners=2pt, minimum height=8mm, minimum width=22mm, align=center, font=\scriptsize, fill=black!3},
+        cache/.style = {draw, rounded corners=2pt, minimum height=10mm, minimum width=24mm, align=center, font=\scriptsize, fill=black!6},
+        probe/.style  = {draw, rounded corners=2pt, minimum height=8mm, minimum width=26mm, align=center, font=\scriptsize},
+        loadbearing/.style = {draw=black!80, line width=0.7pt, fill=black!8},
+        supporting/.style  = {draw=black!40, dashed, fill=black!2},
+        syn/.style   = {draw, rounded corners=2pt, minimum height=10mm, minimum width=30mm, align=center, font=\scriptsize, fill=black!10},
+        arrow/.style = {-{Stealth[length=1.8mm]}, thin},
+        dashedarrow/.style = {-{Stealth[length=1.8mm]}, thin, dashed, draw=black!45},
+    ]
+        \node[ckp] (ckpt) {188 trained\\checkpoints};
+        \node[cache, right=8mm of ckpt] (cache) {Cached features\\$(B, 512)$ per city};
+        \node[probe, loadbearing, right=12mm of cache, yshift=13mm] (probe) {Linear city-ID probe\\(load-bearing)};
+        \node[probe, supporting, right=12mm of cache, yshift=4mm] (cka) {Cross-city CKA\\(supporting)};
+        \node[probe, supporting, right=12mm of cache, yshift=-5mm] (mmd) {City-pair MMD$^2$\\(supporting)};
+        \node[probe, loadbearing, right=12mm of cache, yshift=-14mm] (rank) {Effective rank\\(load-bearing)};
+        \node[syn, right=12mm of probe, yshift=-9mm] (syn) {Synthesis table\\and claim};
+        \draw[arrow] (ckpt) -- (cache) node[midway, above, font=\tiny] {extract};
+        \draw[arrow] (cache.east) -- (probe.west);
+        \draw[dashedarrow] (cache.east) -- (cka.west);
+        \draw[dashedarrow] (cache.east) -- (mmd.west);
+        \draw[arrow] (cache.east) -- (rank.west);
+        \draw[arrow] (probe.east) -- (syn.west);
+        \draw[dashedarrow] (cka.east) -- (syn.west);
+        \draw[dashedarrow] (mmd.east) -- (syn.west);
+        \draw[arrow] (rank.east) -- (syn.west);
+    \end{tikzpicture}}
+    \caption[Mechanistic analysis pipeline: four probes, one feature cache.]{The shared mechanistic pipeline used throughout this section. One cached feature tensor per (checkpoint, city) pair feeds four probes in parallel. Two probes are load-bearing (linear city-ID probe and effective rank; solid); two are supporting (cross-city CKA and MMD$^2$; dashed). All four feed into the synthesis table (\reftab{tab:family-aggregate}) and into the bounded interpretation in~\refsec{sec:exp-why-synthesis}.}
+    \label{fig:exp-mech-pipeline}
+\end{figure}
+
 The mechanistic study operates on cached features from the trained TransFuser / Latent TransFuser checkpoints. \reftab{tab:exp-mech-feature-cache} summarizes the feature-extraction substrate; no additional model training is required.
 
 \begin{table}[ht]
@@ -522,6 +561,35 @@ Linear CKA is defined on two representations of the same samples, so we use the 
 \end{equation}
 which is bounded in $[0, 1]$, invariant to orthogonal rotations of the feature basis, and agnostic to different sample counts across cities.
 
+\reffig{fig:exp-cka-concept} gives the intuition. Two cities yield two feature matrices $X_A \in \mathbb{R}^{N_A \times d}$ and $X_B \in \mathbb{R}^{N_B \times d}$ with different sample counts. The cross-dataset form compares their $d \times d$ feature-covariance matrices $X_A^\top X_A$ and $X_B^\top X_B$ rather than their raw feature vectors. Linear CKA is therefore a similarity between the directions that carry variance in each city, not between the feature values themselves.
+
+\begin{figure}[ht]
+    \centering
+    \resizebox{0.9\linewidth}{!}{%
+    \begin{tikzpicture}[
+        cloud/.style = {draw, rounded corners=3pt, minimum width=28mm, minimum height=20mm, align=center, font=\scriptsize, fill=black!4},
+        cov/.style   = {draw, minimum width=18mm, minimum height=18mm, align=center, font=\tiny, fill=black!8},
+        label/.style = {font=\tiny},
+        arrow/.style = {-{Stealth[length=1.8mm]}, thin},
+    ]
+        \node[cloud] (xa) {Features on city A\\$X_A \in \mathbb{R}^{N_A \times d}$};
+        \node[cloud, right=30mm of xa] (xb) {Features on city B\\$X_B \in \mathbb{R}^{N_B \times d}$};
+        \node[cov, below=10mm of xa] (ca) {$X_A^{\top}\! X_A$};
+        \node[cov, below=10mm of xb] (cb) {$X_B^{\top}\! X_B$};
+        \node[label, below=0.5mm of ca] {$d \times d$ feature covariance};
+        \node[label, below=0.5mm of cb] {$d \times d$ feature covariance};
+        \draw[arrow] (xa) -- (ca) node[midway, right, font=\tiny] {centred Gram};
+        \draw[arrow] (xb) -- (cb) node[midway, right, font=\tiny] {centred Gram};
+        \node[draw, rounded corners, minimum width=60mm, minimum height=9mm, align=center, font=\scriptsize, below=12mm of $(ca)!0.5!(cb)$, fill=black!10]
+          (cka) {$\mathrm{CKA}(X_A, X_B) = \frac{\langle X_A^\top X_A,\, X_B^\top X_B\rangle_F}{\lVert X_A^\top X_A\rVert_F\,\lVert X_B^\top X_B\rVert_F}$};
+        \draw[arrow] (ca.south) -- (cka.north -| ca);
+        \draw[arrow] (cb.south) -- (cka.north -| cb);
+        \node[font=\tiny, right=4mm of cka, text width=38mm, align=left] {CKA is high when city A and city B's variance-carrying directions align, even if the sample counts differ.};
+    \end{tikzpicture}}
+    \caption[Cross-dataset linear CKA: covariance alignment, not feature-value alignment.]{Intuition for the cross-dataset form of linear CKA used in this section. The two feature matrices come from disjoint city samples and can have different row counts ($N_A \ne N_B$). The quantity compared is the $d \times d$ feature-covariance matrix of each city, i.e.\ the directions that carry variance in the backbone's latent space. A high CKA value means those directions coincide across cities, even though the specific feature vectors do not.}
+    \label{fig:exp-cka-concept}
+\end{figure}
+
 Mean off-diagonal CKA is high across families, as shown in the CKA column of Table~\ref{tab:family-aggregate}, and does not cleanly separate supervised from SSL backbones. Both families encode similar covariance structure across cities, so covariance alignment alone is not the discriminating mechanism. Per-run heatmaps (Fig.~\ref{fig:cka-grid}) show city-pair asymmetries consistent with the raw scenario distributions: Boston $\leftrightarrow$ Pittsburgh are closest, Singapore is the outlier for every backbone.
 
 \begin{figure}[t]
@@ -535,7 +603,42 @@ Mean off-diagonal CKA is high across families, as shown in the CKA column of Tab
 \subsection{Linear Probing for City Classification}
 \label{sec:exp-linear-probe}
 
-We fit a multinomial logistic regression on standardized features to predict the four-way city label, using the split and negative control summarized in \reftab{tab:exp-probe-protocol}.
+We fit a multinomial logistic regression on standardized features to predict the four-way city label, using the split and negative control summarized in \reftab{tab:exp-probe-protocol}. \reffig{fig:exp-probe-schematic} sketches the procedure.
+
+\begin{figure}[ht]
+    \centering
+    \resizebox{0.92\linewidth}{!}{%
+    \begin{tikzpicture}[
+        city/.style = {draw, rounded corners=2pt, minimum width=22mm, minimum height=7mm, align=center, font=\scriptsize, fill=black!5},
+        split/.style = {draw, rounded corners=2pt, minimum width=20mm, minimum height=8mm, align=center, font=\scriptsize, fill=black!3},
+        lr/.style = {draw, rounded corners=2pt, minimum width=26mm, minimum height=12mm, align=center, font=\scriptsize, fill=black!8},
+        acc/.style = {draw, rounded corners=2pt, minimum width=24mm, minimum height=10mm, align=center, font=\scriptsize, fill=black!10},
+        ctrl/.style = {draw, rounded corners=2pt, minimum width=24mm, minimum height=8mm, align=center, font=\scriptsize, dashed, fill=black!2},
+        arrow/.style = {-{Stealth[length=1.8mm]}, thin},
+    ]
+        \node[city] (lv) {LV features};
+        \node[city, below=1.5mm of lv] (b)  {B features};
+        \node[city, below=1.5mm of b]  (p)  {P features};
+        \node[city, below=1.5mm of p]  (s)  {S features};
+        \node[split, right=10mm of b] (pool) {pool +\\$z$-score};
+        \node[split, right=5mm of pool] (stratsplit) {stratified\\80/20 split};
+        \node[lr, right=6mm of stratsplit] (clf) {multinomial\\logistic\\regression};
+        \node[acc, right=8mm of clf] (acc) {probe accuracy\\(0--1)};
+        \node[ctrl, below=6mm of acc] (rand) {random-Gaussian\\control: $0.254$};
+        \draw[arrow] (lv.east) -- (pool.west);
+        \draw[arrow] (b.east)  -- (pool.west);
+        \draw[arrow] (p.east)  -- (pool.west);
+        \draw[arrow] (s.east)  -- (pool.west);
+        \draw[arrow] (pool) -- (stratsplit);
+        \draw[arrow] (stratsplit) -- (clf);
+        \draw[arrow] (clf) -- (acc);
+        \draw[arrow, dashed] (clf.south) |- (rand.west);
+        \node[font=\tiny, below=8mm of clf, text width=65mm, align=center]
+          {High accuracy means city identity is linearly decodable from the features; accuracy near the random control means it is not.};
+    \end{tikzpicture}}
+    \caption[City-classification linear probe, schematic.]{Procedure for the city-classification linear probe. Cached features from each of the four NAVSIM cities are pooled and standardised, split into $80/20$ stratified train and test, and used to fit a multinomial logistic regression that predicts the city label. The scalar output is the classification accuracy on the held-out $20\%$. A random-Gaussian control yields $0.254$ and calibrates the no-information baseline.}
+    \label{fig:exp-probe-schematic}
+\end{figure}
 
 \begin{table}[ht]
 \centering
@@ -596,10 +699,103 @@ Across the full roster the story is more nuanced. The pooled correlation and the
     \label{fig:probe-vs-ood}
 \end{figure}
 
+\reffig{fig:exp-probe-confounder} makes the confounding explicit. A pooled scatter of probe accuracy against OOD drop (left) mixes four training-city populations that differ in scale and asymmetry. Colouring the points by training city (middle) begins to separate them, and faceting into one panel per training city (right) recovers the upward trend that the pooled view washes out. The three panels use illustrative clouds rather than real checkpoints; the real data is in Figures~\ref{fig:probe-vs-ood-stratified} and~\ref{fig:probe-vs-ood} above.
+
+\begin{figure}[ht]
+    \centering
+    \resizebox{0.95\linewidth}{!}{%
+    \begin{tikzpicture}[
+        panel/.style = {draw, minimum width=36mm, minimum height=28mm, rounded corners=1pt},
+        lbl/.style = {font=\tiny, anchor=north},
+        arrow/.style = {-{Stealth[length=1.6mm]}, thin},
+    ]
+        % Panel (a): pooled, messy cloud
+        \node[panel] (a) {};
+        \node[lbl] at (a.south) {(a) pooled: weak correlation};
+        \foreach \i in {1,...,40} {
+          \pgfmathsetmacro{\xx}{rand * 1.5 + 0.0}
+          \pgfmathsetmacro{\yy}{rand * 1.2 + 0.0}
+          \fill[black!55] ([xshift=\xx cm, yshift=\yy cm] a.center) circle (0.5mm);
+        }
+        % Panel (b): coloured by training city
+        \node[panel, right=5mm of a] (b) {};
+        \node[lbl] at (b.south) {(b) coloured by training city};
+        \foreach \i in {1,...,10} {
+          \pgfmathsetmacro{\xx}{rand * 0.8 - 0.6}
+          \pgfmathsetmacro{\yy}{rand * 0.6 - 0.4}
+          \fill[sup] ([xshift=\xx cm, yshift=\yy cm] b.center) circle (0.5mm);
+          \pgfmathsetmacro{\xx}{rand * 0.8 + 0.4}
+          \pgfmathsetmacro{\yy}{rand * 0.7 + 0.4}
+          \fill[ssl] ([xshift=\xx cm, yshift=\yy cm] b.center) circle (0.5mm);
+          \pgfmathsetmacro{\xx}{rand * 0.8 + 0.2}
+          \pgfmathsetmacro{\yy}{rand * 0.7 - 0.5}
+          \fill[nyuviolet] ([xshift=\xx cm, yshift=\yy cm] b.center) circle (0.5mm);
+          \pgfmathsetmacro{\xx}{rand * 0.8 - 0.2}
+          \pgfmathsetmacro{\yy}{rand * 0.6 + 0.5}
+          \fill[avgray] ([xshift=\xx cm, yshift=\yy cm] b.center) circle (0.5mm);
+        }
+        % Panel (c): faceted, clear upward trend within each sub-cloud
+        \node[panel, right=5mm of b] (c) {};
+        \node[lbl] at (c.south) {(c) stratified: upward trend};
+        \foreach \row in {-1, 1} {
+          \foreach \col in {-1, 1} {
+            \pgfmathsetmacro{\cx}{\col * 0.7}
+            \pgfmathsetmacro{\cy}{\row * 0.55}
+            \foreach \t in {0,0.2,...,1.0} {
+              \pgfmathsetmacro{\xx}{\cx - 0.4 + \t*0.8}
+              \pgfmathsetmacro{\yy}{\cy - 0.3 + \t*0.55 + rand * 0.05}
+              \fill[black!55] ([xshift=\xx cm, yshift=\yy cm] c.center) circle (0.4mm);
+            }
+          }
+        }
+        \node[font=\scriptsize, below=7mm of b, text width=90mm, align=center]
+          {Probe accuracy $\to$ OOD drop within city. Scatter shape is schematic; real data is in Fig.~\ref{fig:probe-vs-ood-stratified}.};
+    \end{tikzpicture}}
+    \caption[Probe-vs-drop confounder decomposition, schematic.]{Schematic illustration of why the pooled probe-vs-OOD-drop correlation is weak while the stratified version is strong. (a) Pooled across training cities: no visible trend. (b) The same points coloured by training city: the sub-populations have different locations and slopes. (c) Faceted by training city: the upward trend (higher probe accuracy goes with larger OOD drop) appears within each panel. This is a schematic cartoon; the corresponding real data is in Fig.~\ref{fig:probe-vs-ood-stratified} and Fig.~\ref{fig:probe-vs-ood}.}
+    \label{fig:exp-probe-confounder}
+\end{figure}
+
 \subsection{Feature Distribution Shift (MMD)}
 \label{sec:exp-mmd}
 
 We compute biased RBF-kernel MMD\textsuperscript{2} between city-pair feature distributions with a median-heuristic bandwidth $\sigma^2$ estimated from a shared 500-sample pool, clamping all squared distances at 0 to avoid numerical blow-up on near-duplicate samples (observed on a handful of trainable single-city DINOv2 runs pre-clamp). Absolute MMD\textsuperscript{2} values are not directly comparable across backbones because $\sigma^2$ differs; within-regime comparisons remain informative. Fig.~\ref{fig:mmd-vs-ood} is the pooled scatter; the Boston-only cluster reproduces the single-city ordering (Table~\ref{tab:probe-boston}).
+
+\reffig{fig:exp-mmd-concept} gives the intuition for the two non-obvious choices. The bandwidth $\sigma^2$ is set to the median of the pairwise squared distances in a shared pool of features, which fixes the kernel scale to a quantity the data itself defines. The zero-clamp on squared distances prevents a handful of near-duplicate frames (two video frames a fraction of a second apart) from producing a negative squared distance under floating-point rounding, which would then blow up the exponent.
+
+\begin{figure}[ht]
+    \centering
+    \resizebox{0.75\linewidth}{!}{%
+    \begin{tikzpicture}[
+        arrow/.style = {-{Stealth[length=1.6mm]}, thin},
+    ]
+        % City A cloud (red-ish) and B cloud (ssl purple)
+        \begin{scope}
+          \draw[dashed, black!30] (-3.5,-1.8) rectangle (3.5,1.8);
+          \node[font=\tiny, anchor=south] at (0,1.85) {2-D PCA projection of cached features};
+          \foreach \i in {1,...,24} {
+            \pgfmathsetmacro{\xx}{rand * 0.9 - 1.6}
+            \pgfmathsetmacro{\yy}{rand * 0.7 - 0.3}
+            \fill[sup!80] (\xx,\yy) circle (0.7mm);
+          }
+          \foreach \i in {1,...,24} {
+            \pgfmathsetmacro{\xx}{rand * 0.9 + 1.6}
+            \pgfmathsetmacro{\yy}{rand * 0.7 + 0.3}
+            \fill[ssl!80] (\xx,\yy) circle (0.7mm);
+          }
+          \node[font=\scriptsize, text=sup, anchor=east] at (-1.6,-1.1) {city $A$};
+          \node[font=\scriptsize, text=ssl, anchor=west] at (1.6,1.1) {city $B$};
+          % Median-distance RBF contour, drawn as concentric ellipses around each centre
+          \draw[gray!60, densely dashed] (-1.6,-0.3) ellipse (1.2 and 0.95);
+          \draw[gray!60, densely dashed] (1.6,0.3) ellipse (1.2 and 0.95);
+          \node[font=\tiny, anchor=south] at (-1.6,0.8) {$\sigma^2$ contour};
+          \node[font=\tiny, anchor=south] at (1.6,1.4) {$\sigma^2$ contour};
+        \end{scope}
+        \node[draw, rounded corners, minimum width=75mm, minimum height=10mm, align=center, font=\scriptsize, below=4mm of current bounding box.south, fill=black!8]
+          (rule) {$\sigma^2 = \mathrm{median}\,\lVert x_i - x_j \rVert^2$ over a shared $500$-sample pool; squared distances are clamped at $0$ before $\exp$ to avoid numerical blow-up on near-duplicate frames.};
+    \end{tikzpicture}}
+    \caption[MMD$^2$ bandwidth and clamping, intuition.]{Schematic of the RBF-kernel MMD$^2$ setup. Two per-city feature distributions are compared at a bandwidth $\sigma^2$ chosen as the median pairwise squared distance from a shared pool of features, which adapts the kernel scale to each backbone without manual tuning. Near-duplicate frames can produce tiny negative squared distances under floating-point rounding; the non-negativity clamp prevents the kernel from blowing up on those cases. The diagram is schematic and does not depict real feature values.}
+    \label{fig:exp-mmd-concept}
+\end{figure}
 
 Family-level MMD\textsuperscript{2} is reported in Table~\ref{tab:family-aggregate}; Fig.~\ref{fig:mmd-vs-ood} shows the pooled scatter. The takeaway is negative: MMD behaves as a sanity check on feature-distribution shift, not as a robust predictor of transfer quality.
 
@@ -614,6 +810,41 @@ Family-level MMD\textsuperscript{2} is reported in Table~\ref{tab:family-aggrega
 \label{sec:exp-implicit-reg}
 
 The original plan was to measure the effective rank of learned planning-head weights. With frozen SSL backbones the planning head is the only drift vector, which would make it a clean test; however, for supervised ResNet-34 the backbone itself is trainable, so planning-head rank alone cannot be compared fairly. We instead report the effective rank of the \emph{feature covariance} for each (run, city) pair: per-city features are centered, $\sigma_i$ denotes the $i$-th singular value of the centered matrix, and we report $\exp\!\bigl(-\sum_i (\tilde\sigma_i^2) \log (\tilde\sigma_i^2)\bigr)$ with $\tilde\sigma_i$ the $\ell_2$-normalized singular values~\cite{roy-effrank-2007}. This probes representational structure rather than downstream-head capacity.
+
+\reffig{fig:exp-rank-concept} gives three toy spectra and their effective rank values to make the formula readable without the entropy notation. The effective rank is the exponential of the Shannon entropy of the $\ell_2$-normalised squared singular values, so it collapses the spectrum to a single number that measures how spread the feature variance is across directions. A spectrum concentrated on one direction has effective rank close to $1$; a uniform spectrum across $k$ directions has effective rank close to $k$; an exponentially decaying spectrum sits in between.
+
+\begin{figure}[ht]
+    \centering
+    \resizebox{0.95\linewidth}{!}{%
+    \begin{tikzpicture}[
+        panel/.style = {draw, minimum width=40mm, minimum height=28mm, rounded corners=1pt},
+    ]
+        % (a) all mass on one direction
+        \node[panel] (a) {};
+        \draw[fill=sup!70, draw=sup] (a.south west) ++(3mm,0) rectangle ++(3mm,2.5cm);
+        \foreach \k in {1,...,9} {
+          \draw[fill=black!20, draw=black!50] (a.south west) ++(3mm + \k*3.5mm,0) rectangle ++(3mm,0.1cm);
+        }
+        \node[font=\tiny, anchor=north] at (a.south) {(a) spike: eff.\ rank $\approx 1.0$};
+        % (b) uniform across ten directions
+        \node[panel, right=5mm of a] (b) {};
+        \foreach \k in {0,...,9} {
+          \draw[fill=ssl!60, draw=ssl] (b.south west) ++(3mm + \k*3.5mm,0) rectangle ++(3mm,1.5cm);
+        }
+        \node[font=\tiny, anchor=north] at (b.south) {(b) uniform over 10: eff.\ rank $\approx 10.0$};
+        % (c) exponential decay
+        \node[panel, right=5mm of b] (c) {};
+        \foreach \k in {0,...,9} {
+          \pgfmathsetmacro{\hh}{2.5 * exp(-0.35*\k)}
+          \draw[fill=avgray!60, draw=avgray] (c.south west) ++(3mm + \k*3.5mm,0) rectangle ++(3mm,\hh cm);
+        }
+        \node[font=\tiny, anchor=north] at (c.south) {(c) decay: eff.\ rank $\approx 3.8$};
+        \node[font=\tiny, below=8mm of b, text width=100mm, align=center]
+          {x-axis: singular-value index, sorted. y-axis: normalised squared singular value $\tilde\sigma_i^2$. The effective rank is $\exp\bigl(-\sum_i \tilde\sigma_i^2 \log \tilde\sigma_i^2\bigr)$.};
+    \end{tikzpicture}}
+    \caption[Effective rank: three toy spectra and their values.]{Three toy spectra illustrating the Roy--Vetterli effective rank. (a) All probability mass on one singular direction produces an effective rank close to $1$. (b) A uniform spectrum across $10$ directions produces an effective rank close to $10$. (c) An exponentially decaying spectrum falls between the two. The effective rank is the exponential of the entropy of the normalised squared singular values, which collapses the spectrum into a single interpretable number.}
+    \label{fig:exp-rank-concept}
+\end{figure}
 
 Family-level effective ranks in Table~\ref{tab:family-aggregate} separate the SSL objectives more cleanly than CKA or MMD. Fine-tuning reduces rank across SSL families, and the most severe collapses are listed in \reftab{tab:exp-rank-collapse}. Feature-rank collapse is therefore not a quirk of one I-JEPA run; it is a systemic risk of fine-tuning high-capacity SSL backbones on modest driving datasets.
 
@@ -713,6 +944,9 @@ Backbone scale is a practical trade-off rather than a purely academic one. The l
 \section{Discussion}
 \label{sec:exp-discussion}
 
-Taken together, the studies support a single thesis argument. The exploratory pilots showed that SSL could already make lightweight planners competitive, which justified treating representation quality as a first-class variable rather than a background choice. The cross-city benchmark then made the key point visible: once evaluation is city-disjoint, backbone choice dominates robustness. The generative-planning study showed that this representation-centric story survives a major planner change in-distribution, and the mechanistic analysis explained why: frozen SSL features are less city-discriminative and occupy a more stable feature subspace than supervised or fully fine-tuned alternatives.
+Taken together, the studies support a single thesis argument. The exploratory pilots showed that SSL could already make lightweight planners competitive, which justified treating representation quality as a controlled variable rather than as a background implementation choice. The cross-city benchmark then made the key point visible: once evaluation is city-disjoint, backbone choice dominates robustness. The generative-planning study showed that this representation-centric story survives a major planner change in-distribution, and the mechanistic analysis explained why: frozen SSL features are less city-discriminative and occupy a more stable feature subspace than supervised or fully fine-tuned alternatives.
 
 The practical recommendation is therefore asymmetric. If the target deployment environment is well matched to the training mix, the strongest supervised in-distribution planner may be adequate. If deployment includes genuinely new cities, the better trade-off is usually to accept a small in-distribution cost in exchange for much smaller geographic failure modes. The main limitations of the current evidence are the restriction to four cities, the heavy reliance on benchmark proxy evaluation, and the fact that the cross-city DiffusionDrive matrix is only partially complete. Even so, the completed DiffusionDrive rows already point in the same direction as the main benchmark: Singapore remains the hardest destination and the frozen SSL backbone loses less performance on the matched Pittsburgh transfer.
+
+\paragraph{Industrial implications.}
+The main industrial implication is operational rather than architectural. A fleet that is expanded city by city cannot assume that strong pooled-benchmark performance will survive deployment in a new geography. The completed TF and LatTF matrices show that this assumption is unsafe, especially for Singapore-like shifts. In that setting, a frozen SSL backbone is attractive because it trades a small in-distribution cost for a more stable transfer profile without requiring expensive city-specific relabelling or a full planner redesign. The camera-only DiffusionDrive results also speak to deployment cost: better visual representations help lower-cost sensing stacks, but they do not fully recover the geometric signal removed with LiDAR. For industrial benchmarking, the broader lesson is that pooled leaderboard numbers are insufficient. Geographic holdout evaluation should be part of any serious validation protocol for end-to-end driving.

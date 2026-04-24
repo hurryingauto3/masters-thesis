@@ -58,6 +58,16 @@ Four operational conclusions follow directly from the evidence in Chapter~\ref{c
 \end{enumerate}
 
 % ============================================================================
+\section{Industrial Implications}
+\label{sec:concl-industrial}
+
+The practical implication of the thesis is straightforward. A strong pooled benchmark score does not guarantee that an end-to-end planner will remain reliable when the operating city changes. For deployment teams, this means that geographic holdout evaluation should be treated as part of model validation rather than as an optional stress test.
+
+The completed results also suggest a concrete design preference. When transfer to a new city is likely, a frozen self-supervised backbone is often the safer operating point than a supervised baseline that is slightly stronger on the pooled benchmark. The transfer gains are larger than the in-distribution losses, and the frozen setting avoids the feature-rank collapse that appears under aggressive fine-tuning.
+
+There is also a systems implication. The camera-only DiffusionDrive results show that stronger image representations help lower-cost sensing stacks, but they do not erase the value of explicit geometry. This matters for industrial planning because it separates two questions that are often conflated: which representation transfers better, and which sensor suite is sufficient for a target deployment budget. The thesis answers the first question directly and gives a bounded partial answer to the second.
+
+% ============================================================================
 \section{Limitations}
 \label{sec:concl-limitations}
 
