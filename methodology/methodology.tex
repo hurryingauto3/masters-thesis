@@ -601,12 +601,12 @@ which averages the closed-loop scores across every unseen test city. \(S_\text{O
 Two practical notes. First, \(S_\text{OOD}\) averages over a heterogeneous set of test cities; it is not symmetric in the sense that training on a hard source and evaluating on easy targets can give the same mean as the reverse, so it is always reported alongside the full matrix rather than in isolation. Second, the ratio \(R_\text{err}\) is sensitive to the denominator: when the in-domain run itself has a degenerate score, the ratio becomes uninformative, and such runs are flagged in the tables of Chapter~\ref{chap:experiments} rather than silently included in ranked comparisons.
 
 % ============================================================================
-\section{Generative Planning with DiffusionDrive: a Hostile-to-Backbone Test}
+\section{Generative Planning with DiffusionDrive: a Backbone-Attenuating Test}
 \label{sec:meth-diffusiondrive}
 
 The cross-city benchmark establishes that the visual representation dominates planner capacity under geographic transfer, but under two planner families (LAW and TransFuser / Latent TransFuser) whose heads are both regression-based and whose cross-modal fusion is a thin attention stack over a convolutional feature pyramid. A natural follow-up question is whether this finding is specific to planners with low expressive capacity, or whether it also holds under a planner whose own priors do most of the work. DiffusionDrive~\cite{jia-diffusiondrive-2025} is selected for this test because its head sits closer to the second category.
 
-\subsection{Why DiffusionDrive is the Right Adversarial Planner}
+\subsection{Why DiffusionDrive is the Right Stress Test}
 \label{sec:meth-dd-why}
 
 DiffusionDrive's planner absorbs backbone differences by construction. Four of its design choices make this explicit:
@@ -617,7 +617,7 @@ DiffusionDrive's planner absorbs backbone differences by construction. Four of i
     \item \textbf{Time-only FiLM conditioning.} The final conditioning path uses FiLM modulation on the denoising timestep only. Backbone-dependent modulations that were explored during development did not end up in the production path; the head therefore sees the backbone features only through the grid-sampled cross-attention, with no additional FiLM gate that might amplify them.
 \end{enumerate}
 
-Each of these choices is known from the DiffusionDrive paper~\cite{jia-diffusiondrive-2025} and is preserved verbatim in this thesis. The composite effect is that DiffusionDrive is a \emph{hostile substrate for testing the representation claim}: if a different backbone changes planner behavior at all under this head, that change must overcome the anchor-trajectory prior, the two-step budget, and the quantized cross-attention. A planner whose head was already doing most of the work under DiffusionDrive would read as an \emph{absence} of backbone effect on this planner, and that would be the cleanest way for the thesis claim to fail.
+Each of these choices is known from the DiffusionDrive paper~\cite{jia-diffusiondrive-2025} and is preserved verbatim in this thesis. The composite effect is that DiffusionDrive is an \emph{attenuating substrate for the representation claim}: if a different backbone changes planner behavior at all under this head, that change must overcome the anchor-trajectory prior, the two-step budget, and the quantized cross-attention. A planner whose head was already doing most of the work under DiffusionDrive would manifest as an \emph{absence} of backbone effect on this planner, and that would be the cleanest way for the thesis claim to fail.
 
 The consequence for interpretation is that small absolute PDMS differences under DiffusionDrive are more meaningful than similarly-sized differences under a weaker planner. Specifically, the study reports transfer-ratio inflation (in-distribution PDMS divided by out-of-distribution PDMS) rather than raw absolute scores. A ResNet-34 baseline that drops 16 points to Singapore and an SSL variant that drops 14 points is a directionally consistent robustness signal even though the absolute gap is small, because the DiffusionDrive head is actively attenuating the backbone contribution before the PDMS scorer sees the plan.
 
@@ -674,7 +674,7 @@ Schedule note & Full schedule where compute permitted; shortened all-city probes
 Because DiffusionDrive's head is actively attenuating the backbone contribution, the evaluation criterion for the generative-planning and cross-city generative studies is stricter than a "top-of-leaderboard" criterion and weaker than a "beat the ResNet baseline outright" criterion. Specifically, the thesis commits, in advance of running the city-disjoint matrix, to the following success condition:
 
 \begin{quote}
-\emph{If frozen SSL backbones produce a smaller OOD PDMS drop than supervised ResNet-34 in three or more of the four training-city rows under DiffusionDrive, the representation-centric claim of the thesis is judged to survive the hostile planner. If the signal is inconsistent across training cities, the thesis reports a null result in this study and folds the outcome into the limitations section, rather than re-engineering DiffusionDrive to rescue the effect.}
+\emph{If frozen SSL backbones produce a smaller OOD PDMS drop than supervised ResNet-34 in three or more of the four training-city rows under DiffusionDrive, the representation-centric claim of the thesis is judged to survive the planner swap under a backbone-attenuating head. If the signal is inconsistent across training cities, the thesis reports a null result in this study and folds the outcome into the limitations section, rather than re-engineering DiffusionDrive to rescue the effect.}
 \end{quote}
 
 \noindent
@@ -684,7 +684,7 @@ This pre-registered criterion is what the interpretation of the result tables in
 \section{Study Sequence}
 \label{sec:meth-exp-protocol}
 
-The experiments are organised as one exploratory study followed by four load-bearing studies. The exploratory lightweight-head study of~\ref{sec:meth-lightweight-head} motivates the representation-first framing. The cross-city SSL benchmark of~\ref{sec:meth-phase1-cc} produces the backbone-by-city matrix that Chapter~\ref{chap:experiments} reports. The generative-planning study adds DiffusionDrive with SSL backbones on the standard NAVSIM split, using the integration described in~\ref{sec:meth-diffusiondrive}. The cross-city generative study extends that integration to the city-disjoint setting; it is active validation and is not used as load-bearing evidence. The mechanistic analysis uses CKA, linear probing, MMD, and feature-covariance effective rank on the trained checkpoints, with no additional training.
+The experiments are organised as one exploratory study followed by four load-bearing studies. The exploratory lightweight-head study of~\ref{sec:meth-lightweight-head} motivates the representation-first framing. The cross-city SSL benchmark of~\ref{sec:meth-phase1-cc} produces the backbone-by-city matrix that Chapter~\ref{chap:experiments} reports. The generative-planning study adds DiffusionDrive with SSL backbones on the standard NAVSIM split, using the integration described in~\ref{sec:meth-diffusiondrive}. The cross-city generative study extends that integration to the city-disjoint setting; partial rows are reported in Chapter~\ref{chap:experiments}, but the study is not used as load-bearing evidence because the full matched matrix is incomplete. The mechanistic analysis uses CKA, linear probing, MMD, and feature-covariance effective rank on the trained checkpoints, with no additional training.
 
 % ============================================================================
 \section{Metrics}

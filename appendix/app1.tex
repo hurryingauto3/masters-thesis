@@ -1,12 +1,21 @@
 \chapter{Supplementary Results\label{chap:append}}
 
-\textit{This appendix collects reference material that is too dense for the main text: a per-metric breakdown of the aggregate PDMS score into its five NAVSIM components, a data card for the NAVSIM City Splits benchmark, the full per-study hyperparameter recipes, and an index of the per-run mechanistic artifacts used in~\refsec{sec:exp-why-ssl}. The full closed-loop cross-city PDMS matrices are printed in the main text at~\reftab{tab:navsim_pdms_merged_v11} (canonical, NAVSIM v1.1) and~\reftab{tab:navsim_pdms_merged} (legacy, NAVSIM v2.2).}
+\textit{This appendix collects reference material that is too dense for the main text: the full closed-loop cross-city roster tables for NAVSIM v1.1 and v2.2, a per-metric breakdown of the aggregate PDMS score into its five NAVSIM components, a data card for the NAVSIM City Splits benchmark, the full per-study hyperparameter recipes, and an index of the per-run mechanistic artifacts used in~\refsec{sec:exp-why-ssl}.}
+
+% ============================================================================
+\section{Full Cross-City Tables}
+\label{app:cross-city-matrices}
+
+The main text reads cross-city transfer through figures, compact matched tables, and the comprehensive synthesis table at the end of Chapter~5. The full run-by-run record is kept here. Tables~\ref{tab:navsim_pdms_merged_v11} and~\ref{tab:navsim_pdms_merged_v11_latf} are the canonical thesis tables under NAVSIM v1.1. They join the per-city PDMS values to the mechanistic readouts on the same row for the full checkpoint roster, split by planner so the appendix remains readable. Tables~\ref{tab:navsim_pdms_merged} and~\ref{tab:navsim_pdms_merged_latf} keep the earlier v2.2 PDMS-only scores for direct comparison with the companion paper. Together they document the full checkpoint roster and show that the headline structural findings persist across both devkit versions.
+
+\input{experiments/tab_navsim_pdms_merged_v11}
+\input{experiments/tab_navsim_pdms_merged}
 
 % ============================================================================
 \section{Per-Metric PDMS Decomposition}
 \label{app:per-metric}
 
-NAVSIM's aggregate PDMS is a weighted combination of five sub-scores: no-at-fault collisions (NC), drivable-area compliance (DAC), ego progress (EP), time-to-collision (TTC), and comfort. The cross-city matrices in the main text report only the aggregate, which is the primary robustness indicator used by every thesis claim. A decomposition into the five components is informative in principle, because it isolates whether cross-city degradation is dominated by geometry-aware sub-scores (DAC, EP) or by agent-interaction sub-scores (NC, TTC), but is not needed for any claim defended here.
+NAVSIM's aggregate PDMS is a weighted combination of five sub-scores: no-at-fault collisions (NC), drivable-area compliance (DAC), ego progress (EP), time-to-collision (TTC), and comfort. The cross-city matrices in the main text report only the aggregate, which is the primary robustness indicator used by every thesis claim. A component-level decomposition is still useful, because it isolates whether cross-city degradation is dominated by geometry-aware sub-scores (DAC, EP) or by agent-interaction sub-scores (NC, TTC). For the completed DiffusionDrive rows, the answer is clear: Singapore transfer failures concentrate in DAC and EP, while NC and TTC remain comparatively stable.
 
 On structural grounds, the expected pattern under city shift is:
 
@@ -16,7 +25,25 @@ On structural grounds, the expected pattern under city shift is:
     \item \textbf{Comfort} should be weakly city-dependent and dominated by speed-profile smoothness.
 \end{itemize}
 
-The thesis uses aggregate PDMS only; populating the component-level decomposition is future work.
+\begin{table}[ht]
+\centering
+\caption[Singapore component breakdown for completed cross-city DiffusionDrive rows.]{Singapore destination component scores for the three completed cross-city DiffusionDrive rows. Each row is one trained model evaluated on Singapore. Values are percentages for the five PDMS sub-scores used in the main-text aggregate. The matched Pittsburgh pair is the load-bearing comparison: frozen I-JEPA improves drivable-area compliance on Singapore while leaving the collision-adjacent metrics essentially unchanged.}
+\label{tab:dd-cc-singapore-components}
+\small
+\renewcommand{\arraystretch}{1.15}
+\setlength{\tabcolsep}{5pt}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.4cm} c c c c c@{}}
+\toprule
+\textbf{Train $\rightarrow$ test} & \textbf{NC (\%)} & \textbf{DAC (\%)} & \textbf{EP (\%)} & \textbf{TTC (\%)} & \textbf{Comfort (\%)} \\
+\midrule
+Rn34-bos $\rightarrow$ Singapore & 95.5 & 62.8 & 79.0 & 94.7 & 45.4 \\
+Rn34-pit $\rightarrow$ Singapore & 96.3 & 61.7 & 73.7 & 95.4 & 47.8 \\
+IJSr-pit $\rightarrow$ Singapore & 96.7 & 64.1 & 72.2 & 96.0 & 50.4 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The matched Pittsburgh pair is the clearest read. Frozen I-JEPA improves DAC by $2.4$ points on Singapore relative to the supervised ResNet-34 row, while NC and TTC remain within $0.6$ points. The representation gain under cross-city DiffusionDrive therefore shows up in geometry-sensitive compliance rather than in a wholesale change to reactive safety metrics.
 
 % ============================================================================
 \section{NAVSIM City Splits Data Card}
@@ -42,6 +69,6 @@ A subtle but load-bearing detail: the TransFuser recipe in~\reftab{tab:hparam-ph
 \section{Mechanistic Artifacts Index}
 \label{app:mechanistic-index}
 
-The mechanistic analysis in~\refsec{sec:exp-why-ssl} produces one CKA heatmap and one singular-value spectrum per analysed checkpoint. The table below indexes every analysed run by its label, pairs it with the family-level probe, CKA, and effective-rank numbers that the analysis aggregates over, and lets a reader tracing an individual row of~\reftab{tab:navsim_pdms_merged_v11} locate the corresponding mechanistic values in constant time.
+The mechanistic analysis in~\refsec{sec:exp-why-ssl} produces one CKA heatmap and one singular-value spectrum per analysed checkpoint. The table below indexes every analysed run by its label, pairs it with the family-level probe, CKA, and effective-rank numbers that the analysis aggregates over, and lets a reader tracing an individual row of~\reftab{tab:navsim_pdms_merged_v11} or~\reftab{tab:navsim_pdms_merged_v11_latf} locate the corresponding mechanistic artifacts in constant time.
 
 \input{appendix/tab_mechanistic_index}

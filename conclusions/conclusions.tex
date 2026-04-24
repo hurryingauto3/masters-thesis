@@ -2,8 +2,6 @@
 \chapter{Conclusions and Future Work}
 \label{chap:conclusions}
 
-%% ~4 pages. Draft from IROS conclusion, expand with DiffusionDrive findings.
-
 % ============================================================================
 \section{Summary of Contributions}
 \label{sec:concl-summary}
@@ -17,7 +15,7 @@ The contributions below are those of the thesis. LAW~\cite{li-law-2024} is used 
 
     \item \textbf{Cross-city SSL generalisation}. Under the evaluated settings with LAW open-loop on nuScenes and TransFuser / Latent TransFuser closed-loop on NAVSIM, frozen self-supervised representations (I-JEPA, DINOv2, MAE) reduce cross-city generalisation gaps relative to supervised baselines. The load-bearing conclusion: \textbf{cross-city failure is strongly mediated by the visual representation.}
 
-    \item \textbf{DiffusionDrive $+$ SSL}. SSL backbones are integrated into DiffusionDrive through the same feature adapter used in the cross-city benchmark, including a camera-only variant. The completed mixed-city results show that the representation signal survives a planner swap under pooled evaluation. The cross-city DiffusionDrive matrix is specified as active validation and is not used as completed evidence.
+    \item \textbf{DiffusionDrive $+$ SSL}. SSL backbones are integrated into DiffusionDrive through the same feature adapter used in the cross-city benchmark, including a camera-only variant. The completed mixed-city results show that the representation signal survives a planner swap under pooled evaluation. At thesis freeze, three rows of the cross-city DiffusionDrive matrix are also complete, including a matched Pittsburgh pair in which frozen I-JEPA shows a $2.0$-point smaller Singapore drop than ResNet-34. The full four-city matrix remains incomplete, so the generative cross-city result is treated as supportive evidence rather than as the primary thesis claim.
 
     \item \textbf{Mechanistic analysis}. A linear-probe, CKA, MMD, and feature-covariance effective-rank study of the trained checkpoint roster. The three calibrated findings are: (a) the linear-probe ordering on matched Boston-only Latent TransFuser rows (\reftab{tab:concl-probe}) tracks the out-of-distribution PDMS drop ordering; (b) fine-tuning compresses feature-covariance rank for every self-supervised family; (c) the signal is strongest within matched comparisons and attenuates when backbone scale, pretraining data, and training city vary together. No universal-mechanism claim is made.
 
@@ -52,11 +50,11 @@ Four operational conclusions follow directly from the evidence in Chapter~\ref{c
 \begin{enumerate}
     \item \textbf{Representation choice is the largest single lever for cross-city robustness.} In the evaluated settings, swapping a supervised backbone for a frozen SSL ViT reduces open-loop transfer inflation by nearly an order of magnitude and improves closed-loop out-of-distribution PDMS by several points, with the planner held fixed~\cite{naeinian-cross-city-2026}.
 
-    \item \textbf{The in-distribution cost is small; the out-of-distribution gain is large.} The DiffusionDrive all-city table shows at most a small mixed-city cost for SSL, while the cross-city LAW and TransFuser / Latent TransFuser matrices show a materially larger transfer gain under explicit geographic shift. Whether this trade-off survives a planner swap under city-disjoint generative evaluation is active validation.
+    \item \textbf{The in-distribution cost is small; the out-of-distribution gain is large.} The DiffusionDrive all-city table shows at most a small mixed-city cost for SSL, while the cross-city LAW and TransFuser / Latent TransFuser matrices show a materially larger transfer gain under explicit geographic shift. The completed cross-city DiffusionDrive rows point in the same direction on the matched Pittsburgh pair, but the full four-city matrix is not yet complete.
 
     \item \textbf{Frozen SSL backbones generalise better than fully fine-tuned ones in this setting.} Fine-tuning improves mixed-city PDMS on several backbones, but compresses feature-covariance rank and, on the matched Boston-only Latent TransFuser rows, drifts the representation toward city-specific cues. Freezing is the operational lever; it is not a claim that fine-tuning is always harmful.
 
-    \item \textbf{In the evaluated settings, representation choice mediates transfer more strongly than head choice.} The same ordinal pattern appears under LAW open-loop on nuScenes and TransFuser / Latent TransFuser closed-loop on NAVSIM, and the DiffusionDrive mixed-city integration preserves the representation-dependent structure at a small in-distribution cost. This is the basis for the bounded version of the central claim. The stronger claim, that the pattern is fully planner-invariant, depends on a completed cross-city DiffusionDrive matrix and remains active validation.
+    \item \textbf{In the evaluated settings, representation choice mediates transfer more strongly than head choice.} The same ordinal pattern appears under LAW open-loop on nuScenes and TransFuser / Latent TransFuser closed-loop on NAVSIM, and the DiffusionDrive integration preserves the representation-dependent structure under both pooled evaluation and the completed cross-city rows. This is the basis for the bounded version of the central claim. The stronger claim, that the pattern is fully planner-invariant across all source cities, still depends on a completed cross-city DiffusionDrive matrix.
 \end{enumerate}
 
 % ============================================================================
@@ -64,7 +62,7 @@ Four operational conclusions follow directly from the evidence in Chapter~\ref{c
 \label{sec:concl-limitations}
 
 \begin{itemize}
-    \item \textbf{Proxy-metric evaluation.} The thesis uses benchmark proxy metrics (LAW open-loop ratios and NAVSIM PDMS/EPDMS) rather than interactive closed-loop simulation. A simulator such as CARLA or nuPlan would provide stronger evidence of deployment-time generalization.
+    \item \textbf{Benchmark-metric evaluation.} The thesis uses benchmark metrics (LAW open-loop ratios and NAVSIM PDMS) rather than an interactive closed-loop simulator. A simulator such as CARLA or nuPlan would provide stronger evidence of deployment-time generalization.
 
     \item \textbf{Limited geographic diversity.} NAVSIM/nuPlan covers only 4 cities (3 US + Singapore). Broader evaluation across more diverse geographies (Europe, developing countries, varied climate zones) is needed to fully validate the SSL generalization claim.
 
@@ -72,7 +70,7 @@ Four operational conclusions follow directly from the evidence in Chapter~\ref{c
 
     \item \textbf{No weather/lighting variation.} Our cross-city protocol isolates geographic shift but does not independently test weather or lighting robustness, which is a complementary domain shift axis.
 
-    \item \textbf{Active validation remains incomplete.} The cross-city DiffusionDrive matrix and I-JEPA camera-only run are deliberately specified but not yet used as completed evidence, so the thesis does not fully resolve planner-invariance under city-disjoint generative transfer.
+    \item \textbf{The full generative cross-city matrix is incomplete.} Three cross-city DiffusionDrive rows are available and directionally consistent with the main benchmark, but the full four-city matched matrix is not complete at thesis freeze. The thesis therefore does not claim planner-invariance under city-disjoint generative transfer.
 
     \item \textbf{Camera-only constraint.} While motivated by edge deployment, removing LiDAR sacrifices 3D geometry information that may be critical in certain scenarios (e.g., occluded pedestrians, narrow alleys).
 \end{itemize}
@@ -85,7 +83,7 @@ Four operational conclusions follow directly from the evidence in Chapter~\ref{c
 The most immediate next step is to move from image-based SSL to video-based SSL. Driving is inherently temporal, so a predictive video objective should align more naturally with planning than single-frame pretraining. Drive-JEPA already suggests that V-JEPA-style pretraining can be especially strong in-distribution, which makes it a natural candidate for the next iteration of the cross-city robustness question.
 
 \subsection{Closed-Loop Evaluation}
-Closed-loop evaluation is the most important methodological extension. Although PDMS and EPDMS are stronger than raw displacement error, they remain proxy metrics. A closed-loop simulator such as CARLA or the nuPlan simulator would make it possible to test whether the same representation trends hold when the ego policy can alter future scene evolution.
+Closed-loop evaluation is the most important methodological extension. Although PDMS is stronger than raw displacement error, it remains a benchmark proxy metric. A closed-loop simulator such as CARLA or the nuPlan simulator would make it possible to test whether the same representation trends hold when the ego policy can alter future scene evolution.
 
 \subsection{Driving-Specific Pre-Training at Scale}
 Most backbones in the thesis still inherit generic large-scale pretraining. A larger study of driving-specific pretraining at scale would clarify how much of the cross-city robustness gain comes from the SSL objective itself and how much comes from domain alignment between pretraining and deployment.

@@ -1,0 +1,21 @@
+\begin{table}[ht]
+\centering
+\caption[Boston-only v1.1 Latent TransFuser cross-city summary.]{%
+Compact summary of the canonical Boston-trained Latent TransFuser rows from the v1.1 appendix roster table in~\reftab{tab:navsim_pdms_merged_v11_latf}. These four rows are used as the matched supervised-vs-SSL comparison throughout the thesis: each model is trained on Boston only and evaluated on every NAVSIM city. LV/B/P/S are destination-city PDMS percentages; the in-distribution column (bold) is Boston; \emph{OOD mean} averages the three remaining cities and \emph{Drop} is the in-distribution-minus-OOD-mean gap in percentage points. A smaller drop indicates a more geographically robust representation under a fixed planner. The MAE row has the best absolute OOD mean; the DINOv2 row has the smallest drop; the ResNet-34 row has the largest drop and is the supervised reference.}
+\label{tab:navsim_pdms_boston_v11}
+\vspace{0.35em}
+\small
+\renewcommand{\arraystretch}{1.15}
+\setlength{\tabcolsep}{5pt}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.6cm} c c c c c c@{}}
+\toprule
+\textbf{Backbone} & \textbf{LV (\%)} & \textbf{B (\%)} & \textbf{P (\%)} & \textbf{S (\%)} & \textbf{OOD mean (\%)} & \textbf{Drop (pp)} \\
+\midrule
+\rowcolor{gray!12}
+ResNet-34 supervised & 67.3 & \textbf{71.7} & 54.5 & 45.0 & 55.6 & \textbf{16.1} \\
+MAE ViT-B/16 frozen  & 71.8 & \textbf{73.4} & 60.0 & 48.7 & \textbf{60.2} & 13.2 \\
+I-JEPA ViT-H/14 frozen & 69.4 & \textbf{67.5} & 62.2 & 42.2 & 57.9 & 9.6 \\
+DINOv2 ViT-S/14 frozen & 70.7 & \textbf{63.6} & 55.8 & 45.5 & 57.3 & \textbf{6.3} \\
+\bottomrule
+\end{tabular}
+\end{table}
