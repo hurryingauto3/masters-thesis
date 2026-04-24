@@ -350,14 +350,14 @@ TransFuser is a representative multi-modal end-to-end planner that fuses camera 
 
 \begin{table}[ht]
 \centering
-\caption{Published TransFuser and Latent TransFuser baselines on \texttt{navtest}~\cite{dauner-navsim-2024}. Single-run standard deviation across training seeds is $\pm 0.56$ PDMS; the $0.2$-PDMS TF--LTF gap is within this band.}
+\caption{Published TransFuser and Latent TransFuser baselines on \texttt{navtest}~\cite{dauner-navsim-2024}. Single-run standard deviation across training seeds is $\pm 0.6$ PDMS points; the $0.2$-point TF--LTF gap is within this band.}
 \label{tab:bg-transfuser-baseline}
 \small
 \setlength{\tabcolsep}{5pt}
 \renewcommand{\arraystretch}{1.15}
 \begin{tabular}{@{}l c c c c c c@{}}
 \toprule
-\textbf{Planner} & \textbf{Modality} & \textbf{PDMS} & \textbf{NC} & \textbf{DAC} & \textbf{TTC} & \textbf{EP} \\
+\textbf{Planner} & \textbf{Modality} & \textbf{PDMS (\%)} & \textbf{NC (\%)} & \textbf{DAC (\%)} & \textbf{TTC (\%)} & \textbf{EP (\%)} \\
 \midrule
 TransFuser        & Camera $+$ LiDAR & $84.0$ & $97.7$ & $92.8$ & $92.8$ & $79.2$ \\
 Latent TransFuser & Camera only      & $83.8$ & $97.4$ & $92.8$ & $92.4$ & $79.0$ \\

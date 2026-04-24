@@ -2,8 +2,8 @@
 % (derived from nuPlan map_location tags; see navsim-ssl-city-generalization/city_splits/create_splits.py).
 \begin{table}[ht]
     \centering
-    \caption{%
-    NAVSIM city-split data card. Logs were grouped by nuPlan \texttt{map\_location} tag. \emph{Trainval} is the pool used for both training and validation under the cross-city benchmark's single-city and all-city protocols; \emph{test} is the held-out navtest subset used for every cross-city evaluation. Scene count = log count because each log contributes a single NAVSIM scene.%
+    \caption[NAVSIM city-split data card.]{%
+    NAVSIM city-split data card. Logs are grouped by the city tag of the underlying nuPlan map. The \emph{trainval} column is the pool used for training and validation under both the single-city and all-city protocols; the \emph{test} column is the held-out \texttt{navtest} subset used for every cross-city evaluation. Each log contributes a single NAVSIM scene, so scene counts equal log counts. The \texttt{map\_location} column records the underlying nuPlan map identifier for traceability; it does not affect the scene selection beyond grouping by city. The table is intended as a data card: the row-count imbalance (Las~Vegas $\approx 8\times$ Singapore) is the dominant confounder in the Singapore single-city rows of~\reftab{tab:navsim_pdms_merged_v11} and should be held in mind when reading those results.%
     }
     \label{tab:city-splits}
     \small

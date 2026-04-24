@@ -1,9 +1,7 @@
-% Per-phase training recipes. Sources: navsim-ssl-city-generalization/CLAUDE.md canonical recipes,
-% navsim-ssl-city-generalization/experiment_configs/experiments.json, and the TransFuser config-fix
-% notes (A3 landmine, February 2026).
+% Per-study training recipes used throughout the thesis.
 \begin{table}[ht]
     \centering
-    \caption{Cross-city benchmark training recipe, LAW agent. Used for every cross-city LAW open-loop run. Single L40S GPU, batch~2, gradient clipping~35.}
+    \caption[Training recipe: LAW (cross-city benchmark).]{Training recipe for the LAW agent in the cross-city benchmark's open-loop nuScenes evaluation. Every LAW entry in the cross-city tables uses these settings unchanged; only the training-city filter and random seed vary across runs. AdamW with a cosine schedule and a comparatively large gradient-clip norm are both inherited from the LAW reference implementation. A single L40S GPU is sufficient at batch size $2$; the recipe is otherwise unchanged from~\cite{li-law-2024}.}
     \label{tab:hparam-phase1-law}
     \small
     \begin{tabular}{ll}
@@ -23,7 +21,7 @@
 
 \begin{table}[ht]
     \centering
-    \caption{Cross-city benchmark training recipe, TransFuser and Latent TransFuser. Used for every cross-city TF/LatTF run including the full 95-row PDMS matrix in Tables~\ref{tab:navsim_pdms_merged} and \ref{tab:navsim_pdms_merged_v11}. 4\,$\times$\,H200, effective batch 128. The configuration is the TransFuser paper recipe verbatim --- we document the trap explicitly because an earlier run used the wrong lr schedule and silently dropped all-city PDMS from 84~$\rightarrow$~51 before the recipe was restored.}
+    \caption[Training recipe: TransFuser / Latent TransFuser.]{Training recipe for every TransFuser and Latent TransFuser row behind the v1.1 cross-city matrix in~\reftab{tab:navsim_pdms_merged_v11}. The recipe reproduces the original TransFuser paper exactly: plain Adam (not AdamW), no weight decay, no learning-rate schedule, and gradient clipping at $1.0$. Deviations from this recipe --- adding AdamW, weight decay, or a cosine schedule --- silently regress all-city PDMS by more than thirty percentage points with no explicit error, which is why the recipe is documented in full here rather than abbreviated.}
     \label{tab:hparam-phase1-tf}
     \small
     \begin{tabular}{ll}
@@ -44,7 +42,7 @@
 
 \begin{table}[ht]
     \centering
-    \caption{Generative-planning study training recipe (DiffusionDrive + SSL). Used for experiments A10--A13 on NAVSIM v1 navtrain. The SSL backbone is frozen by default; the trajectory head is initialized from the K-means anchor bank and denoised with two diffusion steps at inference.}
+    \caption[Training recipe: DiffusionDrive + SSL (generative-planning study).]{Training recipe for the DiffusionDrive$+$SSL rows of the generative-planning study (\reftab{tab:diffusiondrive-allcity}). The image encoder is frozen by default and the trajectory head is initialised from a $256$-anchor K-means bank fitted on \texttt{navtrain} trajectories; at inference the head runs two truncated denoising steps. Every other optimisation setting mirrors the base DiffusionDrive recipe~\cite{jia-diffusiondrive-2025}, so differences between rows in~\reftab{tab:diffusiondrive-allcity} are attributable to the image encoder alone.}
     \label{tab:hparam-phase2-dd}
     \small
     \begin{tabular}{ll}
@@ -65,7 +63,7 @@
 
 \begin{table}[ht]
     \centering
-    \caption{Domain-specific SSL pre-training recipe (I-JEPA ViT-S/14 on nuScenes). Used to produce the ``nuScenes rect.'' and ``nuScenes sq.'' variants referenced in Tables~\ref{tab:navsim_pdms_merged} and~\ref{tab:navsim_pdms_merged_v11}. ``Rectangular'' variants use the native camera aspect ratio ($224 \times 392$); ``square'' variants use a centre-cropped $224 \times 224$ patch to match the ImageNet pre-training geometry.}
+    \caption[Pre-training recipe: I-JEPA ViT-S/14 on nuScenes.]{Domain-specific self-supervised pre-training recipe for I-JEPA ViT-S/14 on nuScenes front-camera frames. The resulting checkpoints are used wherever the main text refers to ``nuScenes rect.'' or ``nuScenes sq.'' I-JEPA variants in the cross-city tables (\reftab{tab:navsim_pdms_merged_v11}, \reftab{tab:navsim_pdms_merged}). The rectangular variant uses the native camera aspect ratio ($224 \times 392$); the square variant uses a centre-cropped $224 \times 224$ patch that matches the ImageNet pre-training geometry of the other SSL backbones. Identical recipes are used for the DINOv2 and MAE domain-specific variants with the objective swapped accordingly.}
     \label{tab:hparam-phase3-ssl-pretrain}
     \small
     \begin{tabular}{ll}

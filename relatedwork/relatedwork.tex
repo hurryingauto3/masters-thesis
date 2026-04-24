@@ -23,9 +23,32 @@ The empirical question most relevant to this thesis is not which SSL method wins
 \section{Self-Supervised Learning Applied to Autonomous Driving}
 \label{sec:rw-ssl-driving}
 
-SSL has been applied extensively to LiDAR and BEV perception but only sparsely to end-to-end planning. On the LiDAR side, PointContrast introduced point-level contrastive objectives on overlapping scans \cite{xie-pointcontrast-2020}. Occupancy-MAE introduced range-aware masked voxel pretraining that roughly halves the label requirements on KITTI-style benchmarks \cite{min-occupancymae-2023}. ALSO used an occupancy-estimation pretext that transfers across SemanticKITTI, nuScenes, SemanticPOSS, and ONCE \cite{boulch-also-2023}. BEV-MAE applied BEV-guided masking to sparse voxel encoders and reached 73.6 NDS on nuScenes under TransFusion-L \cite{lin-bevmae-2024}. UniPAD introduced a universal 3D differentiable-rendering pretext and improved camera NDS by 7.7 points on nuScenes \cite{yang-unipad-2024}. AD-L-JEPA is the first LiDAR JEPA for automotive perception and demonstrates Waymo-to-KITTI transfer with threefold reductions in GPU-hour cost relative to Occupancy-MAE \cite{zhu-adljepa-2025}, and AD-LiST-JEPA extends the formulation to spatiotemporal multi-frame LiDAR \cite{zhu-adlistjepa-2026}. The common feature of this thread is that it stops at perception and reports mAP or NDS rather than planning metrics.
+SSL has been applied extensively to LiDAR and BEV perception but only sparsely to end-to-end planning. \reftab{tab:rw-ssl-driving-examples} summarizes the representative perception-side results. The common feature of this thread is that it stops at perception and reports mAP, NDS, label efficiency, or compute reduction rather than planning metrics.
 
-On the camera side, ViDAR used visual point-cloud forecasting as a pretext on nuScenes and improved downstream detection, motion forecasting, and planning when coupled with UniAD \cite{yang-vidar-2024}. GAIA-1 demonstrated that action-conditioned generative world models scale to nine billion parameters on 4{,}700 hours of UK driving data \cite{hu-gaia1-2023}. Juneja et al.\ reported that DINO pretraining outperforms ImageNet-classification pretraining on the CARLA offline leaderboard under a CILRS-style ResNet backbone \cite{juneja-dino-e2e-2024}, and is the closest published precedent for the cross-city-benchmark hypothesis. LAW \cite{li-law-2024}, introduced in Section~\ref{sec:bg-law}, is the most direct camera-side SSL precedent that is also used as a baseline in this thesis.
+On the camera side, ViDAR, GAIA-1, Juneja et al., and LAW are the closest precedents, also included in \reftab{tab:rw-ssl-driving-examples}. They motivate the thesis direction, but they do not provide the controlled city-disjoint backbone comparison needed for the claims in Chapter~\ref{chap:experiments}.
+
+\begin{table}[ht]
+\centering
+\caption{Representative SSL-for-driving results in the literature.}
+\label{tab:rw-ssl-driving-examples}
+\small
+\renewcommand{\arraystretch}{1.15}
+\setlength{\tabcolsep}{5pt}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.0cm} >{\raggedright\arraybackslash}p{2.3cm} >{\raggedright\arraybackslash}p{3.3cm} >{\raggedright\arraybackslash}p{3.7cm}@{}}
+\toprule
+\textbf{Work} & \textbf{Modality} & \textbf{Reported result} & \textbf{Relevance here} \\
+\midrule
+PointContrast~\cite{xie-pointcontrast-2020} & LiDAR & Point-level contrastive pretext & Perception-only SSL precedent \\
+Occupancy-MAE~\cite{min-occupancymae-2023} & LiDAR & Roughly halves KITTI-style label needs & Label-efficiency evidence \\
+BEV-MAE~\cite{lin-bevmae-2024} & LiDAR / BEV & 73.6 NDS on nuScenes & BEV SSL result, not planning \\
+UniPAD~\cite{yang-unipad-2024} & 3D / camera & +7.7 camera NDS on nuScenes & Domain pretraining helps perception \\
+AD-L-JEPA~\cite{zhu-adljepa-2025} & LiDAR & Threefold GPU-hour reduction & JEPA-style automotive pretraining \\
+ViDAR~\cite{yang-vidar-2024} & Camera & Improves UniAD downstream tasks & Camera-side pretext precedent \\
+GAIA-1~\cite{hu-gaia1-2023} & Camera / action & 9B parameters, 4{,}700 driving hours & Scale precedent, not controlled transfer \\
+Juneja et al.~\cite{juneja-dino-e2e-2024} & Camera & DINO beats ImageNet pretraining on CARLA & Closest camera SSL planning precedent \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 Drive-JEPA \cite{wang-drive-jepa} is the strongest published result for SSL-initialized planning on NAVSIM, using a V-JEPA~2 video encoder distilled with multi-modal trajectories from OpenScene. Its pretraining spans driving video from Japan, the United States, Singapore, and China, and its evaluation is in-distribution on the pooled \texttt{navtest} split, so it does not isolate the contribution of SSL from the contribution of multi-country pretraining data. Plan-MAE applies masked autoencoding to joint prediction and planning \cite{zhao-planmae-2025}. Poutine combines vision-language-trajectory pretraining with GRPO post-training and reports a zero-shot Japan-to-United-States transfer result on the Waymo Vision-E2E Challenge \cite{poutine-2025}, which is one of the few direct pieces of evidence in the published literature that SSL-style pretraining can preserve planning quality across countries.
 
@@ -37,17 +60,27 @@ Drive-JEPA \cite{wang-drive-jepa} is the strongest published result for SSL-init
 
 TransFuser \cite{chitta-transfuser-2023}, Latent TransFuser, LAW \cite{li-law-2024}, and DiffusionDrive \cite{jia-diffusiondrive-2025} were described in Chapter~\ref{chap:background} and serve as the four planners in this thesis. The rest of the NAVSIM planner landscape is organized here by planning-head family, each reviewed only to the extent that it informs the research questions.
 
-\paragraph{Integrated perception-prediction-planning.}
-UniAD integrates detection, tracking, mapping, motion forecasting, and occupancy into a unified planning-oriented pipeline and was awarded CVPR~2023 Best Paper \cite{hu-uniad-2023}. VAD \cite{jiang-vad-2023} and VADv2 \cite{chen-vadv2-2024} operate entirely on vectorized scene representations, with VADv2 sampling trajectories from a 4{,}096-anchor planning vocabulary and scoring them probabilistically. PARA-Drive showed that fully parallelizing perception, prediction, and planning matches sequential architectures at roughly the same PDMS while enabling module-level runtime ablation \cite{weng-paradrive-2024}. SparseDrive replaces dense BEV representations with sparse instance-level queries \cite{sun-sparsedrive-2024}, and SparseDriveV2 extends this with scalable trajectory vocabularies and factorized scoring for 92.0 PDMS \cite{zhai-sparsedrivev2-2026}.
+The planner landscape is broad enough that a prose leaderboard becomes hard to read. \reftab{tab:rw-navsim-planners} instead groups representative systems by head family and records only the result detail needed to position this thesis. The pattern is that recent gains mostly come from planning-head design, distillation, trajectory vocabularies, post-training, or fusion architecture; the visual backbone is rarely the manipulated variable.
 
-\paragraph{Distillation and selection-based planners.}
-Hydra-MDP won the CVPR~2024 End-to-End Driving at Scale Challenge by distilling both human and rule-based PDM teachers into a multi-head decoder over a clustered trajectory vocabulary \cite{hydra-mdp-2024}. Hydra-MDP++ extended this with traffic-light and lane-keeping teachers \cite{li-hydramdppp-2025}, and Hydra-NeXt further scaled the encoder and distillation targets \cite{li-hydranext-2025}. DriveSuprim reformulated planning as trajectory selection with coarse-to-fine filtering, reporting 93.5 PDMS on v1 and 87.1 EPDMS on v2 \cite{yuan-drivesuprim-2025}.
-
-\paragraph{Generative trajectory planners.}
-GoalFlow replaces diffusion with rectified flow matching conditioned on a scored goal point and reaches 90.3 PDMS with a single denoising step \cite{xing-goalflow-2025}. TransDiffuser reports 94.85 PDMS with decorrelated multi-modal representations and no predefined anchors, though the result has drawn community scrutiny for possible vocabulary overfitting \cite{jiang-transdiffuser-2025}.
-
-\paragraph{World-model and VLM planners.}
-WoTE augments a planner with a BEV world-model critic for 87.1 PDMS \cite{li-wote-2025}. ARTEMIS uses a mixture-of-experts head and reports 87.0 PDMS \cite{liu-artemis-2025}. PIE combines Mamba-based fusion with MoE routing for 88.9 PDMS \cite{zhu-pie-2025}. PRIX is a camera-only planner built around a context-aware recalibration transformer, reaching 87.8 PDMS and 84.2 EPDMS without any LiDAR input \cite{trivedi-prix-2025}. PRIX is the most direct published point of comparison for the camera-only configuration tested under RQ4. ReCogDrive combines a vision-language model with reinforcement-learning post-training for 89.6 PDMS \cite{liu-recogdrive-2026}.
+\begin{table}[ht]
+\centering
+\caption{Representative NAVSIM planner landscape.}
+\label{tab:rw-navsim-planners}
+\small
+\renewcommand{\arraystretch}{1.12}
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{2.8cm} >{\raggedright\arraybackslash}p{3.1cm} >{\raggedright\arraybackslash}p{3.0cm} >{\raggedright\arraybackslash}p{3.3cm}@{}}
+\toprule
+\textbf{Family} & \textbf{Representative systems} & \textbf{Reported detail} & \textbf{Why it matters here} \\
+\midrule
+Integrated perception / prediction / planning & UniAD~\cite{hu-uniad-2023}, VAD/VADv2~\cite{jiang-vad-2023,chen-vadv2-2024}, PARA-Drive~\cite{weng-paradrive-2024} & VADv2 uses a 4{,}096-anchor vocabulary & Head and scene abstraction dominate the contribution \\
+Sparse / vocabulary planners & SparseDrive/V2~\cite{sun-sparsedrive-2024,zhai-sparsedrivev2-2026} & SparseDriveV2: 92.0 PDMS & Strong in-distribution planner baseline \\
+Distillation / selection & Hydra-MDP family~\cite{hydra-mdp-2024,li-hydramdppp-2025,li-hydranext-2025}, DriveSuprim~\cite{yuan-drivesuprim-2025} & DriveSuprim: 93.5 PDMS v1, 87.1 EPDMS v2 & Gains come from teachers and trajectory selection \\
+Generative planners & GoalFlow~\cite{xing-goalflow-2025}, TransDiffuser~\cite{jiang-transdiffuser-2025} & GoalFlow: 90.3 PDMS; TransDiffuser: 94.9 PDMS & Motivates testing diffusion-style heads separately \\
+World-model / VLM planners & WoTE~\cite{li-wote-2025}, ARTEMIS~\cite{liu-artemis-2025}, PIE~\cite{zhu-pie-2025}, PRIX~\cite{trivedi-prix-2025}, ReCogDrive~\cite{liu-recogdrive-2026} & WoTE 87.1, ARTEMIS 87.0, PIE 88.9, PRIX 87.8/84.2, ReCogDrive 89.6 & PRIX is the closest camera-only point of comparison \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \textbf{Gap.} Despite a spread of roughly ten PDMS points across these methods, published NAVSIM results share two structural limitations. First, the methods almost uniformly use a supervised ImageNet-pretrained ResNet-34 image encoder, so reported gains attribute to the planning head, the supervision strategy, or the fusion architecture rather than to the visual representation. Second, because the \texttt{navtest} split pools four cities, no published NAVSIM number isolates the contribution of representation quality under geographic shift. The thesis exploits this gap by fixing the planner and varying only the backbone under a strict city-disjoint protocol, which makes representation quality the only manipulated variable.
 
@@ -67,7 +100,29 @@ Diffusion entered trajectory planning with Diffuser \cite{janner-diffuser-2022},
 
 RLHF established the canonical three-stage pipeline of supervised fine-tuning, reward-model learning, and PPO-based policy optimization \cite{ouyang-rlhf-2022}. DPO re-parameterizes preference pairs directly into the policy without an explicit reward model \cite{rafailov-dpo-2023}. GRPO replaces the value function of PPO with group-relative advantages computed within sampled rollouts, which avoids critic instability under sparse metric rewards \cite{grpo-2024}.
 
-Four recent NAVSIM papers import these algorithms into driving. TrajHF combines a multi-conditioned denoiser with GRPO on a PDMS-plus-human-preference reward and reports 93.95 PDMS \cite{li-trajhf-2025}. DriveDPO distills imitation similarity and PDMS into anchor scores and applies iterative trajectory-level DPO with rejected-trajectory mining, reaching 90.0 PDMS with a ResNet-34 backbone \cite{shang-drivedpo-2025}. TISA-DPO introduces a time-invariant spatial-alignment module and a multi-objective DPO variant at 89.8 PDMS \cite{tisadpo-2025}. DiffusionDriveV2 adds scale-adaptive exploration noise and both intra-anchor and inter-anchor truncated GRPO to DiffusionDrive, reaching 91.2 PDMS on v1 and 85.5 EPDMS on v2 \cite{liang-diffusiondrive-v2-2025}. Two complementary threads are relevant. RAD trains an end-to-end policy through large-scale 3DGS-based closed-loop RL and reports a threefold collision-rate reduction on held-out 3DGS environments, which is the closest published analog to an out-of-distribution generalization test for RL-finetuned planners \cite{gao-rad-2025}. CaRL scales a simple route-completion reward to 500~million samples on nuPlan across multiple cities and reaches 91.3 non-reactive and 90.6 reactive Val14 scores \cite{jaeger-carl-2025}. AlphaDrive applies GRPO at the VLM meta-action level with four planning rewards \cite{jiang-alphadrive-2025}.
+Recent driving papers import these preference- and reward-optimization algorithms into planning; \reftab{tab:rw-rl-planning} summarizes the relevant numbers. The common limitation is that the headline evaluations remain pooled or otherwise not city-disjoint, so they do not answer whether post-training gains survive geographic transfer.
+
+\begin{table}[ht]
+\centering
+\caption{RL and preference-optimization planning results relevant to RQ6.}
+\label{tab:rw-rl-planning}
+\small
+\renewcommand{\arraystretch}{1.15}
+\setlength{\tabcolsep}{5pt}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.0cm} >{\raggedright\arraybackslash}p{4.0cm} >{\raggedright\arraybackslash}p{4.6cm}@{}}
+\toprule
+\textbf{Work} & \textbf{Optimization idea} & \textbf{Reported result / limitation} \\
+\midrule
+TrajHF~\cite{li-trajhf-2025} & GRPO on PDMS-plus-preference reward & 94.0 PDMS, pooled evaluation \\
+DriveDPO~\cite{shang-drivedpo-2025} & Iterative trajectory-level DPO & 90.0 PDMS with ResNet-34 \\
+TISA-DPO~\cite{tisadpo-2025} & Spatial alignment plus multi-objective DPO & 89.8 PDMS \\
+Diffusion\-DriveV2~\cite{liang-diffusiondrive-v2-2025} & Truncated GRPO variants & 91.2 PDMS v1, 85.5 EPDMS v2 \\
+RAD~\cite{gao-rad-2025} & Closed-loop RL in 3DGS environments & Threefold collision-rate reduction on held-out environments \\
+CaRL~\cite{jaeger-carl-2025} & Route-completion reward at scale & 500M samples; 91.3 non-reactive / 90.6 reactive Val14 \\
+AlphaDrive~\cite{jiang-alphadrive-2025} & GRPO at VLM meta-action level & Four planning rewards; not a city-disjoint result \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \textbf{Gap.} None of TrajHF, DriveDPO, TISA-DPO, or DiffusionDriveV2 reports an explicit cross-city evaluation. Each evaluates on the pooled \texttt{navtest} split and relies on in-distribution generalization to report headline numbers. Whether GRPO or DPO gains survive geographic transfer is therefore an open question, and RQ6 treats it as exploratory.
 

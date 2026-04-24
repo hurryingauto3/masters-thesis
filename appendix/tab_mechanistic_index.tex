@@ -2,7 +2,7 @@
 % Each row points to per-run CKA heatmap + SVD spectrum already present
 % in fig/phase4/heatmaps/ and fig/phase4/spectra/.
 \begin{longtable}{lllllrrr}
-\caption{Per-run mechanistic artifacts index. ``train'' uses the short city codes (LV, B, P, S) or \textit{all} for LV+B+P+S. Each run has a corresponding CKA heatmap at \texttt{fig/phase4/heatmaps/cka\_<run\_id>.pdf} and singular-value spectrum at \texttt{fig/phase4/spectra/spectrum\_<run\_id>.pdf}. Probe, CKA, and effective-rank columns summarise the per-run aggregates reported in Sec.~\ref{sec:exp-why-ssl}.} \label{tab:mechanistic-index} \\
+\caption[Per-run mechanistic artifacts index.]{Per-run mechanistic artifacts index for every checkpoint analysed in~\refsec{sec:exp-why-ssl}. Columns: \emph{run\_id} is the label used elsewhere in the chapter; \emph{backbone} and \emph{variant} identify the pretrained encoder and its geometry; \emph{mode} is the planner (TF or LatTF); \emph{train} is the training city, using short codes (LV, B, P, S) or \textit{all} for the four-city pool. \emph{probe} is the linear city-ID classification accuracy on cached features; \emph{CKA} is mean off-diagonal cross-city linear CKA; \emph{rank} is the Roy--Vetterli effective rank of per-city feature covariance, averaged over cities. Rows are grouped by study family (all-city, Boston-only LatTF, other single-city TF) to mirror the order in which the analyses are presented in the main text.}\label{tab:mechanistic-index} \\
 \toprule
 run\_id & backbone & variant & mode & train & probe & CKA & rank \\
 \midrule
