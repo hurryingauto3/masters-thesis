@@ -6,7 +6,7 @@
     \caption[NAVSIM v2.2 cross-city PDMS matrix (legacy).]{%
     Full closed-loop cross-city PDMS matrix on NAVSIM, devkit v2.2 (legacy).
     Each row is a single trained model. The left block (\emph{Train City}) marks which of the four cities were used for training; \cmark indicates inclusion. Total combines performance across all four evaluation cities for each planner. All numbers are PDMS (\%); higher is better.
-    How to read it: rows with four training cities are the all-city baselines --- interpret \emph{Total} as mixed-city interpolation performance. Rows with a single training city are zero-shot transfer probes --- non-checked columns under each planner are the out-of-distribution cells, and the gap between the in-distribution column and the three OOD columns quantifies the geographic transfer penalty. This matrix is retained for direct comparison with the companion cross-city benchmark paper~\cite{naeinian-cross-city-2026}; the thesis claims use the v1.1 re-evaluation in~\reftab{tab:navsim_pdms_merged_v11}.}
+    How to read it: rows with four training cities are the all-city baselines, and their \emph{Total} column is mixed-city interpolation performance. Rows with a single training city are zero-shot transfer probes; non-checked columns under each planner are the out-of-distribution cells, and the gap between the in-distribution column and the three OOD columns quantifies the geographic transfer penalty. This matrix is retained for direct comparison with the companion cross-city benchmark paper~\cite{naeinian-cross-city-2026}; the thesis claims use the v1.1 re-evaluation in~\reftab{tab:navsim_pdms_merged_v11}.}
     \label{tab:navsim_pdms_merged}
     \scriptsize
     \setlength{\tabcolsep}{2pt}

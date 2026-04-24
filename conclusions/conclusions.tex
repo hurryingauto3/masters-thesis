@@ -8,18 +8,18 @@
 \section{Summary of Contributions}
 \label{sec:concl-summary}
 
-This thesis evolved through three linked questions rather than a single benchmark objective. It began from the hypothesis that SSL backbones should improve even lightweight end-to-end planners. The publication of Drive-JEPA~\cite{wang-drive-jepa} confirmed that JEPA-style pretraining could indeed deliver very strong mixed-city performance, which pushed the thesis toward a sharper and more differentiated question: what does SSL buy beyond standard leaderboard PDMS? The answer developed in this thesis is cross-city robustness and the representational mechanism behind it.
+This thesis evolved through three linked questions rather than a single benchmark objective. It began from the hypothesis that self-supervised backbones should improve even lightweight end-to-end planners. The publication of Drive-JEPA~\cite{wang-drive-jepa} confirmed that JEPA-style pretraining could deliver very strong mixed-city performance, which pushed the thesis toward a sharper question: what does SSL buy beyond pooled leaderboard PDMS? The answer developed here is cross-city robustness, together with the representational mechanism behind it.
 
-We summarize the resulting contributions:
+The contributions below are those of the thesis. LAW~\cite{li-law-2024} is used as an external open-loop baseline, not claimed as an original method; the pretrained SSL checkpoints used throughout are adopted from prior work. The evaluation framework, experiments, analyses, and conclusions built around those components are original.
 
 \begin{enumerate}
-    \item \textbf{NAVSIM City Splits}: We created the first per-city benchmark for NAVSIM, partitioning scenarios across Boston, Pittsburgh, Las Vegas, and Singapore. This benchmark enables systematic evaluation of cross-city transfer that was previously impossible on NAVSIM, and the first phase of that analysis was reported in~\cite{naeinian-cross-city-2026}.
+    \item \textbf{Cross-city evaluation framework and benchmark.} A per-city partitioning of NAVSIM and a paired open-loop (nuScenes) and closed-loop (NAVSIM) city-disjoint protocol. The partition first appears in our companion cross-city study~\cite{naeinian-cross-city-2026}; this thesis extends the protocol with a NAVSIM v1.1 re-evaluation and a broader representation-centred investigation (Chapter~\ref{chap:experiments}).
 
-    \item \textbf{Cross-City SSL Generalization}: Across the LAW and TransFuser protocols, self-supervised visual representations (I-JEPA, DINOv2, MAE) reduce cross-city generalization gaps relative to supervised baselines. The exact open-loop ratios and closed-loop matrices are reported in Chapter~\ref{chap:experiments}; the central finding is that \textbf{cross-city failure is a representation problem, not only a planning architecture problem}.
+    \item \textbf{Cross-city SSL generalisation}. Under the evaluated settings with LAW open-loop on nuScenes and TransFuser / Latent TransFuser closed-loop on NAVSIM, frozen self-supervised representations (I-JEPA, DINOv2, MAE) reduce cross-city generalisation gaps relative to supervised baselines. The load-bearing conclusion: \textbf{cross-city failure is strongly mediated by the visual representation.}
 
-    \item \textbf{DiffusionDrive + SSL}: We integrated SSL backbones into DiffusionDrive and included a camera-only variant. The completed mixed-city result table shows that the representation signal survives a planner swap even under a head designed to attenuate backbone differences. The direct test of planner-invariance under \emph{cross-city} shift is specified as an active-validation study (\refsec{sec:exp-phase3}) with fixed success criteria, but it is not used as completed evidence in the thesis conclusions. The I-JEPA camera-only comparison is likewise framed as active validation rather than as a load-bearing result.
+    \item \textbf{DiffusionDrive $+$ SSL}. SSL backbones are integrated into DiffusionDrive through the same feature adapter used in the cross-city benchmark, including a camera-only variant. The completed mixed-city results show that the representation signal survives a planner swap under pooled evaluation. The cross-city DiffusionDrive matrix is specified as active validation and is not used as completed evidence.
 
-    \item \textbf{Mechanistic Analysis}: Our ``Why does SSL work?'' investigation uses linear probing, CKA, MMD, and feature-covariance effective rank on the trained checkpoint roster. The three calibrated findings are: (a) the linear-probe ordering in \reftab{tab:concl-probe} mirrors the OOD PDMS drop ordering; (b) pretraining objective matters beyond this probe signal; and (c) freezing is the operational lever because fine-tuning compresses SSL feature rank and erodes the pretrained invariances on which the transfer result depends.
+    \item \textbf{Mechanistic analysis}. A linear-probe, CKA, MMD, and feature-covariance effective-rank study of the trained checkpoint roster. The three calibrated findings are: (a) the linear-probe ordering on matched Boston-only Latent TransFuser rows (\reftab{tab:concl-probe}) tracks the out-of-distribution PDMS drop ordering; (b) fine-tuning compresses feature-covariance rank for every self-supervised family; (c) the signal is strongest within matched comparisons and attenuates when backbone scale, pretraining data, and training city vary together. No universal-mechanism claim is made.
 
 \begin{table}[ht]
 \centering
@@ -45,20 +45,18 @@ DINOv2                 & $0.81$ & $6.3$ \\
 \section{Key Findings}
 \label{sec:concl-findings}
 
-The project-level takeaway is therefore broader than any one phase: lightweight-head experiments motivated the representation hypothesis, Drive-JEPA clarified that SSL can already be powerful in-distribution, and the final thesis identifies zero-shot cross-city transfer as the regime where SSL's distinctive value becomes clearest.
+The project-level takeaway is that lightweight-head experiments motivated the representation hypothesis, Drive-JEPA demonstrated the in-distribution ceiling on pooled NAVSIM, and zero-shot cross-city transfer turns out to be the regime where representation choice matters most.
 
-Actionable takeaways for practitioners:
+Four operational conclusions follow directly from the evidence in Chapter~\ref{chap:experiments}.
 
 \begin{enumerate}
-    \item \textbf{SSL pre-training is the single most impactful change for cross-city robustness.} Swapping a supervised backbone for a frozen SSL ViT, with no planner redesign, can reduce open-loop transfer inflation by nearly an order of magnitude and improve closed-loop OOD PDMS by several points~\cite{naeinian-cross-city-2026}.
+    \item \textbf{Representation choice is the largest single lever for cross-city robustness.} In the evaluated settings, swapping a supervised backbone for a frozen SSL ViT reduces open-loop transfer inflation by nearly an order of magnitude and improves closed-loop out-of-distribution PDMS by several points, with the planner held fixed~\cite{naeinian-cross-city-2026}.
 
-    \item \textbf{The in-distribution cost is small; the OOD gain is large.} The DiffusionDrive all-city table shows a small mixed-city cost for SSL, while the cross-city tables show a larger transfer gain under explicit geographic shift. Whether this exact trade-off survives a planner swap under city-disjoint generative evaluation remains active validation, not a completed thesis claim.
+    \item \textbf{The in-distribution cost is small; the out-of-distribution gain is large.} The DiffusionDrive all-city table shows at most a small mixed-city cost for SSL, while the cross-city LAW and TransFuser / Latent TransFuser matrices show a materially larger transfer gain under explicit geographic shift. Whether this trade-off survives a planner swap under city-disjoint generative evaluation is active validation.
 
-    \item \textbf{Frozen backbones generalize better than fine-tuned.} Fine-tuning improves in-distribution performance but may overfit to city-specific features. Frozen SSL backbones act as implicit regularization.
+    \item \textbf{Frozen SSL backbones generalise better than fully fine-tuned ones in this setting.} Fine-tuning improves mixed-city PDMS on several backbones, but compresses feature-covariance rank and, on the matched Boston-only Latent TransFuser rows, drifts the representation toward city-specific cues. Freezing is the operational lever; it is not a claim that fine-tuning is always harmful.
 
-    \item \textbf{Camera-only planning is viable with strong visual features.} The camera-only DiffusionDrive row is close enough to the camera+LiDAR reference to make the residual visual-representation question meaningful. The I-JEPA camera-only experiment outlined in \refsec{sec:exp-phase2-camera-only} is designed to test whether frozen SSL features close that residual gap, but the thesis does not depend on that result.
-
-    \item \textbf{The planning head has secondary impact on the completed evidence.} Cross-city LAW and TransFuser results both show the same representation-centric pattern despite architectural differences, and the generative-planning DiffusionDrive results replicate the $\sim$1\,pp SSL in-distribution cost. Whether the pattern survives the substitution of a generative planner for regression under \emph{cross-city} shift is the direct empirical content of the cross-city generative study (\refsec{sec:exp-phase3}); a positive result would make the claim planner-invariant and a negative result would narrow it.
+    \item \textbf{In the evaluated settings, representation choice mediates transfer more strongly than head choice.} The same ordinal pattern appears under LAW open-loop on nuScenes and TransFuser / Latent TransFuser closed-loop on NAVSIM, and the DiffusionDrive mixed-city integration preserves the representation-dependent structure at a small in-distribution cost. This is the basis for the bounded version of the central claim. The stronger claim, that the pattern is fully planner-invariant, depends on a completed cross-city DiffusionDrive matrix and remains active validation.
 \end{enumerate}
 
 % ============================================================================
@@ -95,8 +93,5 @@ Most backbones in the thesis still inherit generic large-scale pretraining. A la
 \subsection{Scaling to More Cities and Datasets}
 The current city-split benchmark covers only four cities and one data pipeline. Extending the same protocol to other datasets, and especially to cross-dataset transfer, would test whether the representation findings generalize beyond NAVSIM and nuScenes.
 
-\subsection{RL Post-Training for Cross-City Transfer}
-RQ6 remains open. If reward-guided post-training improves held-out-city behavior, then SSL + diffusion + RL becomes a plausible full recipe for robust planning. If it fails to transfer, then the next problem is reward design: current reward signals may be encoding city-specific structure rather than general driving competence.
-
 \subsection{Multi-Modal JEPA Encoders}
-Finally, the thesis motivates a multi-modal JEPA direction. A shared latent-space pretraining objective over camera and LiDAR could preserve the robustness benefits of SSL while recovering part of the geometry lost in camera-only deployment settings.
+A shared latent-space pretraining objective over camera and LiDAR would preserve the SSL robustness benefits while recovering part of the geometric signal lost in camera-only deployment. This is the direct extension suggested by the camera-only DiffusionDrive results in Chapter~\ref{chap:experiments}.

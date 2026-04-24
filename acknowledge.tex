@@ -1,22 +1,18 @@
 %!TEX root = thesis.tex
 
-%% PLACEHOLDER --- please edit before submission. The text below is a plausible
-%% first-pass draft using the facts known to the thesis project. Names, titles,
-%% and phrasing should be reviewed and revised.
-
 I am grateful to the many people whose advice, expertise, and support made this thesis possible.
 
-My deepest thanks go to my advisor, \textbf{Prof.\ Anna Choromanska}, whose guidance shaped the direction of this work from its earliest exploratory experiments through the cross-city benchmark and into the mechanistic analysis that closes the thesis. Her insistence on distinguishing mixed-city benchmark gains from cross-city robustness reframed a leaderboard-oriented project into one with a specific, falsifiable claim about visual representations.
+My deepest thanks go to my advisor, \textbf{Prof.\ Anna Choromanska}, whose guidance shaped the direction of this work from the earliest exploratory experiments through the cross-city benchmark and into the mechanistic analysis. Her insistence on distinguishing mixed-city benchmark gains from cross-city robustness reframed a leaderboard-oriented project into one with a specific, falsifiable claim about visual representations.
 
 I thank the members of my thesis committee, \textbf{Prof.\ Ludovic Righetti} and \textbf{Prof.\ David Fouhey}, for their time, their careful reading of this work, and the comments that sharpened several of the arguments in the later chapters.
 
-I am grateful to my collaborators on the prior cross-city benchmark study~\cite{naeinian-cross-city-2026}. \textbf{Fatemeh Naeinian} took responsibility for the bulk of the figure generation and for a substantial share of the experimental infrastructure; \textbf{Haoran Zhu} contributed experimental implementation and analysis. Their work is visible throughout Chapter~\ref{chap:experiments}, most directly in the cross-city figures reproduced there.
+I am grateful to my collaborators on the companion cross-city benchmark study~\cite{naeinian-cross-city-2026}. \textbf{Fatemeh Naeinian} took responsibility for the bulk of the figure generation, a substantial share of the experimental infrastructure, and the domain-specific SSL pre-training of the ViT-S/14 backbones documented in Chapter~\ref{chap:methodology}. \textbf{Haoran Zhu} contributed experimental implementation and analysis. Their work is visible throughout Chapter~\ref{chap:experiments}, most directly in the cross-city figures reproduced there.
 
-This work was conducted at the \textbf{NYU Tandon School of Engineering}, Department of Electrical and Computer Engineering. I thank the department for admission to the M.S.\ program, for administrative support throughout the project, and for access to the infrastructure that made the large-scale experiments possible.
+This work was conducted at the \textbf{NYU Tandon School of Engineering}, Department of Electrical and Computer Engineering. I thank the department for admission to the M.S.\ program, for administrative support, and for access to the infrastructure that made the large-scale experiments possible. The experimental program ran on the \textbf{NYU Torch High Performance Computing cluster}; I thank the NYU HPC staff for keeping those resources available and stable.
 
-The experimental program in this thesis ran on the \textbf{NYU Torch High Performance Computing cluster}. Approximately thirty-five thousand GPU-hours were consumed across the cross-city, generative-planning, and mechanistic-analysis studies on a mix of L40S and H200 nodes, and most of the mechanistic-analysis mechanistic analyses benefited directly from H200 throughput. I thank the NYU HPC staff for keeping those resources available and stable.
+This project was built on top of many open-source systems. I thank the authors and maintainers of the NAVSIM devkit~\cite{dauner-navsim-2024}, TransFuser~\cite{chitta-transfuser-2023}, DiffusionDrive~\cite{jia-diffusiondrive-2025}, LAW~\cite{li-law-2024}, the I-JEPA~\cite{assran-ijepa-2023}, DINOv2~\cite{oquab-dinov2-2024}, and MAE~\cite{he-mae-2022} reference implementations, and the HuggingFace Transformers library. Without their public releases, this thesis would not have been feasible in the time available.
 
-This project was built on top of many open-source systems. I thank the authors and maintainers of the NAVSIM devkit~\cite{dauner-navsim-2024}, TransFuser~\cite{chitta-transfuser-2023}, DiffusionDrive~\cite{jia-diffusiondrive-2025}, the I-JEPA~\cite{assran-ijepa-2023}, DINOv2~\cite{oquab-dinov2-2024}, and MAE~\cite{he-mae-2022} reference implementations, and the HuggingFace Transformers library. Without their public releases, this thesis would not have been feasible in the time available.
+I also used generative AI tools, including ChatGPT and Claude, during this project for brainstorming, limited code assistance, and help revising technical text. These tools were used as assistants rather than as decision-makers. The research direction, experimental design, implementation choices, analysis, and final scientific claims remained under my control and that of my collaborators and advisor.
 
 Finally, I thank my family for their support over the full course of my studies, and my friends for their patience during the long stretches when the work consumed more of my attention than a thesis reasonably should. Any errors or omissions remaining in this document are my own.
 

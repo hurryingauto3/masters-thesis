@@ -2,173 +2,35 @@
 \chapter{Related Work}
 \label{chap:relatedwork}
 
-%% ~6 pages. Positioning-only. Mechanics already covered in Chapter~\ref{chap:background}
-%% are not restated. Every section ends with an explicit gap statement tied to one or
-%% more research questions.
-
 \noindent
-This chapter positions the thesis against the literature it builds on. Chapter~\ref{chap:background} has already introduced end-to-end driving, the NAVSIM benchmark and its scoring, the three SSL paradigms instantiated in this thesis, the four planning architectures used in the experiments, and the motivating framing of geographic domain shift. The present chapter does not restate that material. It instead surveys what adjacent work has attempted and identifies the specific gaps that the six research questions of Section~\ref{sec:research-questions} address. Section~\ref{sec:rw-gaps} consolidates seven gap statements and maps each to one or more research questions.
+This chapter reviews three relevant lines of work: self-supervised pretraining applied to driving, cross-city and geographic generalization, and diffusion-based trajectory planning. The technical material on NAVSIM, the three SSL objectives, and the four planners used in the experiments is in Chapter~\ref{chap:background} and is not restated here.
 
 % ============================================================================
-\section{Self-Supervised Visual Representation Learning}
-\label{sec:rw-ssl}
-
-The SSL paradigms relevant to this thesis were introduced in Section~\ref{sec:bg-ssl}. The literature beyond those three representatives spans a larger family of contrastive methods \cite{chen-simclr-2020,he-moco-2020,chen-mocov3-2021,grill-byol-2020,caron-swav-2020,zbontar-barlow-2021,bardes-vicreg-2022}, self-distillation extensions \cite{zhou-ibot-2022}, masked-image-modeling variants \cite{bao-beit-2022,xie-simmim-2022,baevski-data2vec-2022}, and joint-embedding predictive architectures generalized from LeCun's position paper \cite{lecun-ssl-path-2022} to video \cite{bardes-vjepa-2024,assran-vjepa2-2025} and multi-task motion-and-content settings \cite{bardes-mcjepa-2023}. A broader methodological consolidation is provided by the SSL Cookbook \cite{balestriero-ssl-cookbook-2023}.
-
-The empirical question most relevant to this thesis is not which SSL method wins at ImageNet but how their transfer properties differ. Ericsson et al.\ benchmarked thirteen SSL methods across forty downstream tasks and found that leading SSL models match or exceed supervised ImageNet pretraining on most transfer targets, with particular advantage on dense prediction \cite{ericsson-sslbench-2021}. Cole et al.\ qualified this optimism by reporting diminishing returns past 500{,}000 pretraining images, no gain from out-of-domain pretraining data, and greater sensitivity of contrastive SSL to input corruption than supervised baselines \cite{cole-contrastive-2022}. Park et al.\ characterized the complementary inductive biases of contrastive and masked paradigms: contrastive learning emphasizes global shape and late-layer semantics, whereas masked image modeling emphasizes local texture and early-layer features \cite{park-vitsslstudy-2023}. Hendrycks et al.\ showed that auxiliary self-supervised rotation losses improve adversarial, label-noise, and OOD robustness \cite{hendrycks-ssl-robust-2019}, and Grigg et al.\ used CKA to show that intermediate representations converge across SSL and supervised paradigms while final layers diverge sharply \cite{grigg-ssl-cka-2021}. Walmer et al.\ compared supervised, CLIP, MAE, DINO, MoCo, and BEiT ViTs through attention analysis and CKA, identifying offset local attention heads as a supervision-dependent phenomenon \cite{walmer-vit-compare-2023}.
-
-\textbf{Gap.} These studies operate on classification, detection, and segmentation in general-purpose image domains. None systematically compares a joint-embedding SSL (DINOv2), a masked-reconstruction SSL (MAE), and a latent-predictive SSL (I-JEPA) on the same driving planner under matched compute, and none examines what happens to their relative ordering under geographic shift. RQ1 and RQ3 target that gap directly.
-
-% ============================================================================
-\section{Self-Supervised Learning Applied to Autonomous Driving}
+\section{Self-Supervised Learning for Driving}
 \label{sec:rw-ssl-driving}
 
-SSL has been applied extensively to LiDAR and BEV perception but only sparsely to end-to-end planning. \reftab{tab:rw-ssl-driving-examples} summarizes the representative perception-side results. The common feature of this thread is that it stops at perception and reports mAP, NDS, label efficiency, or compute reduction rather than planning metrics.
+Self-supervised pretraining has been applied extensively to driving perception and only sparsely to end-to-end planning. On the LiDAR and BEV side, PointContrast~\cite{xie-pointcontrast-2020}, Occupancy-MAE~\cite{min-occupancymae-2023}, BEV-MAE~\cite{lin-bevmae-2024}, UniPAD~\cite{yang-unipad-2024}, and AD-L-JEPA~\cite{zhu-adljepa-2025} show label-efficiency and detection gains with self-supervised pretext tasks, but report perception metrics rather than closed-loop planning scores. On the camera side, the closest precedents are ViDAR~\cite{yang-vidar-2024}, which improves UniAD's downstream tasks through an image-side pretext; GAIA-1~\cite{hu-gaia1-2023}, a large-scale video-and-action generative model that trades compute for breadth; Juneja et al.~\cite{juneja-dino-e2e-2024}, who show that a DINO-initialized backbone beats ImageNet pretraining on CARLA; and LAW~\cite{li-law-2024}, whose latent world-model loss is itself a self-supervised auxiliary on top of a supervised Swin-T encoder.
 
-On the camera side, ViDAR, GAIA-1, Juneja et al., and LAW are the closest precedents, also included in \reftab{tab:rw-ssl-driving-examples}. They motivate the thesis direction, but they do not provide the controlled city-disjoint backbone comparison needed for the claims in Chapter~\ref{chap:experiments}.
+The most relevant recent result is Drive-JEPA~\cite{wang-drive-jepa}, which uses a V-JEPA video encoder together with multi-modal trajectory distillation and reaches strong pooled NAVSIM PDMS. Drive-JEPA pretraining mixes driving video from Japan, the United States, Singapore, and China, so its evaluation blends pretraining geography with downstream evaluation geography. That makes it informative about the in-distribution ceiling of SSL-initialized planning, and simultaneously motivates this thesis's focus on city-disjoint evaluation: pooled NAVSIM PDMS is no longer the right discriminator for a representation-centred argument. Plan-MAE~\cite{zhao-planmae-2025} is a related masked-autoencoding approach applied to joint prediction and planning.
 
-\begin{table}[ht]
-\centering
-\caption{Representative SSL-for-driving results in the literature.}
-\label{tab:rw-ssl-driving-examples}
-\small
-\renewcommand{\arraystretch}{1.15}
-\setlength{\tabcolsep}{5pt}
-\begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.0cm} >{\raggedright\arraybackslash}p{2.3cm} >{\raggedright\arraybackslash}p{3.3cm} >{\raggedright\arraybackslash}p{3.7cm}@{}}
-\toprule
-\textbf{Work} & \textbf{Modality} & \textbf{Reported result} & \textbf{Relevance here} \\
-\midrule
-PointContrast~\cite{xie-pointcontrast-2020} & LiDAR & Point-level contrastive pretext & Perception-only SSL precedent \\
-Occupancy-MAE~\cite{min-occupancymae-2023} & LiDAR & Roughly halves KITTI-style label needs & Label-efficiency evidence \\
-BEV-MAE~\cite{lin-bevmae-2024} & LiDAR / BEV & 73.6 NDS on nuScenes & BEV SSL result, not planning \\
-UniPAD~\cite{yang-unipad-2024} & 3D / camera & +7.7 camera NDS on nuScenes & Domain pretraining helps perception \\
-AD-L-JEPA~\cite{zhu-adljepa-2025} & LiDAR & Threefold GPU-hour reduction & JEPA-style automotive pretraining \\
-ViDAR~\cite{yang-vidar-2024} & Camera & Improves UniAD downstream tasks & Camera-side pretext precedent \\
-GAIA-1~\cite{hu-gaia1-2023} & Camera / action & 9B parameters, 4{,}700 driving hours & Scale precedent, not controlled transfer \\
-Juneja et al.~\cite{juneja-dino-e2e-2024} & Camera & DINO beats ImageNet pretraining on CARLA & Closest camera SSL planning precedent \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-Drive-JEPA \cite{wang-drive-jepa} is the strongest published result for SSL-initialized planning on NAVSIM, using a V-JEPA~2 video encoder distilled with multi-modal trajectories from OpenScene. Its pretraining spans driving video from Japan, the United States, Singapore, and China, and its evaluation is in-distribution on the pooled \texttt{navtest} split, so it does not isolate the contribution of SSL from the contribution of multi-country pretraining data. Plan-MAE applies masked autoencoding to joint prediction and planning \cite{zhao-planmae-2025}. Poutine combines vision-language-trajectory pretraining with GRPO post-training and reports a zero-shot Japan-to-United-States transfer result on the Waymo Vision-E2E Challenge \cite{poutine-2025}, which is one of the few direct pieces of evidence in the published literature that SSL-style pretraining can preserve planning quality across countries.
-
-\textbf{Gap.} Two structural limitations persist across this literature. First, published SSL-for-driving results routinely mix pretraining geography with downstream evaluation geography, which prevents clean attribution of transfer gains to the SSL objective rather than to data-distribution overlap. Second, when multiple SSL objectives are compared, the comparison is typically confined to one downstream task and one backbone, so the interaction between SSL objective family and the structure of geographic shift remains uncharacterized. RQ1 and RQ3 address the first limitation through a strict city-disjoint protocol. the mechanistic analysis quantifies the underlying representation geometry.
-
-% ============================================================================
-\section{End-to-End Planners on NAVSIM}
-\label{sec:rw-navsim-planners}
-
-TransFuser \cite{chitta-transfuser-2023}, Latent TransFuser, LAW \cite{li-law-2024}, and DiffusionDrive \cite{jia-diffusiondrive-2025} were described in Chapter~\ref{chap:background} and serve as the four planners in this thesis. The rest of the NAVSIM planner landscape is organized here by planning-head family, each reviewed only to the extent that it informs the research questions.
-
-The planner landscape is broad enough that a prose leaderboard becomes hard to read. \reftab{tab:rw-navsim-planners} instead groups representative systems by head family and records only the result detail needed to position this thesis. The pattern is that recent gains mostly come from planning-head design, distillation, trajectory vocabularies, post-training, or fusion architecture; the visual backbone is rarely the manipulated variable.
-
-\begin{table}[ht]
-\centering
-\caption{Representative NAVSIM planner landscape.}
-\label{tab:rw-navsim-planners}
-\small
-\renewcommand{\arraystretch}{1.12}
-\setlength{\tabcolsep}{4pt}
-\begin{tabular}{@{}>{\raggedright\arraybackslash}p{2.8cm} >{\raggedright\arraybackslash}p{3.1cm} >{\raggedright\arraybackslash}p{3.0cm} >{\raggedright\arraybackslash}p{3.3cm}@{}}
-\toprule
-\textbf{Family} & \textbf{Representative systems} & \textbf{Reported detail} & \textbf{Why it matters here} \\
-\midrule
-Integrated perception / prediction / planning & UniAD~\cite{hu-uniad-2023}, VAD/VADv2~\cite{jiang-vad-2023,chen-vadv2-2024}, PARA-Drive~\cite{weng-paradrive-2024} & VADv2 uses a 4{,}096-anchor vocabulary & Head and scene abstraction dominate the contribution \\
-Sparse / vocabulary planners & SparseDrive/V2~\cite{sun-sparsedrive-2024,zhai-sparsedrivev2-2026} & SparseDriveV2: 92.0 PDMS & Strong in-distribution planner baseline \\
-Distillation / selection & Hydra-MDP family~\cite{hydra-mdp-2024,li-hydramdppp-2025,li-hydranext-2025}, DriveSuprim~\cite{yuan-drivesuprim-2025} & DriveSuprim: 93.5 PDMS v1, 87.1 EPDMS v2 & Gains come from teachers and trajectory selection \\
-Generative planners & GoalFlow~\cite{xing-goalflow-2025}, TransDiffuser~\cite{jiang-transdiffuser-2025} & GoalFlow: 90.3 PDMS; TransDiffuser: 94.9 PDMS & Motivates testing diffusion-style heads separately \\
-World-model / VLM planners & WoTE~\cite{li-wote-2025}, ARTEMIS~\cite{liu-artemis-2025}, PIE~\cite{zhu-pie-2025}, PRIX~\cite{trivedi-prix-2025}, ReCogDrive~\cite{liu-recogdrive-2026} & WoTE 87.1, ARTEMIS 87.0, PIE 88.9, PRIX 87.8/84.2, ReCogDrive 89.6 & PRIX is the closest camera-only point of comparison \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\textbf{Gap.} Despite a spread of roughly ten PDMS points across these methods, published NAVSIM results share two structural limitations. First, the methods almost uniformly use a supervised ImageNet-pretrained ResNet-34 image encoder, so reported gains attribute to the planning head, the supervision strategy, or the fusion architecture rather than to the visual representation. Second, because the \texttt{navtest} split pools four cities, no published NAVSIM number isolates the contribution of representation quality under geographic shift. The thesis exploits this gap by fixing the planner and varying only the backbone under a strict city-disjoint protocol, which makes representation quality the only manipulated variable.
-
-% ============================================================================
-\section{Diffusion Models for Trajectory Planning}
-\label{sec:rw-diffusion}
-
-Diffusion models \cite{ho-ddpm-2020} reverse a Markovian Gaussian noising process and model multi-modal distributions without mode averaging. DDIM samplers \cite{song-ddim-2021}, classifier-free guidance \cite{ho-cfg-2022}, and consistency models \cite{song-consistency-2023} reduced the number of denoising steps from hundreds to two or fewer, which is what made diffusion tractable for real-time planning in DiffusionDrive (Section~\ref{sec:bg-diffusiondrive}).
-
-Diffusion entered trajectory planning with Diffuser \cite{janner-diffuser-2022}, which denoised entire state-action trajectories with classifier guidance for rewards and inpainting for goals. Diffusion Policy applied conditional DDPMs to visuomotor manipulation and reported a 46.9\% relative improvement over prior behavioral cloning across twelve tasks, precisely because diffusion heads model the multi-modal action distributions that a regression head averages away \cite{chi-diffusion-policy-2023}. MotionDiffuser extended diffusion to multi-agent motion prediction with PCA-compressed trajectory latents and differentiable-cost guidance, and is the closest predecessor to DiffusionDrive \cite{jiang-motiondiffuser-2023}. Anchor-based alternatives include MTR, which introduced learnable motion-query pairs with joint global intention localization and local refinement \cite{shi-mtr-2022}, and MultiPath++, which replaced fixed anchors with learned latent anchors and became a dominant Waymo Open Motion baseline \cite{varadarajan-multipathpp-2022}.
-
-\textbf{Gap.} The 46.9\% Diffusion Policy improvement provides the clearest available evidence that diffusion heads preserve multi-modal structure that regression heads collapse. If that difference matters under geographic shift, SSL backbones should interact asymmetrically with the two head types. No published NAVSIM ablation varies the head under a fixed backbone and a controlled cross-city holdout. RQ5 targets that gap.
-
-% ============================================================================
-\section{Reinforcement-Learning Post-Training for Planning}
-\label{sec:rw-rl}
-
-RLHF established the canonical three-stage pipeline of supervised fine-tuning, reward-model learning, and PPO-based policy optimization \cite{ouyang-rlhf-2022}. DPO re-parameterizes preference pairs directly into the policy without an explicit reward model \cite{rafailov-dpo-2023}. GRPO replaces the value function of PPO with group-relative advantages computed within sampled rollouts, which avoids critic instability under sparse metric rewards \cite{grpo-2024}.
-
-Recent driving papers import these preference- and reward-optimization algorithms into planning; \reftab{tab:rw-rl-planning} summarizes the relevant numbers. The common limitation is that the headline evaluations remain pooled or otherwise not city-disjoint, so they do not answer whether post-training gains survive geographic transfer.
-
-\begin{table}[ht]
-\centering
-\caption{RL and preference-optimization planning results relevant to RQ6.}
-\label{tab:rw-rl-planning}
-\small
-\renewcommand{\arraystretch}{1.15}
-\setlength{\tabcolsep}{5pt}
-\begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.0cm} >{\raggedright\arraybackslash}p{4.0cm} >{\raggedright\arraybackslash}p{4.6cm}@{}}
-\toprule
-\textbf{Work} & \textbf{Optimization idea} & \textbf{Reported result / limitation} \\
-\midrule
-TrajHF~\cite{li-trajhf-2025} & GRPO on PDMS-plus-preference reward & 94.0 PDMS, pooled evaluation \\
-DriveDPO~\cite{shang-drivedpo-2025} & Iterative trajectory-level DPO & 90.0 PDMS with ResNet-34 \\
-TISA-DPO~\cite{tisadpo-2025} & Spatial alignment plus multi-objective DPO & 89.8 PDMS \\
-Diffusion\-DriveV2~\cite{liang-diffusiondrive-v2-2025} & Truncated GRPO variants & 91.2 PDMS v1, 85.5 EPDMS v2 \\
-RAD~\cite{gao-rad-2025} & Closed-loop RL in 3DGS environments & Threefold collision-rate reduction on held-out environments \\
-CaRL~\cite{jaeger-carl-2025} & Route-completion reward at scale & 500M samples; 91.3 non-reactive / 90.6 reactive Val14 \\
-AlphaDrive~\cite{jiang-alphadrive-2025} & GRPO at VLM meta-action level & Four planning rewards; not a city-disjoint result \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\textbf{Gap.} None of TrajHF, DriveDPO, TISA-DPO, or DiffusionDriveV2 reports an explicit cross-city evaluation. Each evaluates on the pooled \texttt{navtest} split and relies on in-distribution generalization to report headline numbers. Whether GRPO or DPO gains survive geographic transfer is therefore an open question, and RQ6 treats it as exploratory.
+The limitation of this literature, for the thesis's purpose, is twofold. Published SSL-for-driving results routinely mix pretraining geography with downstream evaluation geography, so transfer gains cannot be attributed cleanly to the SSL objective rather than to pretraining-data overlap. When multiple SSL objectives are compared, the comparison is typically confined to one downstream task and one backbone. The thesis addresses both by fixing the planner, varying only the backbone, and evaluating under a strict city-disjoint protocol.
 
 % ============================================================================
 \section{Cross-City and Geographic Generalization}
 \label{sec:rw-dg}
 
-The broad domain-generalization literature is surveyed in \cite{wang-domain-gen-survey-2022,zhou-domain-gen-survey-2023}. The most important methodological message from that literature for this thesis is that reported DG improvements are frequently attributable to hyperparameter search budget rather than to method design: DomainBed showed that empirical risk minimization matches or exceeds roughly twenty DG methods on all seven benchmarks under careful model selection \cite{gulrajani-domainbed-2021}. This motivates the choice in this thesis to change only the backbone initialization rather than the DG training procedure. Classical DG techniques for driving, including IRM \cite{arjovsky-irm-2019}, GroupDRO \cite{sagawa-groupdro-2020}, and DANN \cite{ganin-dann-2015}, are therefore referenced for completeness but not used as baselines.
+Classical domain-generalization methods including IRM~\cite{arjovsky-irm-2019}, GroupDRO~\cite{sagawa-groupdro-2020}, and DANN~\cite{ganin-dann-2015} are reviewed extensively in~\cite{wang-domain-gen-survey-2022,zhou-domain-gen-survey-2023}. DomainBed~\cite{gulrajani-domainbed-2021} reported that empirical risk minimization matches or exceeds about twenty DG methods on seven benchmarks under careful model selection, and this result is why the thesis changes backbone initialization rather than the DG training procedure.
 
-Most driving-specific DG work concentrates on appearance-level shift, as discussed in Section~\ref{sec:bg-domain-gen}. Representative methods include ACDC \cite{sakaridis-acdc-2021}, DAFormer \cite{hoyer-daformer-2022}, HRDA \cite{hoyer-hrda-2022}, DACS \cite{tranheden-dacs-2021}, CyCADA \cite{pan-cycada-2018}, and CARLA's train-town/test-town protocol \cite{dosovitskiy-carla-2017}.
+Most driving-specific DG work concentrates on appearance-level shift such as weather, lighting, and season. ACDC~\cite{sakaridis-acdc-2021}, DAFormer~\cite{hoyer-daformer-2022}, HRDA~\cite{hoyer-hrda-2022}, DACS~\cite{tranheden-dacs-2021}, CyCADA~\cite{pan-cycada-2018}, and the CARLA train-town/test-town protocol~\cite{dosovitskiy-carla-2017} are representative. Geographic shift is studied earlier at the perception level: Chen et al.~\cite{chen-crosscity-2017} provide the first explicit cross-city UDA benchmark; Beery et al.~\cite{beery-cameratrap-2018} and de Vries et al.~\cite{devries-geobias-2019} document geographic accuracy drops in visual recognition; GeoNet~\cite{kalluri-geonet-2023} formalizes unsupervised adaptation across geographies.
 
-Cross-city work has historically targeted perception rather than planning. Chen et al.\ provided the first explicit cross-city UDA benchmark, adapting Cityscapes-trained segmenters to Rome, Rio de Janeiro, Tokyo, and Taipei via static-object priors \cite{chen-crosscity-2017}. Beery et al.\ documented that camera-trap animal-recognition accuracy collapses at new locations because of background and context bias, an early demonstration that geographic generalization is structurally harder than pooled evaluation suggests \cite{beery-cameratrap-2018}. de Vries et al.\ reported substantial accuracy drops for commercial object recognizers on household images from low-income and non-Western countries \cite{devries-geobias-2019}. GeoNet formalized unsupervised adaptation across geographies \cite{kalluri-geonet-2023}. These studies demonstrate that geographic shift produces large and often asymmetric accuracy drops, but none evaluates closed-loop planning consequences.
-
-The planning-level cross-city literature is sparse. VLP reports Boston-to-Singapore and Singapore-to-Boston planning L2 and collision rates, but only as aggregate pairs without analyzing directional asymmetry \cite{pan-vlp-2024}. Trajectory-prediction work including GTG \cite{gtg-2025} and PCM \cite{pcm-2026} pursues city-invariant representations, but at the prediction layer rather than at full end-to-end planning. Naeinian et al.\ \cite{naeinian-cross-city-2026} is the direct precursor to this thesis. It introduces strict city-disjoint evaluation across the four NAVSIM cities for both open-loop nuScenes and closed-loop NAVSIM protocols, and it reports that the choice between supervised and self-supervised backbones measurably changes cross-city behavior while the planner is held fixed. It also documents a directional asymmetry in which Boston-to-Singapore transfer is markedly harder than Singapore-to-Boston, and appears to be the only end-to-end driving work that explicitly quantifies that asymmetry.
-
-\textbf{Gap.} Cross-city transfer at the planning level is essentially undocumented outside the Naeinian et al.\ study. Directional asymmetry is rarely quantified. This thesis extends that protocol to deeper backbone comparisons, additional planners including DiffusionDrive, and the mechanistic analysis of the mechanistic analysis.
+Cross-city transfer at the planning level is much sparser. VLP~\cite{pan-vlp-2024} reports Boston-to-Singapore and Singapore-to-Boston planning L2 and collision rates, but without analysing directional asymmetry. Trajectory-prediction systems such as GTG~\cite{gtg-2025} and PCM~\cite{pcm-2026} pursue city-invariant representations at the prediction layer rather than the full planning layer. Naeinian et al.~\cite{naeinian-cross-city-2026} is the direct precursor to this thesis: it introduces strict city-disjoint evaluation across the four NAVSIM cities for both open-loop nuScenes and closed-loop NAVSIM, and it documents a directional asymmetry in which Boston-to-Singapore transfer is materially harder than Singapore-to-Boston. This thesis extends that protocol, adds a NAVSIM v1.1 re-evaluation, broadens the backbone comparison, integrates DiffusionDrive, and adds the mechanistic analysis in Chapter~\ref{chap:experiments}.
 
 % ============================================================================
-\section{Mechanistic Analysis of Learned Representations}
-\label{sec:rw-mechanistic}
+\section{Diffusion-Based Trajectory Planning}
+\label{sec:rw-diffusion}
 
-the mechanistic analysis uses a coordinated toolkit to test whether SSL features are geographically more invariant than supervised features at the representation level. Centered Kernel Alignment measures similarity between hidden layers invariant to orthogonal transformation and isotropic scaling, and is the standard tool for cross-model representation comparison \cite{kornblith-cka-2019}. SVCCA is its canonical-correlation predecessor \cite{raghu-svcca-2017}. Linear probing freezes the backbone and trains a linear classifier per layer \cite{alain-linearprobe-2017}. In this thesis it is repurposed as a city-classification probe: the extent to which city identity can be linearly decoded from frozen backbone features provides a direct measure of geographic information leakage into the representation. Maximum Mean Discrepancy provides a non-parametric RKHS distance between feature distributions conditioned on city \cite{gretton-mmd-2012}. Effective rank quantifies representational diversity through the exponential of normalized-singular-value entropy \cite{roy-effrank-2007}, and is used here to test whether SSL backbones maintain higher-dimensional feature subspaces under geographic shift than supervised backbones. Attention-relevance propagation produces class-specific saliency in ViTs through relevance propagation across attention and skip connections \cite{chefer-attention-2021}. Attention rollout \cite{abnar-rollout-2020} and Grad-CAM \cite{selvaraju-gradcam-2017} provide complementary visualizations. Representational Similarity Analysis compares systems through pairwise dissimilarity matrices and bridges neuroscience and deep-network analysis \cite{kriegeskorte-rsa-2008}.
+Diffusion models~\cite{ho-ddpm-2020} reverse a Gaussian noising process and can model multi-modal action distributions without the mode averaging that regression heads produce. DDIM sampling~\cite{song-ddim-2021}, classifier-free guidance~\cite{ho-cfg-2022}, and consistency models~\cite{song-consistency-2023} reduce the number of denoising steps enough to make diffusion tractable for real-time planning.
 
-\textbf{Gap.} No prior work in end-to-end driving combines CKA, city-classification linear probing, MMD, effective rank, and attention-relevance visualization on the same set of backbones under a strict cross-city holdout. This combination is what the mechanistic analysis introduces.
+In robotics, Diffuser~\cite{janner-diffuser-2022} first denoised entire state-action trajectories with classifier guidance for rewards. Diffusion Policy~\cite{chi-diffusion-policy-2023} applied conditional DDPMs to visuomotor manipulation and reported a $46.9\%$ relative improvement over prior behavioural cloning across twelve tasks, which is the clearest published evidence that diffusion heads preserve multi-modal structure that regression heads collapse. MotionDiffuser~\cite{jiang-motiondiffuser-2023} extends diffusion to multi-agent motion prediction, and anchor-based alternatives such as MTR~\cite{shi-mtr-2022} and MultiPath++~\cite{varadarajan-multipathpp-2022} introduce learned latent anchors that inform the DiffusionDrive head used here.
 
-% ============================================================================
-\section{Consolidated Gap Analysis}
-\label{sec:rw-gaps}
-
-Seven gaps emerge from the literature reviewed above, each supporting one or more research questions.
-
-\begin{description}
-    \item[Gap A (RQ1).] \textbf{SSL for driving planning is underexplored.} The SSL-for-driving literature concentrates on LiDAR and BEV perception. Only Drive-JEPA \cite{wang-drive-jepa}, LAW \cite{li-law-2024}, and the earlier Juneja et al.\ study \cite{juneja-dino-e2e-2024} address the planning objective directly with SSL-initialized encoders. None of them conducts a head-to-head comparison among joint-embedding (DINOv2), masked (MAE), and latent-predictive (I-JEPA) objectives on the same planner under matched compute. The thesis closes this gap by fixing LAW, TransFuser, and DiffusionDrive as planners and varying the backbone across the three SSL families and two supervised baselines.
-    
-    \item[Gap B (RQ1, RQ2, RQ3).] \textbf{Planning-level cross-city transfer is largely undocumented.} Cross-city adaptation has been studied at the perception level since Chen et al.\ \cite{chen-crosscity-2017}, but the planning literature overwhelmingly reports pooled in-distribution PDMS. Naeinian et al.\ \cite{naeinian-cross-city-2026} is the first strictly city-disjoint planning study across the four NAVSIM cities, and this thesis extends that protocol.
-    
-    \item[Gap C (RQ5).] \textbf{The interaction between planning head and OOD robustness is unquantified.} Published NAVSIM ablations compare heads only under in-distribution evaluation. No prior work varies regression, anchor-scoring, and diffusion heads under a fixed backbone and a controlled cross-city holdout.
-    
-    \item[Gap D (RQ3, the mechanistic analysis).] \textbf{Mechanistic SSL-versus-supervised analyses have not been conducted on driving backbones under geographic shift.} Prior work applied CKA, attention analysis, and shape-bias probes to ImageNet classifiers \cite{walmer-vit-compare-2023,grigg-ssl-cka-2021,park-vitsslstudy-2023}. No prior work applies CKA, city-classification linear probing, MMD between city-conditional feature distributions, and effective-rank analysis to driving backbones under a strict geographic holdout.
-    
-    \item[Gap E (RQ4).] \textbf{Camera-only SSL plus truncated diffusion is not benchmarked against heavier multi-modal systems.} PRIX \cite{trivedi-prix-2025} demonstrates that a camera-only planner can reach 87.8 PDMS with a specialized recalibration module, and DiffusionDrive uses camera-plus-LiDAR fusion. No published result combines a camera-only I-JEPA backbone with a DiffusionDrive-style truncated diffusion head.
-    
-    \item[Gap F (RQ6).] \textbf{RL post-training is evaluated in-distribution.} TrajHF \cite{li-trajhf-2025}, DriveDPO \cite{shang-drivedpo-2025}, TISA-DPO \cite{tisadpo-2025}, and DiffusionDriveV2 \cite{liang-diffusiondrive-v2-2025} all evaluate on the pooled \texttt{navtest} split. RAD's 3DGS held-out environments and CaRL's multi-city nuPlan scaling provide partial analogs but not geographic holdouts. Whether GRPO or DPO gains transfer to unseen cities is therefore open.
-    
-    \item[Gap G (RQ2, the mechanistic analysis).] \textbf{Directional asymmetries in cross-city transfer are rarely documented.} The perception literature is aware of asymmetric geographic bias through Beery et al.\ \cite{beery-cameratrap-2018} and de Vries et al.\ \cite{devries-geobias-2019}, but the driving literature typically reports only aggregate pair-wise numbers. The thesis treats directional asymmetry as a first-class outcome variable and connects it to linear-probing results on city classification in the mechanistic analysis.
-\end{description}
-
-\noindent
-These seven gaps define the empirical contribution of the thesis. Five studies provide the mechanism to test each one: the exploratory lightweight-head study establishes that an I-JEPA backbone with a minimal MLP waypoint head is a viable starting point on NAVSIM; the cross-city SSL benchmark varies the backbone under a strict city-disjoint LAW and TransFuser protocol; the generative-planning study and the cross-city generative study integrate a DiffusionDrive truncated-diffusion head with SSL backbones to test the head-representation interaction; and the mechanistic analysis applies CKA, city-classification linear probing, MMD, effective rank, and attention-relevance visualization to test whether the observed generalization gains arise from representation-level geographic invariance rather than from planner expressivity. Together, these studies position the thesis to evaluate, rather than to assume, the central claim that cross-city generalization is a representation problem and that self-supervised pretraining substantially attenuates it.
+For planning on NAVSIM, DiffusionDrive~\cite{jia-diffusiondrive-2025} is the reference diffusion planner and the one integrated with SSL backbones in Chapter~\ref{chap:experiments}. Related generative NAVSIM planners include GoalFlow~\cite{xing-goalflow-2025} and TransDiffuser~\cite{jiang-transdiffuser-2025}, which report high pooled PDMS but do not evaluate under city-disjoint splits. No published NAVSIM ablation varies the planning head under a fixed backbone and a controlled cross-city holdout; that gap is what the cross-city DiffusionDrive protocol in Chapter~\ref{chap:methodology} specifies, and the completed mixed-city DiffusionDrive results in Chapter~\ref{chap:experiments} cover the in-distribution half of the question.

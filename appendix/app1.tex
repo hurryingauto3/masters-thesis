@@ -6,7 +6,7 @@
 \section{Per-Metric PDMS Decomposition}
 \label{app:per-metric}
 
-NAVSIM's aggregate PDMS is a weighted combination of five sub-scores: no-at-fault collisions (NC), drivable-area compliance (DAC), ego progress (EP), time-to-collision (TTC), and comfort. The cross-city matrices in the main text report only the aggregate, which is the primary robustness indicator used by every thesis claim. A decomposition into the five components is informative in principle --- it isolates whether cross-city degradation is dominated by geometry-aware sub-scores (DAC, EP) or by agent-interaction sub-scores (NC, TTC) --- but is not needed for any claim defended here.
+NAVSIM's aggregate PDMS is a weighted combination of five sub-scores: no-at-fault collisions (NC), drivable-area compliance (DAC), ego progress (EP), time-to-collision (TTC), and comfort. The cross-city matrices in the main text report only the aggregate, which is the primary robustness indicator used by every thesis claim. A decomposition into the five components is informative in principle, because it isolates whether cross-city degradation is dominated by geometry-aware sub-scores (DAC, EP) or by agent-interaction sub-scores (NC, TTC), but is not needed for any claim defended here.
 
 On structural grounds, the expected pattern under city shift is:
 
@@ -26,7 +26,7 @@ This data card documents the scene-count imbalance inherent in the nuPlan-derive
 
 \input{appendix/tab_city_splits}
 
-The imbalance is severe: Las Vegas contributes $818$ training logs against Singapore's $97$. This is a consequence of the original nuPlan capture plan rather than a decision on our part; the NAVSIM benchmark inherits the imbalance directly. For every cross-city benchmark single-city result where the Singapore-trained row underperforms, the reader should ask whether the effect reflects a representation difference or a data-scale difference. The mechanistic feature-rank analysis (\refsec{sec:exp-implicit-reg}) finds that the three most extreme feature-rank collapses involve either trainable ViTs on all-city data (not a small-data regime) or frozen ViTs on single-city non-Singapore runs --- so the small-data hypothesis is not a clean explanation. Still, the imbalance is a confounder the reader should hold in mind; disentangling it fully requires a data-efficiency study that is out of scope for this thesis.
+The imbalance is severe: Las Vegas contributes $818$ training logs against Singapore's $97$. This is a consequence of the original nuPlan capture plan rather than a decision on our part; the NAVSIM benchmark inherits the imbalance directly. For every cross-city benchmark single-city result where the Singapore-trained row underperforms, the reader should ask whether the effect reflects a representation difference or a data-scale difference. The mechanistic feature-rank analysis (\refsec{sec:exp-implicit-reg}) finds that the three most extreme feature-rank collapses involve either trainable ViTs on all-city data (not a small-data regime) or frozen ViTs on single-city non-Singapore runs, so the small-data hypothesis is not a clean explanation. Still, the imbalance is a confounder the reader should hold in mind; disentangling it fully requires a data-efficiency study that is out of scope for this thesis.
 
 % ============================================================================
 \section{Per-Study Hyperparameter Tables}

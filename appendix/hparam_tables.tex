@@ -21,7 +21,7 @@
 
 \begin{table}[ht]
     \centering
-    \caption[Training recipe: TransFuser / Latent TransFuser.]{Training recipe for every TransFuser and Latent TransFuser row behind the v1.1 cross-city matrix in~\reftab{tab:navsim_pdms_merged_v11}. The recipe reproduces the original TransFuser paper exactly: plain Adam (not AdamW), no weight decay, no learning-rate schedule, and gradient clipping at $1.0$. Deviations from this recipe --- adding AdamW, weight decay, or a cosine schedule --- silently regress all-city PDMS by more than thirty percentage points with no explicit error, which is why the recipe is documented in full here rather than abbreviated.}
+    \caption[Training recipe: TransFuser / Latent TransFuser.]{Training recipe for every TransFuser and Latent TransFuser row behind the v1.1 cross-city matrix in~\reftab{tab:navsim_pdms_merged_v11}. The recipe reproduces the original TransFuser paper exactly: plain Adam (not AdamW), no weight decay, no learning-rate schedule, and gradient clipping at $1.0$. Deviations from this recipe (adding AdamW, weight decay, or a cosine schedule) silently regress all-city PDMS by more than thirty percentage points with no explicit error, which is why the recipe is documented in full here rather than abbreviated.}
     \label{tab:hparam-phase1-tf}
     \small
     \begin{tabular}{ll}

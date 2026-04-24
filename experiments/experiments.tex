@@ -4,7 +4,7 @@
 
 %% This chapter presents all experimental results.
 %% Structure: 4 phases matching the methodology, plus "Why SSL Works" analysis.
-%% Approx. 20 pages — the core of the thesis.
+%% Approx. 20 pages (the core of the thesis).
 
 % ============================================================================
 \section{Baseline Validation}
@@ -288,7 +288,7 @@ The in-distribution story is intentionally unspectacular. \reftab{tab:exp-law-in
 
 \begin{table}[ht]
 \centering
-\caption[Mixed-city LAW results on nuScenes.]{Representative mixed-city LAW results on nuScenes. Models are trained on the pooled Boston$+$Singapore nuScenes split and evaluated on the held-out pooled validation set. Columns report L2 displacement error (metres) and collision rate (percent); lower is better for both. These pooled numbers intentionally do not separate the two cities --- the purpose is to show the regime in which all backbones look approximately interchangeable, which motivates the cross-city splits used in the rest of this section.}
+\caption[Mixed-city LAW results on nuScenes.]{Representative mixed-city LAW results on nuScenes. Models are trained on the pooled Boston$+$Singapore nuScenes split and evaluated on the held-out pooled validation set. Columns report L2 displacement error (metres) and collision rate (percent); lower is better for both. These pooled numbers intentionally do not separate the two cities; the purpose is to show the regime in which all backbones look approximately interchangeable, which motivates the cross-city splits used in the rest of this section.}
 \label{tab:exp-law-indist}
 \small
 \renewcommand{\arraystretch}{1.15}
@@ -416,7 +416,7 @@ The generative-planning study revisits in-distribution NAVSIM under a planner th
 \toprule
 \textbf{Exp} & \textbf{Backbone} & \textbf{Modality} & \textbf{Frozen} & \textbf{PDMS (\%)} \\
 \midrule
-A12    & ResNet-34                      & C+L & ---       & $\mathbf{87.9}$ \\
+A12    & ResNet-34                      & C+L & --        & $\mathbf{87.9}$ \\
 A12-o  & MAE (rect, trainable)          & C+L & No        & $86.9$ \\
 A12-u  & MAE (sq, trainable)            & C+L & No        & $86.8$ \\
 A10-p  & I-JEPA nuSc (sq, frozen)       & C+L & Yes       & $86.3$ \\
@@ -428,7 +428,7 @@ A12-p  & MAE nuSc (rect, frozen)        & C+L & Yes       & $85.5$ \\
 A12-r  & DINOv2 nuSc (rect, frozen)     & C+L & Yes       & $85.4$ \\
 A10-j  & I-JEPA nuSc (rect, frozen)     & C+L & Yes       & $85.2$ \\
 \midrule
-A13    & ResNet-34                      & C   & ---       & $\mathbf{86.6}$ \\
+A13    & ResNet-34                      & C   & --        & $\mathbf{86.6}$ \\
 A13-h  & I-JEPA nuSc (rect, frozen)     & C   & Yes       & $85.8$ \\
 A13-b  & MAE nuSc (sq, frozen)          & C   & Yes       & $83.5$ \\
 A13-l  & DINOv2 nuSc (sq, frozen)       & C   & Yes       & $81.5$ \\
@@ -448,7 +448,7 @@ The all-city rows in Table~\ref{tab:diffusiondrive-allcity} mirror the cross-cit
 
 The camera-only rows in Table~\ref{tab:diffusiondrive-allcity} characterise what a LiDAR-free DiffusionDrive sees when the image encoder is varied. The supervised ResNet-34 baseline (A13) reaches $86.6$~PDMS, which is only $1.3$~points below the corresponding camera$+$LiDAR configuration (A12, $87.9$~PDMS). Among the camera-only SSL variants that are currently scored, rectangular frozen I-JEPA ViT-S/14 (A13-h) reaches $85.8$~PDMS, while square frozen MAE (A13-b, $83.5$), square frozen DINOv2 (A13-l, $81.5$), and square trainable I-JEPA (A13-j, $76.1$) sit further back. On the completed camera-only evidence alone, ResNet-34 still leads its frozen-SSL substitutes by $0.8$--$10.5$ percentage points depending on the SSL variant, and no camera-only SSL row beats the camera$+$LiDAR supervised baseline.
 
-These values are read as an upper bound on how much the missing geometric channel can be recovered with the image-encoder swap inside DiffusionDrive's anchor-and-denoise head; they are not read as evidence that SSL replaces LiDAR. One camera-only SSL configuration that matches the in-distribution frozen-SSL camera+LiDAR leader on geometry and pre-training --- I-JEPA ViT-S/14 nuScenes \emph{square}, frozen --- has not yet been trained under the LiDAR-free head, and is held as the remaining camera-only slot rather than folded into the comparison. The completed rows are read as is, and a final tightening of the camera-only story is deferred to future work.
+These values are read as an upper bound on how much the missing geometric channel can be recovered with the image-encoder swap inside DiffusionDrive's anchor-and-denoise head; they are not read as evidence that SSL replaces LiDAR. One camera-only SSL configuration, I-JEPA ViT-S/14 nuScenes \emph{square} frozen, matches the in-distribution frozen-SSL camera+LiDAR leader on geometry and pre-training, but has not yet been trained under the LiDAR-free head; it is held as the remaining camera-only slot rather than folded into the comparison. The completed rows are read as is, and a final tightening of the camera-only story is deferred to future work.
 
 \subsection{Frozen vs.\ Fine-Tuned Backbone}
 \label{sec:exp-phase2-frozen}
@@ -459,89 +459,11 @@ Within DiffusionDrive, the I-JEPA rows in Table~\ref{tab:diffusiondrive-allcity}
 \section{Cross-City Generative Planning (Active Validation)}
 \label{sec:exp-phase3}
 
-The cross-city generative study extends the representation-centric cross-city benchmark into the generative-planning regime. The protocol is already defined and the training pipeline is running, but the full matrix is not yet complete. This section is therefore presented as \emph{active validation} rather than as completed evidence: it specifies the design, success criteria, and interpretation rules in advance, and the thesis conclusions are written so that they do not depend on these runs finishing before the defense freeze.
-
-\subsection{Rationale}
-\label{sec:exp-phase3-rationale}
-
-Two observations from the preceding studies motivate the cross-city generative study. First, Drive-JEPA~\cite{wang-drive-jepa} showed that mixed-city NAVSIM is no longer informative about a backbone's cross-city invariance --- a sufficiently strong generative planner closes the in-distribution gap regardless of backbone, which is precisely the effect our generative-planning results replicate for DiffusionDrive. Second, our earlier cross-city benchmark~\cite{naeinian-cross-city-2026} showed that geographic shift is the regime in which representation choice becomes load-bearing for the lightweight LAW and TransFuser heads.
-
-The cross-city generative study asks whether that second observation survives the substitution of a generative planner for a regression one \emph{where the generative planner is hostile to the backbone by construction}. The reading criterion, set in advance and developed in \refsec{sec:meth-dd-success}, is directional: frozen SSL is required to produce a smaller OOD PDMS drop than supervised ResNet-34 in three or more of the four training-city rows for the representation-centric claim to be judged architecture-agnostic. Because DiffusionDrive's K-means anchor initialization, two-step denoising, and grid-sampled BEV conditioning attenuate the backbone's contribution, small absolute PDMS differences at the ratio level (in-distribution over OOD) are the load-bearing quantity; the thesis reports transfer-ratio inflation rather than raw PDMS gaps for this study.
-
-\subsection{Experimental Matrix}
-\label{sec:exp-phase3-matrix}
-
-Two backbones $\times$ four training cities = eight training runs; each run is then evaluated on all four city test sets, for 32 closed-loop evaluations total. The backbones are chosen to pair a supervised baseline with the best generative-planning SSL configuration:
-\begin{itemize}
-    \item \textbf{ResNet-34 (C+L)} --- the all-city A12 configuration (87.9 PDMS, Table~\ref{tab:diffusiondrive-allcity}). Trainable, following the DiffusionDrive recipe.
-    \item \textbf{I-JEPA ViT-S/14 nuScenes rect.\ frozen (C+L)} --- the rectangular nuScenes I-JEPA variant from the generative-planning study ($85.2$~PDMS all-city). The square variant is the stronger all-city reference but the corresponding cross-city training has not been scheduled and is therefore not part of this comparison.
-\end{itemize}
-
-Except for the training-city filter, every other hyperparameter (optimizer, learning rate, epoch count, batch size, anchor bank, denoising steps) is inherited from the generative-planning study's all-city configuration so that the cross-city generative study isolates the effect of geographic shift.
+The cross-city generative study extends the representation-centric benchmark into the generative-planning regime. The protocol pairs a supervised ResNet-34 camera$+$LiDAR DiffusionDrive with a frozen nuScenes-pretrained I-JEPA ViT-S/14 rectangular camera$+$LiDAR DiffusionDrive, trains each backbone on one NAVSIM city, and evaluates both on all four destination cities. The pre-registered reading is directional and uses the hostile-planner criterion defined in~\refsec{sec:meth-dd-success}: frozen SSL must produce a smaller out-of-distribution PDMS drop than supervised ResNet-34 in at least three of the four training-city rows for the representation claim to survive the planner swap. The protocol is reproduced in~\reftab{tab:phase3-plan}.
 
 \input{experiments/tab_phase3_plan}
 
-\subsection{Success Criteria and Falsifiable Tests}
-\label{sec:exp-phase3-predictions}
-
-The cross-city benchmark's v1.1 numbers ground the predictions below. The matched Boston-only Latent TransFuser rows in \reftab{tab:navsim_pdms_merged_v11} set the expected drop scale for the supervised and frozen-I-JEPA families; \reftab{tab:exp-phase3-predictions} turns those reference rows into fixed reading bands.
-
-Pre-committed reading rules are tabulated in \reftab{tab:exp-phase3-predictions}. Cross-city generative numbers will be reported only as they arrive and will be interpreted against these fixed bands rather than against a retrofitted narrative.
-
-\begin{table}[ht]
-\centering
-\caption[Pre-registered reading bands for the cross-city generative study.]{Pre-registered reading bands for the cross-city generative study, fixed before any of its runs completed. The \emph{Band} column is the numerical range predicted for a given quantity under the representation-centric hypothesis; the \emph{Falsification / reading rule} column specifies how to interpret values that fall inside or outside that range. Bands are derived from the matched Boston-only Latent TransFuser rows in~\reftab{tab:navsim_pdms_boston_v11} together with the roughly two-point mixed-city uplift observed for DiffusionDrive in~\reftab{tab:diffusiondrive-allcity}. The \emph{OOD drop ratio} is the ResNet-34 OOD drop divided by the frozen I-JEPA OOD drop; values above $1$ indicate that supervised transfer degrades more than SSL transfer.}
-\label{tab:exp-phase3-predictions}
-\small
-\setlength{\tabcolsep}{5pt}
-\renewcommand{\arraystretch}{1.2}
-\begin{tabular}{@{}>{\raggedright\arraybackslash}p{4.4cm} >{\raggedright\arraybackslash}p{3.6cm} >{\raggedright\arraybackslash}p{4.6cm}@{}}
-\toprule
-\textbf{Prediction} & \textbf{Band} & \textbf{Falsification / reading rule} \\
-\midrule
-Single-city in-distribution PDMS, both backbones & $60$--$65$ & Values outside indicate the DD uplift or the LatTF baseline is misestimated \\
-ResNet-34 OOD drop & $15$--$20$ pp & $<15$ weakens RQ5; $>20$ strengthens it \\
-I-JEPA (frozen) OOD drop & $8$--$12$ pp & $<8$ strongly supports the representation claim \\
-OOD drop ratio (Rn34/IJEPA) & $\approx 2\times$ & $<1.5\times$: weak evidence against; $>2.5\times$: strong confirmation \\
-MAE-based DD (secondary) & Lowest OOD drop if added & From \reftab{tab:family-aggregate}: MAE frozen LatTF total $64.2$, drop $6.9$ \\
-Singapore single-city row & Dominated by data scale & Separable from drop comparison by conditioning on LV / B / P \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\subsection{Link to the Mechanistic Analysis}
-\label{sec:exp-phase3-mechanism}
-
-The representation-level findings of \refsec{sec:exp-why-ssl} constrain the space of possible cross-city generative outcomes. If the mechanism is correctly identified as ``supervised-trainable backbones drift toward city-specific cues; frozen SSL backbones do not,'' then the cross-city generative study should reproduce the same probe ordering under DiffusionDrive. \reftab{tab:exp-phase3-probe-expectations} states the expected probe bands; because the frozen planner does not update the backbone, the city-ID probe should remain close to the corresponding TransFuser value.
-
-\begin{table}[ht]
-\centering
-\caption[Pre-registered probe bands for the cross-city generative study.]{Pre-registered city-ID probe bands for the cross-city generative study, stated before those runs' features were probed. Each row ties a backbone family to a narrow accuracy range, justified on the same ``supervised trainable features drift toward city-specific cues; frozen SSL features do not'' logic that is developed from the mechanistic analysis in~\refsec{sec:exp-why-ssl}. A value inside the band is consistent with the hypothesis that the representation effect is planner-invariant; a value outside the band falsifies that hypothesis for this planner.}
-\label{tab:exp-phase3-probe-expectations}
-\small
-\renewcommand{\arraystretch}{1.15}
-\setlength{\tabcolsep}{6pt}
-\begin{tabular}{@{}>{\raggedright\arraybackslash}p{4.5cm} c >{\raggedright\arraybackslash}p{5.2cm}@{}}
-\toprule
-\textbf{Backbone family} & \textbf{Expected probe acc.} & \textbf{Reason} \\
-\midrule
-ResNet-34 DiffusionDrive & 0.97--0.98 & Same supervised ResNet family as the LAW/TransFuser runs \\
-I-JEPA frozen DiffusionDrive & $\approx 0.83$ & Frozen SSL weights match the F1-I1 representation regime \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-If that probe prediction holds and the OOD-drop prediction above also holds, the representation claim is planner-invariant. If either fails, the mechanism as currently characterized is incomplete and the discussion in \refsec{sec:exp-why-synthesis} will need to admit a planner dependency.
-
-\subsection{Scheduling Note}
-\label{sec:exp-phase3-schedule}
-
-At the time of writing, three of the eight cross-city generative jobs (both Boston- and Pittsburgh-trained supervised ResNet-34, and Pittsburgh-trained frozen I-JEPA) have produced results, and five are still running. Because the supervised-vs-SSL pairing that the reading criterion depends on is not yet complete across the remaining training cities, these early rows are not treated as directional evidence and are not folded into the thesis claim. The matrix therefore remains an active validation study rather than a completed thesis result: if matched families finish before the defense freeze they will be reported as an addendum, and otherwise the thesis conclusions stand as written.
-
-\subsection{The ``1\% In-Distribution, 10\% OOD'' Rule}
-\label{sec:exp-phase3-narrative}
-
-Even before the cross-city generative study is populated, the project already supports a practical summary. On standard mixed-city training, SSL costs roughly a percentage point of PDMS relative to the strongest supervised all-city configuration (see the generative-planning gaps in \reftab{tab:diffusiondrive-allcity}). Under explicit city shift, that trade-off reverses: the representation becomes the dominant term, and frozen SSL backbones transfer far more stably (\reftab{tab:family-aggregate}). Accepting slightly lower mixed-city PDMS becomes a reasonable price to pay for substantially smaller geographic failure modes. The cross-city generative study tests whether this rule survives the planner swap; until that matrix completes, the rule is a completed claim about the lightweight and benchmark studies, not about planner invariance.
+At the time of writing, three of the eight training jobs have produced results (supervised ResNet-34 trained on Boston and Pittsburgh, and frozen I-JEPA trained on Pittsburgh); five are still running. The supervised-vs-SSL pairing the reading criterion depends on is therefore incomplete on three of the four training cities, so these early rows are not treated as directional evidence and are not folded into the thesis claim. This section remains active validation: if the matched matrix completes before the defence freeze it will be reported as an addendum, and otherwise the thesis conclusions in Chapter~\ref{chap:conclusions} stand as written. The practical summary from the completed studies is unchanged: in the evaluated settings, SSL costs at most a percentage point of mixed-city PDMS relative to the strongest supervised all-city configuration (\reftab{tab:diffusiondrive-allcity}) and materially reduces cross-city transfer penalty (\reftab{tab:navsim_pdms_boston_v11}, \reftab{tab:family-aggregate}). Whether that rule extends to the generative-planner cross-city regime depends on a matrix this thesis does not defend.
 
 % ============================================================================
 \section{Why Does SSL Improve Driving Planning?}
@@ -645,7 +567,7 @@ Across the full roster the story is more nuanced. The pooled correlation and the
 \begin{figure}[t]
     \centering
     \includegraphics[width=\textwidth]{phase4/scatter_probe_vs_ood_by_training_city.pdf}
-    \caption[Probe accuracy vs.\ OOD drop, stratified by training city.]{Linear-probe city-ID accuracy (x-axis) against train-city-minus-test-city PDMS in percentage points (y-axis), one panel per training city. Within the Boston, Pittsburgh, and Las Vegas panels the expected ordering --- higher probe accuracy corresponds to a larger OOD drop --- is visible as an upward trend; within the Singapore panel the relationship is flat, reflecting the data-scale and traffic-convention asymmetry already established earlier in the chapter. Pooling across panels washes the signal out; the stratified view is the correct one for reading the mechanism.}
+    \caption[Probe accuracy vs.\ OOD drop, stratified by training city.]{Linear-probe city-ID accuracy (x-axis) against train-city-minus-test-city PDMS in percentage points (y-axis), one panel per training city. Within the Boston, Pittsburgh, and Las Vegas panels the expected ordering (higher probe accuracy corresponds to a larger OOD drop) is visible as an upward trend; within the Singapore panel the relationship is flat, reflecting the data-scale and traffic-convention asymmetry already established earlier in the chapter. Pooling across panels washes the signal out; the stratified view is the correct one for reading the mechanism.}
     \label{fig:probe-vs-ood-stratified}
 \end{figure}
 
@@ -709,7 +631,6 @@ Across the full pool, feature-covariance rank does \emph{not} monotonically pred
 \toprule
 Backbone & Status & Mode & $N$ & Probe & CKA & MMD$^2$ & Eff.\ rank & OOD drop (pp) \\
 \midrule
-ResNet-34 & supervised & TF    & 1\textsuperscript{$\dagger$} & 0.98 & 0.75 & 0.095 & 69.7 & $-4.2$\textsuperscript{$\dagger$} \\
 ResNet-34 & supervised & LatTF & 5  & 0.98 & 0.75 & 0.097 & 63.3 & 8.7 \\
 I-JEPA    & frozen     & TF    & 15 & 0.83 & 0.79 & 0.084 & 66.2 & 11.4 \\
 I-JEPA    & frozen     & LatTF & 15 & 0.83 & 0.77 & 0.081 & 69.0 & 11.6 \\
@@ -725,7 +646,7 @@ MAE       & trainable  & TF    & 15 & 0.85 & 0.76 & 0.107 & 47.5 & 11.7 \\
 MAE       & trainable  & LatTF & 15 & 0.89 & 0.78 & 0.097 & 49.1 & 9.2 \\
 \bottomrule
 \end{tabular}
-\caption[Family-level mechanistic aggregates across the roster.]{Family-level mechanistic aggregates averaged across every analysed run in each cell. Each row is a (backbone family, adaptation mode, planner) cell; the column \emph{$N$} is the number of checkpoints contributing to that cell. \emph{Probe} is linear-probe city-ID classification accuracy; \emph{CKA} is mean off-diagonal cross-city linear CKA; \emph{MMD\textsuperscript{2}} is the RBF median-bandwidth biased MMD\textsuperscript{2} averaged over city pairs; \emph{Eff.\ rank} is the Roy--Vetterli effective rank of per-city feature covariance averaged across the four cities; \emph{OOD drop} is train-city minus test-city PDMS in percentage points, read from the canonical v1.1 matrix (\reftab{tab:navsim_pdms_merged_v11}). How to read it: within a matched column pair (e.g.\ frozen TF vs.\ frozen LatTF), differences reflect planner effects at fixed representation; within a row, the pattern across columns traces the mechanistic signal. The trainable supervised ResNet-34 row drifts to the highest probe accuracy and the largest OOD drop; frozen DINOv2 and MAE sit at the opposite corner. \textsuperscript{$\dagger$}The supervised-TransFuser cell is under-populated: only one supervised-TF single-city row was scored for this aggregate (Singapore-trained), whose in-distribution PDMS is pathologically low and whose OOD drop is therefore not a family mean. It is retained only for structural completeness and is not used as load-bearing evidence; the matched supervised-vs-SSL comparison used by the thesis is the Latent TransFuser row of this table, together with \reftab{tab:navsim_pdms_boston_v11}.}
+\caption[Family-level mechanistic aggregates across the roster.]{Family-level mechanistic aggregates averaged across every analysed run in each cell. Each row is a (backbone family, adaptation mode, planner) cell; $N$ is the number of checkpoints contributing. \emph{Probe} is linear-probe city-ID classification accuracy; \emph{CKA} is mean off-diagonal cross-city linear CKA; \emph{MMD\textsuperscript{2}} is the RBF median-bandwidth biased MMD\textsuperscript{2} averaged over city pairs; \emph{Eff.\ rank} is the Roy--Vetterli effective rank of per-city feature covariance averaged across the four cities; \emph{OOD drop} is train-city minus test-city PDMS in percentage points, read from the canonical v1.1 matrix (\reftab{tab:navsim_pdms_merged_v11}). How to read it: within a matched column pair (for example frozen TF against frozen LatTF), differences reflect planner effects at fixed representation; within a row, the pattern across columns traces the mechanistic signal. Trainable supervised ResNet-34 sits at the high-probe, large-OOD-drop corner on the Latent TransFuser row; frozen DINOv2 and MAE sit at the opposite corner. The supervised TransFuser single-city row is omitted from this aggregate because only one checkpoint is available for it (Singapore-trained) and its in-distribution PDMS is degenerate; the matched supervised-vs-SSL comparison used throughout the thesis is therefore the Latent TransFuser row of this table, together with \reftab{tab:navsim_pdms_boston_v11}.}
 \label{tab:family-aggregate}
 \end{table}
 
