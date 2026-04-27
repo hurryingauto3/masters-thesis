@@ -27,23 +27,34 @@ On structural grounds, the expected pattern under city shift is:
 
 \begin{table}[ht]
 \centering
-\caption[Singapore component breakdown for completed cross-city DiffusionDrive rows.]{Singapore destination component scores for the three completed cross-city DiffusionDrive rows. Each row is one trained model evaluated on Singapore. Values are percentages for the five PDMS sub-scores used in the main-text aggregate. The matched Pittsburgh pair is the load-bearing comparison: frozen I-JEPA improves drivable-area compliance on Singapore while leaving the collision-adjacent metrics essentially unchanged.}
+\caption[Singapore component breakdown for the cross-city DiffusionDrive matrix.]{Singapore destination component scores for every cross-city DiffusionDrive row whose training city is not Singapore. Each row is one trained model evaluated on Singapore. Values are percentages for the five PDMS sub-scores used in the main-text aggregate. The table is grouped by training city; within each group, the supervised ResNet-34 row is the comparison anchor and the frozen SSL rows follow. The pattern is consistent across training cities: Singapore transfer failure concentrates in DAC and EP (geometry-sensitive sub-scores) while NC and TTC (collision-adjacent sub-scores) remain stable across backbones.}
 \label{tab:dd-cc-singapore-components}
 \small
 \renewcommand{\arraystretch}{1.15}
 \setlength{\tabcolsep}{5pt}
-\begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.4cm} c c c c c@{}}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.6cm} c c c c c c@{}}
 \toprule
-\textbf{Train $\rightarrow$ test} & \textbf{NC (\%)} & \textbf{DAC (\%)} & \textbf{EP (\%)} & \textbf{TTC (\%)} & \textbf{Comfort (\%)} \\
+\textbf{Train $\rightarrow$ Singapore} & \textbf{PDMS (\%)} & \textbf{NC (\%)} & \textbf{DAC (\%)} & \textbf{EP (\%)} & \textbf{TTC (\%)} & \textbf{Comfort (\%)} \\
 \midrule
-Rn34-bos $\rightarrow$ Singapore & 95.5 & 62.8 & 79.0 & 94.7 & 45.4 \\
-Rn34-pit $\rightarrow$ Singapore & 96.3 & 61.7 & 73.7 & 95.4 & 47.8 \\
-IJSr-pit $\rightarrow$ Singapore & 96.7 & 64.1 & 72.2 & 96.0 & 50.4 \\
+Rn34-bos & $42.4$ & $95.5$ & $62.8$ & $79.0$ & $94.7$ & $45.4$ \\
+IJSr-bos & $47.8$ & $97.6$ & $70.3$ & $70.4$ & $96.7$ & $52.2$ \\
+Dv2r-bos & $46.5$ & $96.6$ & $68.2$ & $72.6$ & $95.5$ & $53.0$ \\
+MAEr-bos & $48.6$ & $97.0$ & $71.6$ & $69.0$ & $96.1$ & $54.5$ \\
+\midrule
+Rn34-pit & $41.4$ & $96.3$ & $61.7$ & $73.7$ & $95.4$ & $47.8$ \\
+IJSr-pit & $43.2$ & $96.7$ & $64.1$ & $72.2$ & $96.0$ & $50.4$ \\
+Dv2r-pit & $45.2$ & $97.5$ & $68.0$ & $69.2$ & $96.3$ & $53.4$ \\
+MAEr-pit & $40.5$ & $95.6$ & $61.3$ & $75.7$ & $94.4$ & $47.0$ \\
+\midrule
+Rn34-veg & $49.8$ & $96.5$ & $64.1$ & $69.1$ & $95.1$ & $98.5$ \\
+IJSr-veg & $50.2$ & $96.9$ & $66.4$ & $67.9$ & $96.1$ & $98.5$ \\
+Dv2r-veg & $50.4$ & $96.4$ & $66.7$ & $66.3$ & $95.8$ & $98.7$ \\
+MAEr-veg & $49.5$ & $96.5$ & $65.5$ & $69.0$ & $95.9$ & $98.6$ \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-The matched Pittsburgh pair is the clearest read. Frozen I-JEPA improves DAC by $2.4$ points on Singapore relative to the supervised ResNet-34 row, while NC and TTC remain within $0.6$ points. The representation gain under cross-city DiffusionDrive therefore shows up in geometry-sensitive compliance rather than in a wholesale change to reactive safety metrics.
+The structure of the table is consistent with the prediction. Within every training-city block, the geometry-sensitive sub-scores (DAC and EP) carry essentially all of the cross-backbone variation: in the Boston-trained block, DAC ranges from $62.8$ for ResNet-34 to $71.6$ for MAE ($+8.8$ points); in the Pittsburgh-trained block, DAC ranges from $61.3$ for MAE to $68.0$ for DINOv2 ($+6.3$ over MAE, $+6.3$ over the supervised baseline). The collision-adjacent sub-scores (NC and TTC) move within at most $2.1$ points across any training-city block, and the comfort score is dominated by the training-city dynamics rather than by the backbone (the Vegas-trained rows all sit near $98.5\%$ regardless of backbone, while the Boston- and Pittsburgh-trained rows sit in the $45$ to $55$ range). The representation gain under cross-city DiffusionDrive therefore attributes to better scene-geometry compliance under shift, not to safer reactive driving or smoother trajectories.
 
 % ============================================================================
 \section{NAVSIM City Splits Data Card}

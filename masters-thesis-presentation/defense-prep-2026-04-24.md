@@ -1,27 +1,32 @@
 # Defense Aid
 
-## Talk spine
-- Main claim: under city-disjoint evaluation, geographic failure in end-to-end driving is strongly mediated by the visual representation.
-- Main empirical result: frozen self-supervised backbones transfer more reliably across cities than supervised baselines when the planner and training city are controlled.
-- Main mechanistic result: in matched settings, better transfer aligns with lower city-decodability and with preservation of feature rank under freezing.
-- Main scope statement: this is not a claim that planner architecture never matters. It is a claim about the dominant effect seen in the completed studies.
+## One-sentence thesis
+Under city-disjoint evaluation, end-to-end driving failure is strongly mediated by the visual representation, and in the evaluated settings frozen self-supervised backbones transfer more reliably across cities than supervised baselines.
+
+## Talk order
+1. Introduction
+2. Background
+3. Related work
+4. Methodology
+5. Experimental results
+6. Discussion, industrial implications, and future work
+7. Conclusion
 
 ## Timing
-- Rehearsed target: 38 to 40 minutes.
-- Introduction and setup: 6 to 7 minutes.
-- Methodology and lightweight-head study: 6 to 7 minutes.
-- Cross-city benchmark and DiffusionDrive: 15 to 17 minutes.
-- Mechanistic analysis: 8 to 9 minutes.
-- Discussion and conclusion: 4 to 5 minutes.
+- Introduction: 5 to 6 minutes
+- Background and related work: 4 to 5 minutes
+- Methodology: 6 to 7 minutes
+- Experimental results: 17 to 19 minutes
+- Discussion, industrial implications, future work, and conclusion: 6 to 7 minutes
+- Total rehearsed time: 38 to 40 minutes
 
 ## Delivery rules
-- State the result first, then explain how it was obtained.
+- State the result before explaining the details.
+- When showing a matrix, explain rows and columns first.
+- When showing a table, point to one comparison only.
 - Do not lead with caveats on completed evidence.
-- When a slide has a matrix, explain rows and columns before interpreting it.
-- When a slide has a table, point to one row and one comparison only.
-- Use exact numbers for the headline comparisons.
-- If a question asks for the strongest evidence, answer with the completed TF and LatTF city-disjoint matrices plus the matched Boston mechanistic comparison.
-- If a question asks for generative-planning evidence, answer with the pooled DiffusionDrive table and the matched Pittsburgh cross-city comparison.
+- Use caveats only when the contribution boundary or the completion status is directly relevant.
+- If interrupted, answer directly, then return to the current slide with one sentence.
 
 ## Numbers to memorize
 - Published pooled NAVSIM:
@@ -33,363 +38,425 @@
   - Latent TransFuser: `83.18`
 - LAW Boston to Singapore:
   - supervised Swin L2 inflation: `9.77x`
-  - frozen I-JEPA ViT-S/14 nuScenes rect L2 inflation: `1.20x`
+  - frozen I-JEPA ViT-S/14 nuScenes rectangular L2 inflation: `1.20x`
   - collision inflation: `19.34x` to `0.75x`
 - Lightweight-head city-disjoint mean:
   - ResNet-34: `57.5`
   - DINOv2: `56.4`
   - I-JEPA: `64.8`
   - MAE: `62.2`
-- Matched Boston LatTF comparison:
+- Matched Boston Latent TransFuser comparison:
+  - ResNet-34 probe: `0.968`
   - ResNet-34 OOD loss: `16.1`
-  - MAE ViT-B/16 frozen OOD loss: `13.2`
-  - I-JEPA ViT-H/14 frozen OOD loss: `9.6`
-  - DINOv2 ViT-S/14 frozen OOD loss: `6.3`
-  - ResNet probe accuracy: `0.968`
-  - DINOv2 probe accuracy: `0.812`
+  - MAE probe: `0.889`
+  - MAE OOD loss: `13.2`
+  - I-JEPA probe: `0.833`
+  - I-JEPA OOD loss: `9.6`
+  - DINOv2 probe: `0.812`
+  - DINOv2 OOD loss: `6.3`
 - Rank-collapse example:
-  - all-city I-JEPA ViT-H/14 frozen rank: `36.6`
-  - all-city I-JEPA ViT-H/14 trainable rank: `2.9`
-  - corresponding probe accuracy: `0.94` to `0.38`
+  - frozen I-JEPA ViT-H/14 rank: `36.6`
+  - trainable I-JEPA ViT-H/14 rank: `2.9`
+  - probe: `0.94` to `0.38`
 - DiffusionDrive matched Pittsburgh comparison:
-  - in-distribution: `58.0` vs `57.8`
+  - Pittsburgh in-distribution: `58.0` vs `57.8`
   - Singapore PDMS: `41.4` vs `43.2`
   - Pittsburgh to Singapore loss: `16.6` vs `14.6`
   - transfer ratio: `71.4%` vs `74.7%`
   - DAC on Singapore: `61.7` vs `64.1`
 
-## Slide-by-slide notes
+## Slide cues
 
-### 1. Title
-- One sentence opener:
-  This thesis studies cross-city generalization in end-to-end driving and asks whether geographic failure is primarily a representation problem once the planner is controlled.
+### Introduction
 
-### 2. Outline
-- Say that the talk follows the thesis chapter structure.
-- Tell them the center of gravity is the experiments section.
+#### `Motivation: pooled evaluation obscures geographic transfer`
+- Say: pooled leaderboard numbers are high, but they mix cities in both training and evaluation.
+- Say: that measures interpolation inside a known city mixture, not transfer to an unseen city.
+- End with the question on the slide.
 
-### 3. Motivation: pooled evaluation obscures geographic transfer
-- Point out that pooled leaderboard numbers are high.
-- Say clearly: these numbers measure interpolation within a known city mixture, not transfer to an unseen city.
-- Close with the question on the slide.
+#### `Open-loop evidence of geographic transfer failure`
+- Explain the comparison first: same LAW planner, Boston-trained, tested on Singapore, only the backbone changes.
+- Headline: the backbone alone changes L2 transfer inflation from `9.77x` to `1.20x`.
+- Interpretation: the visual representation is not a minor implementation detail.
 
-### 4. Open-loop evidence of geographic transfer failure
-- Explain the plot first: Boston-trained, tested on Singapore, same LAW planner, only the backbone changes.
-- Headline:
-  the representation alone changes L2 transfer inflation from `9.77x` to `1.20x`.
-- Interpret:
-  this is why the thesis does not treat backbone choice as a minor implementation detail.
+#### `Central claim`
+- Read it nearly verbatim.
+- Then say: the rest of the talk supports this claim under a minimal head, under open-loop LAW, under closed-loop TF and LatTF, under DiffusionDrive, and then with mechanism.
 
-### 5. Central claim
-- Read the claim almost verbatim.
-- Do not elaborate yet.
-- Say:
-  the rest of the talk shows this pattern under a minimal head, open-loop LAW, closed-loop TF and LatTF, and then interprets it mechanistically.
-
-### 6. Thesis contributions and study assets
-- Keep this brisk.
-- Say:
-  the external pieces are LAW and certain pretrained checkpoints; the evaluation design, NAVSIM experiments, DiffusionDrive integration, and mechanistic analysis are thesis contributions.
-- Then move on. Do not dwell here.
-
-### 7. Background divider
-- Transition only.
-- Say:
-  I will define the benchmark and the controls before showing the main studies.
-
-### 8. NAVSIM task and city-disjoint splits
-- Define PDMS in words:
-  safety and drivable-area compliance enter multiplicatively, while progress, TTC, and comfort are averaged.
-- Explain the four cities.
-- Emphasize Singapore:
-  smallest source city, only left-hand-traffic domain, hardest transfer target.
-
-### 9. Mixed-city NAVSIM baselines and internal validation
-- Use this as a credibility slide.
-- Say:
-  my internal v1.1 TF and LatTF reruns preserve the paper ordering and land inside the reported ranges.
-- Then say:
-  that is why the v1.1 cross-city matrix is the canonical record for the thesis.
-
-### 10. Related Work divider
-- Transition only.
-
-### 11. Related work and motivating gap
+#### `Thesis contributions and study assets`
 - Keep it short.
-- Say:
-  pooled planner benchmarks are strong, SSL is widely used, but controlled cross-city planner studies with mechanism are rare.
-- End with:
-  the gap is not whether planners can score well, but why transfer fails once the city changes.
+- Say: the thesis contribution is the evaluation program, the NAVSIM experiments, the DiffusionDrive integration, and the mechanistic analysis.
+- Say: LAW and some pretrained checkpoints are external components, not the contribution.
 
-### 12. Methodology divider
-- Transition only.
+### Background
 
-### 13. Experimental design and transfer metrics
-- This is the control slide.
-- Say:
-  I hold the planner fixed and vary the image backbone.
+#### `NAVSIM task and city-disjoint splits`
+- Define PDMS in words:
+  - NC and DAC are multiplicative safety gates.
+  - EP, TTC, and Comfort are averaged.
+- Define the four cities.
+- Stress Singapore:
+  - smallest source city
+  - only left-hand-traffic city
+  - hardest transfer target
+
+#### `Mixed-city NAVSIM baselines and internal validation`
+- This is your credibility slide.
+- Say: my internal v1.1 TransFuser and Latent TransFuser runs fall inside the published ranges.
+- Then say: that is why the v1.1 cross-city matrix is the canonical thesis record.
+
+### Related Work
+
+#### `Related work and motivating question`
+- Keep this simple.
+- Say: strong pooled planner results exist, SSL for driving is active, but controlled cross-city planner studies with mechanism are rare.
+- End with: the open question is whether cross-city failure is mainly a representation issue once the planner and the source city are controlled.
+
+#### `Drive-JEPA and the shift to geographic transfer`
+- Say: the thesis began with pooled NAVSIM and a lightweight head.
+- Say: Drive-JEPA showed that pooled NAVSIM is already very strong for JEPA-style models.
+- Conclusion: city-disjoint transfer became the right setting for a representation thesis.
+
+### Methodology
+
+#### `Experimental design and transfer metrics`
+- Say: the design principle is simple, hold the planner fixed and vary the image backbone.
 - Define:
-  open-loop error ratio and closed-loop OOD PDMS.
-- Stress:
-  one source-city model is evaluated on every destination city without adaptation.
+  - open-loop transfer ratio: cross-city error divided by in-distribution error
+  - closed-loop OOD PDMS: average PDMS on held-out cities
+- Stress: one source-city model is evaluated on every destination city without adaptation.
 
-### 14. Backbone families and planner families
+#### `Backbone families and planner families`
 - Move quickly.
-- Backbones:
-  supervised ResNet or Swin, plus I-JEPA, DINOv2, and MAE.
-- Planners:
-  LAW, TransFuser, Latent TransFuser, DiffusionDrive.
-- Say:
-  this lets me test the same backbone question under increasingly strong planner priors.
+- Backbones: supervised, I-JEPA, DINOv2, MAE.
+- Planners: LAW, TransFuser, Latent TransFuser, DiffusionDrive.
+- Say: this tests the same backbone question under progressively stronger planner assumptions.
 
-### 15. Experiments divider
-- Transition only.
+#### `Planner selection and comparative roles`
+- Explain the sequence.
+- Lightweight head:
+  - minimal-capacity diagnostic
+- TransFuser:
+  - standard closed-loop multimodal anchor with a published baseline
+- Latent TransFuser:
+  - same family, but camera only, so the representation is more exposed
+- DiffusionDrive:
+  - stronger generative planner that should compress backbone differences
 
-### 16. Study I: lightweight-head design
-- Explain why this exists:
-  minimal planner capacity makes representation differences visible without a strong planner masking them.
-- Say:
+#### `Mechanistic evaluation protocol`
+- Use plain definitions.
+- Linear probe:
+  - a logistic-regression classifier trained on frozen features to predict city identity
+- Effective rank:
+  - a one-number summary of how many useful directions remain in the feature covariance
+- CKA:
+  - similarity of covariance structure across feature sets
+- MMD:
+  - a kernel distance between feature distributions
+- Say clearly: probe and rank are the primary evidence, CKA and MMD are supporting diagnostics.
+
+### Experimental Results
+
+#### `Study I: lightweight-head design`
+- Say: this is the simplest planner in the thesis, so it is the cleanest way to see whether the backbone already matters.
+- Do not oversell it.
+- Phrase to use:
   this is a diagnostic study, not the main benchmark.
 
-### 17. Study I: pooled lightweight-head results
-- Headline:
-  frozen I-JEPA ViT-H/14 leads at `79.7`.
-- Then:
-  seven of nine frozen SSL variants exceed the supervised ResNet-34 baseline.
-- Use this as the first evidence that the ranking exists before the planner becomes sophisticated.
+#### `Study I: pooled lightweight-head results`
+- Headline: frozen I-JEPA ViT-H/14 leads at `79.7`.
+- Then say: seven of nine frozen SSL variants exceed the supervised ResNet-34 baseline with the same head.
 
-### 18. Study I: city-disjoint lightweight-head results
-- Headline:
-  I-JEPA leads every training-city row and the four-city mean by `7.3` points over ResNet-34.
-- Explain that Singapore compresses all methods downward.
+#### `Study I: city-disjoint lightweight-head results`
+- Headline: I-JEPA leads every training-city row and the four-city mean at `64.8`, versus `57.5` for ResNet-34.
+- Interpretation: the backbone effect is already visible before introducing a strong planner.
+
+#### `Study II: cross-city benchmark design`
+- Say: this is the main benchmark of the thesis.
+- Two parts:
+  - LAW for open-loop transfer ratios
+  - TF and LatTF for full closed-loop `4x4` NAVSIM matrices
+- Add: all thesis cross-city PDMS values come from the canonical v1.1 matrix.
+
+#### `Study IIa: LAW transfer from Boston to Singapore`
+- Headline: same planner, same source city, only the backbone changes, and the transfer inflation changes from `9.77x` to `1.20x`.
+- Add the collision number.
+- Stop there. Do not over-explain this slide.
+
+#### `Study IIb: TransFuser cross-city transfer`
+- Explain the heatmap first.
+- Rows are training cities.
+- Columns are evaluation cities.
+- Diagonal is in-distribution. Off-diagonals are transfer.
+- Headline: Singapore is the hardest destination, and frozen SSL stabilizes the off-diagonal cells.
+
+#### `Study IIc: Latent TransFuser cross-city transfer`
+- Say: this removes the LiDAR branch, so the image representation is more exposed.
+- Headline: the same cross-city structure remains visible in the camera-only planner.
+
+#### `Cross-city NAVSIM: in-distribution and OOD performance`
+- Headline: supervised rows fall furthest below the diagonal, while frozen SSL rows stay closer to it.
+- This is the compact visual summary of the benchmark.
+
+#### `Cross-city NAVSIM: source-city effects`
+- Headline: Boston and Las Vegas are the best source cities, Singapore is the worst.
+- Use this when asked whether the result is just a data-volume effect.
+- Answer: data volume matters, but it is not the whole story because directional asymmetry also matters.
+
+#### `Cross-city NAVSIM: directional asymmetry`
+- Headline: transfer is directional, not symmetric.
+- Use Boston to Singapore versus Singapore to Boston as the example.
+- Interpretation: there is no single scalar notion of distance that explains all transfer difficulty.
+
+#### `All-city training attenuates backbone differences`
+- Headline: pooled training compresses the spread between backbones.
+- This is why the thesis does not rely on pooled leaderboard ranking.
+
+#### `Study III: pooled DiffusionDrive results`
+- Headline: the generative planner compresses backbone differences, but SSL remains competitive.
+- Say: this is the starting point for the generative cross-city test, not the main result by itself.
+
+#### `Study III: cross-city DiffusionDrive transfer`
+- State the completion status plainly:
+  the thesis currently has three complete training rows.
+- Do not apologize.
+- Headline: even under this partial record, Singapore is again the weakest destination.
+
+#### `Study III: matched Pittsburgh cross-city comparison`
+- This is the slide to narrate carefully.
 - Say:
-  the representation pattern is already visible under a very weak head.
-
-### 19. Study II: cross-city benchmark design
-- This is the core setup slide.
-- Say:
-  Study II has an open-loop LAW view and a closed-loop NAVSIM view.
-- Emphasize:
-  full `4x4` city matrices for TF and LatTF under v1.1.
-
-### 20. Study IIa: LAW transfer from Boston to Singapore
-- Headline:
-  with the planner fixed, the representation alone changes transfer inflation from `9.77x` to `1.20x`.
-- Add the collision figure:
-  `19.34x` to `0.75x`.
-- Interpretation:
-  the representation effect is not subtle in open-loop transfer.
-
-### 21. Study IIb: TransFuser cross-city transfer
-- Explain how to read the heatmap.
-- Point out:
-  diagonals are in-distribution, off-diagonals are transfer, Singapore column is darkest.
-- Say:
-  frozen SSL rows stabilize the off-diagonal entries.
-
-### 22. Study IIc: Latent TransFuser cross-city transfer
-- Say:
-  this removes the LiDAR shortcut and leaves the visual representation more directly exposed.
-- Headline:
-  the same cross-city structure remains visible without the LiDAR branch.
-
-### 23. Cross-city NAVSIM: in-distribution and OOD performance
-- Explain the diagonal line once.
-- Headline:
-  supervised rows fall furthest below the diagonal, strongest frozen SSL rows remain closer.
-- Say:
-  this compresses the whole benchmark into one picture.
-
-### 24. Cross-city NAVSIM: source-city effects
-- Headline:
-  Boston and Las Vegas are the strongest source cities; Singapore is the weakest.
-- This is useful for committee questions about data scale and city structure.
-
-### 25. Cross-city NAVSIM: directional asymmetry
-- Headline:
-  transfer is directional, not symmetric.
-- Say:
-  Boston to Singapore is harder than Singapore to Boston.
-- Interpret:
-  cross-city failure is not explained by a single scalar notion of distance.
-
-### 26. All-city training attenuates backbone differences
-- Headline:
-  pooled all-city training compresses the backbone spread.
-- Interpretation:
-  this is why the thesis centers city-disjoint evaluation rather than mixed-city ranking.
-
-### 27. Study III: pooled DiffusionDrive results
-- Headline:
-  under pooled evaluation, the generative planner compresses backbone differences and SSL stays within about `1` to `2` points of the supervised baseline.
-- Use this as the setup for the cross-city generative test.
-
-### 28. Study III: cross-city DiffusionDrive transfer
-- Be precise:
-  the current thesis record includes three fully evaluated training rows.
-- Headline:
-  even with this partial matrix, Singapore is again the weakest destination.
-- Do not apologize for partial coverage. Just state the available evidence and move on.
-
-### 29. Study III: matched Pittsburgh comparison
-- This is the one DiffusionDrive slide to narrate carefully.
-- Say:
-  in-distribution performance is nearly matched, `58.0` versus `57.8`.
+  the Pittsburgh in-distribution scores are essentially matched, `58.0` versus `57.8`.
 - Then say:
-  under Pittsburgh to Singapore transfer, frozen I-JEPA reaches `43.2` versus `41.4`, which reduces the loss from `16.6` to `14.6`.
+  under Pittsburgh to Singapore transfer, frozen I-JEPA reaches `43.2` versus `41.4`, so the loss is `14.6` instead of `16.6`.
+- End with:
+  the gain is concentrated in drivable-area compliance, `61.7` to `64.1`.
+
+#### `Study IV: mechanistic analysis protocol`
+- Say: this section asks why the transfer ranking looks the way it does.
+- Make the hierarchy explicit:
+  - primary: probe and rank
+  - supporting: CKA and MMD
+
+#### `Mechanistic evidence: probe accuracy and OOD loss by training city`
+- This is your answer to “why are you not just using Boston?”
+- Say: Boston, Pittsburgh, and Las Vegas show the expected trend, while Singapore is the exception.
+- Interpretation: the mechanism must be read in a training-city-stratified way, not only as one pooled scatter.
+
+#### `Mechanistic evidence: summary across the analysed roster`
+- Explain the table once:
+  family, status, probe, rank, OOD loss
+- Headline:
+  the roster-level view supports the same story, but the cleanest causal read still comes from matched comparisons.
+
+#### `Mechanistic evidence: matched Boston comparison`
+- This is the clean matched demonstration.
+- Say:
+  ResNet has probe `0.968` and OOD loss `16.1`.
+- Then:
+  DINOv2 has probe `0.812` and OOD loss `6.3`.
 - Close with:
-  the gain is concentrated in DAC, `61.7` to `64.1`, while NC and TTC remain comparable.
+  within this matched setting, lower city-decodability aligns with better transfer.
 
-### 30. Study IV: mechanistic analysis protocol
-- Say:
-  this section asks not only whether SSL transfers better, but what property of the learned representation is changing.
-- Define the primary tools:
-  probe accuracy and effective rank.
-- Define the auxiliary tools:
-  CKA and MMD.
+#### `What effective rank actually measures`
+- Explain this in plain language:
+  effective rank measures how spread the feature variance is across directions.
+- If the variance lives on only a few directions, the representation has collapsed.
+- If it is spread broadly, the representation retains richer structure.
 
-### 31. Mechanistic evidence: probe accuracy and OOD loss by training city
-- This is your answer to “why only Boston?”
-- Say:
-  Boston, Pittsburgh, and Las Vegas show the expected trend; Singapore is the exception.
-- Interpret:
-  training city is a confounder, so the correct read is stratified rather than pooled.
-
-### 32. Mechanistic evidence: summary across the analysed roster
-- Explain the table structure:
-  family, frozen or trainable status, probe, rank, OOD loss.
-- Headline:
-  trainable supervised rows sit at the high-probe, large-loss corner; frozen MAE and DINOv2 occupy the lower-loss side.
-- Use this slide when asked whether the mechanism generalizes beyond one matched example.
-
-### 33. Mechanistic evidence: matched Boston comparison
-- This is the cleanest matched causal read.
-- Headline:
-  the ordering of probe accuracy matches the ordering of OOD loss.
+#### `Feature-rank collapse under fine-tuning`
+- Headline: fine-tuning can destroy the structure that made SSL useful for transfer.
 - Exact statement:
-  ResNet has probe `0.968` and loss `16.1`, DINOv2 has probe `0.812` and loss `6.3`.
-
-### 34. Feature-rank collapse under fine-tuning
-- Headline:
-  fine-tuning can destroy the structure that makes SSL useful for transfer.
-- Exact statement:
-  rank drops from `36.6` to `2.9`, and probe accuracy drops from `0.94` to `0.38`.
+  effective rank drops from `36.6` to `2.9`, and the city probe drops from `0.94` to `0.38`.
 - Interpretation:
-  freezing is not only a training convenience, it is an empirical regularizer.
+  freezing is not only a convenience. In this thesis it acts as an empirical regularizer.
 
-### 35. Discussion divider
-- Transition only.
+### Discussion and Conclusion
 
-### 36. Integrated interpretation
+#### `Integrated interpretation`
 - Summarize the chain:
-  minimal head, LAW, TF, LatTF, DiffusionDrive, mechanism.
+  lightweight head, LAW, TF, LatTF, DiffusionDrive, mechanism.
 - Say:
-  the same result appears under progressively stronger planners, then the mechanistic section explains why frozen SSL remains more stable.
+  the same representation effect survives stronger planners, and the mechanistic section explains why frozen SSL remains more stable.
 
-### 37. Contributions and scope of the claim
-- Keep this calm and exact.
+#### `Industrial implications`
+- Lead with:
+  this is a deployment problem, not only a benchmark problem.
+- Then say:
+  if a fleet expands city by city, pooled benchmark strength is not enough.
+- Then:
+  a frozen SSL backbone is a practical trade-off because it gives up little in distribution and loses less under geographic shift.
+- Then:
+  the camera-only DiffusionDrive result says stronger vision helps lower-cost stacks, but does not replace geometry.
+
+#### `Contributions and scope of the claim`
+- Keep this precise.
 - Say:
   the thesis contributes the city-disjoint evaluation program, the planner integrations, and the mechanistic analysis.
 - Then say:
   the claim is about representation-mediated transfer, not about planner irrelevance.
 
-### 38. Synthesis of the evidence
-- This is your closing evidence slide.
-- Speak it as four sentences, not as a list.
+#### `Synthesis of the evidence`
+- Speak this slide as four sentences, not as a bullet list.
 - End with:
   the strongest completed evidence is the TF and LatTF city-disjoint matrix together with the mechanistic matched comparison.
 
-### 39. Conclusion
-- Read the closing claim almost verbatim.
-- Stop after that.
+#### `Future work`
+- Keep this short.
+- Mention:
+  video SSL, full DiffusionDrive matrix, interactive simulation, more cities and larger-scale driving pretraining.
 
-## Concepts to define clearly if asked
-- Pooled evaluation:
-  training and evaluation use the same city mixture, so it measures interpolation inside the benchmark mixture.
-- City-disjoint evaluation:
-  a model is trained on one city or one source set and evaluated on a different city without adaptation.
-- PDMS:
-  a rule-based rollout score combining safety, drivable-area compliance, progress, TTC, and comfort, with NC and DAC entering multiplicatively.
-- Open-loop transfer ratio:
-  transfer error divided by in-domain error.
-- OOD PDMS loss:
-  in-distribution PDMS minus the mean held-out-city PDMS.
-- Linear probe:
-  a multinomial logistic-regression classifier applied to frozen features.
-- Effective rank:
-  the entropy-based rank of the feature covariance, used to measure collapse onto a small subspace.
-- CKA:
-  a similarity measure for covariance structure across feature sets.
-- MMD:
-  a kernel-based distance between feature distributions.
+#### `Conclusion`
+- Read the conclusion almost verbatim.
+- Stop after the last sentence.
 
-## Questions Anna Choromanska may ask
-- Why is this a representation claim instead of an optimization claim?
-  Because the planner, training recipe, and evaluation protocol are held fixed while the backbone changes. The ranking then repeats across several planners and is interpreted with matched mechanistic comparisons.
-- Why is freezing important?
-  The rank-collapse slide shows that full fine-tuning can compress the feature space and remove useful pretrained structure. Freezing preserves the geometry that transfers.
-- Why does the mechanism section matter?
-  It turns the thesis from a benchmark comparison into an explanation. The matched Boston table and the rank-collapse evidence show why some frozen SSL models degrade more gracefully.
+## Concepts you must be able to explain
 
-## Questions Ludovic Righetti may ask
+### Pooled evaluation
+Training and evaluation both use the same city mixture, so the model is interpolating inside a known geographic distribution.
+
+### City-disjoint evaluation
+The model is trained on one city and evaluated on a different city without adaptation. This tests transfer to a new operating environment.
+
+### PDMS
+PDMS is a rule-based driving score that combines:
+- no-fault collisions
+- drivable-area compliance
+- ego progress
+- time to collision
+- comfort
+
+NC and DAC are multiplicative, which means severe violations can zero the scenario. That is why PDMS is stricter than plain displacement error.
+
+### Open-loop transfer ratio
+Cross-city error divided by in-distribution error. A ratio near `1` means the model retains performance when moved to the new city.
+
+### OOD loss
+In-distribution PDMS minus the mean PDMS on held-out cities. Larger loss means worse transfer.
+
+### Linear probe
+A simple classifier trained on frozen features. If it can predict the city easily, city identity is strongly encoded in the representation.
+
+### Effective rank
+A one-number summary of how many directions carry meaningful variance in the feature covariance. Low rank means collapse onto a small subspace.
+
+### CKA
+A similarity measure for covariance structure. It tells you whether two feature sets organize variance similarly, not whether they transfer equally well.
+
+### MMD
+A kernel distance between feature distributions. In this thesis it is a diagnostic, not the main mechanistic evidence.
+
+## Design choices you must be able to justify
+
+### Why start with the lightweight head?
+Because it is the cleanest way to isolate the representation from planner capacity. If backbone differences are already visible there, the later planner results are easier to interpret.
+
+### Why does Drive-JEPA matter?
+Because it showed that pooled NAVSIM performance is already very strong for JEPA-style models. That made pooled PDMS a weak discriminator for a representation thesis and pushed the project toward geographic transfer.
+
+### Why choose TransFuser and Latent TransFuser?
+They are strong, recognizable closed-loop baselines. TransFuser is multimodal and published on NAVSIM. Latent TransFuser removes the LiDAR branch, so it exposes the image representation more directly. Together they show that the result is not tied to one exact head.
+
+### Why choose DiffusionDrive?
+Because it is a generative planner with stronger built-in priors. If the representation effect survives there, the thesis claim is more robust than if it only held for regression-style planners.
+
+### Why use NAVSIM v1.1 as canonical?
+Because the internal v1.1 TF and LatTF reruns land inside the published ranges, so v1.1 is the validated baseline for the thesis matrix.
+
+### Why keep v2.2 at all?
+Only for validation context. The same checkpoints shift upward by about two points under v2.2, which indicates a systematic devkit offset rather than a planner-specific error.
+
+### Why use LAW if it is not your method?
+Because it is a stable open-loop planner that lets the backbone question be tested cleanly under a fixed planning head.
+
+### Why use these mechanistic tools?
+- Linear probe asks whether city identity is explicitly decodable.
+- Effective rank asks whether the feature space has collapsed.
+- CKA asks whether covariance structure is aligned across cities.
+- MMD asks how far the feature distributions move across cities.
+
+Only the first two are load-bearing in the thesis claim.
+
+## Likely questions and short answers
+
+### Anna Choromanska
+- Why is this a representation claim rather than an optimization claim?
+  Because within the matched studies the planner, training recipe, and evaluation protocol are fixed while the backbone changes. The same ranking then reappears across planners.
+
+- Why does freezing help?
+  The rank-collapse result shows that full fine-tuning can compress the feature space and destroy useful pretrained structure. Freezing preserves that structure while still allowing the adapter and planner to learn.
+
+- Why is the mechanistic section important?
+  It turns the thesis from a benchmark comparison into an explanation. The matched probe ordering and the rank-collapse evidence explain why some frozen SSL models transfer more gracefully.
+
+### Ludovic Righetti
 - Why should PDMS be trusted?
-  I use PDMS as a reproducible benchmark proxy, not as a deployment guarantee. It is standard in NAVSIM and is paired here with open-loop LAW ratios that point in the same direction.
-- Why should the DiffusionDrive result matter if the effect is smaller?
-  Because DiffusionDrive has a stronger planner prior and compresses backbone differences. Seeing the same directional pattern there makes the representation argument more robust.
-- What exactly goes wrong in Singapore?
-  The most visible degradation is in drivable-area compliance and ego progress, while NC and TTC remain comparatively stable.
+  I use PDMS as a reproducible benchmark proxy, not as a complete deployment guarantee. It is standard in NAVSIM and is paired here with LAW transfer ratios that point in the same direction.
 
-## Questions David Fouhey may ask
-- Why is Boston still used in the matched table?
-  Because it is the cleanest matched comparison. But it is no longer the only evidence: the main mechanistic plot is stratified by training city and the roster summary covers the full analysed set.
-- Why is probe accuracy the main mechanistic variable?
-  Within matched settings, it tracks OOD loss directly. I do not claim that it is a universal predictor once city, backbone scale, and pretraining source all vary together.
-- Why is MAE an exception?
-  MAE suggests that the objective matters beyond city-decodability alone. It can remain relatively city-decodable while still transferring well.
+- Why does the DiffusionDrive result matter if the gain is smaller?
+  Because DiffusionDrive compresses backbone differences by design. Seeing the same directional result there strengthens the representation argument.
+
+- What exactly fails in Singapore?
+  The clearest degradation is in drivable-area compliance and ego progress. NC and TTC remain comparatively stable.
+
+- Why do you say planner choice is secondary?
+  Only in the bounded sense supported by the completed studies. The same backbone-dependent ranking appears under LAW, TF, and LatTF, and the available DiffusionDrive rows are consistent with it.
+
+### David Fouhey
+- Why use Boston in the matched mechanistic table?
+  Because it is the cleanest matched comparison. It is not the only evidence. The full roster table and the training-city-stratified plots use all analysed checkpoints.
+
+- Why is probe accuracy your primary mechanistic variable?
+  Because in matched settings it tracks OOD loss directly. I do not claim it is a universal pooled predictor once training city, pretraining source, and backbone scale all vary together.
+
+- Why is MAE somewhat exceptional?
+  Because the objective matters beyond city-decodability alone. MAE can remain relatively city-decodable while still transferring well, which is why the thesis does not reduce the mechanism to one scalar.
 
 ## If challenged on incomplete DiffusionDrive coverage
 - Say:
-  the thesis claim does not depend on a fully populated cross-city DiffusionDrive matrix.
+  the thesis claim does not depend on a fully completed cross-city DiffusionDrive matrix.
 - Then say:
-  the completed TF and LatTF matrices already establish the main result, and DiffusionDrive is used as an additional generative-planner test.
-- If pushed:
-  the current available rows are still informative because they include a matched Pittsburgh comparison under the same planner and training city.
+  the completed TF and LatTF matrices already establish the main result, and DiffusionDrive is used as an additional planner-family check.
+- If pushed further:
+  the available rows are still informative because they include a matched Pittsburgh comparison under the same planner and training city.
 
 ## If challenged on causal language
 - Use this phrasing:
-  I am making a bounded causal claim only in matched settings where the planner and training city are fixed and the backbone is the controlled variable.
+  I am making a bounded causal claim only in matched settings where the planner and the training city are fixed and the backbone is the controlled variable.
 - Do not say:
   planner architecture does not matter.
 
-## If asked why v1.1 is canonical
-- Say:
-  the internal v1.1 TF and LatTF reruns fall inside the published ranges, so v1.1 is the validated baseline used for the cross-city matrix.
-- If needed:
-  the v2.2 shift is systematic across both architectures and does not change the ordering.
+## Emergency fallback answers
+
+### If you forget what CKA is
+CKA is a similarity measure for covariance structure. In this thesis it is descriptive, not the main mechanistic proof.
+
+### If you forget what MMD is
+MMD is a kernel distance between feature distributions. Here it is a supporting check on cross-city distribution shift.
+
+### If you forget what effective rank is
+It is an entropy-based one-number summary of how many directions in feature space are still active.
+
+### If you are asked for the single strongest result
+The strongest completed evidence is the TF and LatTF city-disjoint matrix together with the matched Boston mechanistic comparison.
 
 ## Appendix map
-- A1 and A2:
-  training recipe and freeze or fine-tune details.
-- A3:
-  DiffusionDrive OOD bars.
-- A4:
-  full lightweight-head pooled tables.
-- A5:
-  why PDMS is still informative.
-- A6:
-  v1.1 baseline validation.
-- A7:
-  additional Boston-only LatTF rows.
-- A8:
-  exact linear-probe protocol.
-- A9:
-  why CKA and MMD are auxiliary.
-- A10:
-  confounders.
-- A11:
-  collaboration and provenance.
+- `A1` Training recipes
+- `A2` Freeze and fine-tune details
+- `A3` DiffusionDrive OOD comparison
+- `A4` Full exploratory tables
+- `A5` Why PDMS remains informative
+- `A6` Baseline validation under NAVSIM v1.1
+- `A7` Additional Boston-only closed-loop rows
+- `A8` Linear probe protocol
+- `A9` CKA and MMD diagnostics
+- `A10` Confounders
+- `A11` Collaboration and provenance
+- `A12` ViT primer
+- `A13` I-JEPA objective
+- `A14` Planner schematics
+- `A15` Exploratory experiment matrix
 
 ## Final reminders
-- Speak like the thesis is finished, because the defended story is finished.
-- The main evidence is already enough without the full DiffusionDrive matrix.
-- Do not oversell. Exact, bounded, completed evidence is stronger than broad claims.
+- The thesis is finished enough to defend on its completed evidence.
+- Your main job is to make the structure obvious and the claim precise.
+- Results first, mechanism second, caveats only when needed.

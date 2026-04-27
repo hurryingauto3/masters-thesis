@@ -104,6 +104,26 @@ Four design axes are load-bearing and are reused later in the chapter. Each axis
 
 Two decisions that cut across the axes in \reftab{tab:meth-lh-design} are worth calling out explicitly. First, when \texttt{trainable\_backbone\_fraction}${=}\,1.0$, the optimizer places encoder parameters in a separate group with a lower learning rate than the head, matching the two-group AdamW schedule used in~\ref{sec:meth-phase1-law}. Second, the fusion rules are defined on the same $(B, V, N, C)\to(B, C)$ signature, which means the fusion choice is a clean independent axis in the experiment matrix rather than a backbone-specific option. Both decisions carry forward into the heavier planners later in this chapter.
 
+\paragraph{Forward pass.}
+The default lightweight head is the canonical diagnostic instrument and is worth writing out. Let $I_v$ denote the input image from view $v$, $\phi_\theta$ the visual backbone, and $f_\text{view}$ the view-fusion rule. The visual feature is
+\begin{equation}
+\label{eq:lh-visual}
+\mathbf{v} \;=\; f_\text{view}\!\bigl(\phi_\theta(I_1), \dots, \phi_\theta(I_V)\bigr) \,\in\, \mathbb{R}^{C},
+\end{equation}
+and the planning head reads $\mathbf{v}$ together with the ego-state vector $\mathbf{e} \in \mathbb{R}^{8}$. With the default two-layer MLP $h_\psi$,
+\begin{equation}
+\label{eq:lh-mlp}
+\hat{\boldsymbol\tau} \;=\; h_\psi\!\bigl([\mathbf{v}\,\Vert\,\mathbf{e}]\bigr)
+\;=\; W_3\,\sigma\!\bigl(W_2\,\sigma(W_1\,[\mathbf{v}\,\Vert\,\mathbf{e}])\bigr)
+\;\in\, \mathbb{R}^{T \cdot 3},
+\end{equation}
+reshaped to a sequence of $T = 8$ poses, with $\sigma$ a ReLU non-linearity, $W_1 \in \mathbb{R}^{256 \times (C + 8)}$, $W_2 \in \mathbb{R}^{256 \times 256}$, and $W_3 \in \mathbb{R}^{(T \cdot 3) \times 256}$. The training objective is the mean $L_1$ trajectory error against the logged future poses,
+\begin{equation}
+\label{eq:lh-loss}
+\mathcal{L}_\text{LH} \;=\; \frac{1}{T}\sum_{t=1}^{T} \bigl\lVert \hat{\boldsymbol\tau}_t - \boldsymbol\tau^{\ast}_t \bigr\rVert_1.
+\end{equation}
+No auxiliary loss is added. The recipe is deliberate: the backbone enters Equation~\ref{eq:lh-visual} and nothing else, so the diagnostic value of the lightweight study comes from the cleanness of this decomposition.
+
 \subsection{Exploratory Experiment Taxonomy}
 \label{sec:meth-lh-taxonomy}
 
@@ -288,7 +308,7 @@ Input geometry is treated as a controlled factor rather than as an implementatio
 \textbf{Setting} & \textbf{Value} \\
 \midrule
 Source dataset            & nuScenes~\cite{caesar-nuscenes-2020} training split \\
-Camera views              & All six (\texttt{CAM\_FRONT}, \texttt{CAM\_FRONT\_\{LEFT,RIGHT\}}, \texttt{CAM\_BACK}, \texttt{CAM\_BACK\_\{LEFT,RIGHT\}}) \\
+Camera views              & All six (\texttt{CAM\_FRONT}, \texttt{CAM\_FRONT\_LEFT}, \texttt{CAM\_FRONT\_RIGHT}, \texttt{CAM\_BACK}, \texttt{CAM\_BACK\_LEFT}, \texttt{CAM\_BACK\_RIGHT}) \\
 Frames                    & 168{,}780 RGB images \\
 Normalization             & ImageNet mean / std \\
 Photometric augmentation  & None (no color jitter, no Gaussian blur) \\
@@ -482,10 +502,36 @@ The collaboration split of labour matters for attribution. The open-loop LAW pip
 
 The open-loop leg uses LAW~\cite{li-law-2024}, an external baseline, with its stock Swin-Transformer-Tiny image encoder replaced by each of the pretrained ViTs described in~\ref{sec:meth-backbones}. The planner (per-view spatial decoders, LID depth encoding, delta-waypoint regression, and the auxiliary latent world-model head) is held fixed across backbone variants; the only manipulated factor is the encoder initialisation. This design follows~\cite{naeinian-cross-city-2026}. \reftab{tab:meth-phase1-train} summarises the training recipe.
 
+LAW's training loss combines a trajectory-regression term with a latent-prediction auxiliary~\cite{li-law-2024}. With encoder $\phi_\theta$, world-model predictor $\omega_\xi$, and planner head $g_\psi$, the encoder produces a latent $\mathbf{z}_t = \phi_\theta(o_t)$ at every step. The planner regresses a trajectory $\hat{\boldsymbol\tau}_t = g_\psi(\mathbf{z}_t)$, and the predictor forecasts the next latent $\hat{\mathbf{z}}_{t+1} = \omega_\xi(\mathbf{z}_t)$. The objective is
+\begin{equation}
+\label{eq:law-loss}
+\mathcal{L}_\text{LAW} \;=\; \mathcal{L}_\text{traj}(\hat{\boldsymbol\tau}_t,\, \boldsymbol\tau^{\ast}_t) \;+\; \lambda\,\bigl\lVert \hat{\mathbf{z}}_{t+1} - \mathrm{sg}\bigl[\phi_\theta(o_{t+1})\bigr] \bigr\rVert_2^2,
+\end{equation}
+where $\mathrm{sg}[\cdot]$ stops gradients through the target latent and $\lambda$ is a fixed weighting set in the LAW reference implementation. Only $\phi_\theta$ is replaced across our backbone variants; $\omega_\xi$, $g_\psi$, and $\lambda$ are inherited verbatim.
+
 \subsection{Closed-Loop Pipeline: TransFuser and Latent TransFuser on NAVSIM}
 \label{sec:meth-phase1-tf}
 
 The closed-loop leg evaluates the same representational question under NAVSIM's pseudo-simulation scorer, where the predicted trajectory is rolled out against log-replay agents and PDMS is computed from the resulting rollout (Section~\ref{sec:bg-navsim}). Two architectures run side by side. \emph{TransFuser}~\cite{chitta-transfuser-2023} keeps its ResNet-34 LiDAR branch but replaces the ResNet-34 image branch with the SSL-pretrained encoder under test; the cross-modal fusion stack is unchanged. \emph{Latent TransFuser} is the same model with the LiDAR branch replaced by a fixed learned latent~\cite{dauner-navsim-2024}; this is the camera-only probe, and the critical variant for testing whether the representation effect survives without the geometric-sensing shortcut. Running both isolates the contribution of LiDAR from the contribution of the backbone.
+
+\paragraph{Forward pass.}
+With image encoder $\phi^\text{img}_\theta$, LiDAR encoder $\phi^\text{lid}_\theta$, and the four-stage attention-fusion stack $F_\eta$, TransFuser computes a fused scene embedding
+\begin{equation}
+\label{eq:tf-fuse}
+\mathbf{s} \;=\; F_\eta\!\bigl(\phi^\text{img}_\theta(I), \phi^\text{lid}_\theta(L)\bigr) \,\in\, \mathbb{R}^{C_\text{scn}}.
+\end{equation}
+A GRU waypoint head $g_\psi$ decodes the trajectory autoregressively, conditioned on the ego-state vector $\mathbf{e}$ and a discrete driving command $c \in \{1,\dots,K\}$:
+\begin{equation}
+\label{eq:tf-wp}
+\hat{\boldsymbol\tau}_t \;=\; g_\psi(\mathbf{s},\, \mathbf{e},\, c,\, \hat{\boldsymbol\tau}_{<t}),
+\qquad t = 1,\dots,T.
+\end{equation}
+Latent TransFuser uses Equation~\ref{eq:tf-fuse} with $\phi^\text{lid}_\theta(L)$ replaced by a fixed learned latent $\mathbf{z}^\text{lat} \in \mathbb{R}^{C_\text{lid}}$~\cite{dauner-navsim-2024}; the rest of the stack is unchanged. The training loss is the imitation $L_1$ regression
+\begin{equation}
+\label{eq:tf-loss}
+\mathcal{L}_\text{TF} \;=\; \frac{1}{T}\sum_{t=1}^{T} \bigl\lVert \hat{\boldsymbol\tau}_t - \boldsymbol\tau^{\ast}_t \bigr\rVert_1,
+\end{equation}
+identical in form to the lightweight-head loss of Equation~\ref{eq:lh-loss}. Across our backbone variants only $\phi^\text{img}_\theta$ changes; $\phi^\text{lid}_\theta$, $F_\eta$, and $g_\psi$ are inherited from~\cite{chitta-transfuser-2023}.
 
 Plugging a ViT encoder into a fusion stack that was designed around a CNN feature pyramid is not a one-line change. The image encoder must produce a four-stage pyramid whose channel dimensions match what the fusion stack consumes; the adapter used here is the one described in~\ref{sec:meth-feature-proj}. Position embeddings are regenerated at the native camera-crop grid (per the \texttt{vit\_backend}${=}\,\texttt{custom}$ path) rather than bicubically interpolated from a square pretraining, which matters for the rectangular nuScenes-pretrained ViT-S/14 variants. None of these changes alter the fusion layers, the waypoint decoder, or the training loss.
 
@@ -611,7 +657,18 @@ The cross-city benchmark establishes that the visual representation dominates pl
 \subsection{Why DiffusionDrive is the Right Stress Test}
 \label{sec:meth-dd-why}
 
-DiffusionDrive's planner absorbs backbone differences by construction. Four of its design choices make this explicit:
+DiffusionDrive's planner absorbs backbone differences by construction. The "head attenuates the backbone" claim is a precise consequence of the truncated denoising procedure, so it is worth writing down. The K-means anchor bank is fitted offline on the \texttt{navtrain} expert-trajectory pool by minimising
+\begin{equation}
+\label{eq:dd-kmeans}
+\bigl\{\boldsymbol\tau^{(k)}\bigr\}_{k=1}^{K} \;=\; \arg\min_{\{\boldsymbol\tau^{(k)}\}}\, \sum_{\boldsymbol\tau^\ast \in \mathcal{D}_\text{train}}\, \min_{k}\, \bigl\lVert \boldsymbol\tau^\ast - \boldsymbol\tau^{(k)} \bigr\rVert_2^2,
+\end{equation}
+with $K = 256$. At inference, given scene features $\mathbf{s} = \phi_\theta(I, L)$ from the same backbone-and-adapter pair as the cross-city benchmark, an anchor $\boldsymbol\tau^{(k)}$ is selected and refined by a fixed two-step denoising schedule $\boldsymbol\tau^{(k)} \!\to\! \boldsymbol\tau_1 \!\to\! \boldsymbol\tau_0$:
+\begin{equation}
+\label{eq:dd-denoise}
+\boldsymbol\tau_{\,n-1} \;=\; \boldsymbol\tau_{\,n} \;+\; \alpha_n\,\epsilon_\eta\!\bigl(\boldsymbol\tau_{\,n},\, n,\, \mathrm{BEV}(\mathbf{s},\, \boldsymbol\tau_{\,n})\bigr),
+\qquad n \in \{2,\,1\},
+\end{equation}
+where $\epsilon_\eta$ is the learned trajectory-residual network, $\alpha_n$ are the truncated-schedule coefficients of~\cite{jia-diffusiondrive-2025}, and $\mathrm{BEV}(\mathbf{s},\, \boldsymbol\tau_{\,n})$ is the backbone's contribution: a grid of bird's-eye-view features sampled around the current waypoints rather than a dense feature map. The conditioning enters $\epsilon_\eta$ only through this grid sample plus a time-only FiLM modulation on $n$. Four design choices make this attenuation explicit:
 \begin{enumerate}
     \item \textbf{K-means anchor trajectories.} Denoising is initialized from one of 256 prototypical trajectories obtained by K-means clustering on \texttt{navtrain} expert motions~\cite{jia-diffusiondrive-2025}. The planner therefore \emph{starts from a plausible trajectory} on every scenario, rather than from Gaussian noise. A weak backbone whose features cannot resolve fine-grained scene geometry can still exit the denoiser close to the expert trajectory, because the anchor has already placed the plan in the right basin.
     \item \textbf{Truncated two-step denoising.} At inference, DiffusionDrive takes only two denoising steps. The visual conditioning therefore has two opportunities to perturb the anchor before commitment. This is a design decision for real-time throughput~\cite{jia-diffusiondrive-2025}, but its side effect is that each individual conditioning step contributes less than it would under a 50- or 1{,}000-step denoiser.
@@ -680,13 +737,13 @@ Because DiffusionDrive's head is actively attenuating the backbone contribution,
 \end{quote}
 
 \noindent
-This pre-registered criterion is what the interpretation of the result tables in \refsec{sec:exp-phase3} anchors on.
+This pre-registered criterion is what the interpretation of the result tables in \refsec{sec:exp-phase3} anchors on. \refsec{sec:exp-phase3} reports that the criterion is met on the completed $4 \times 4 \times 4$ matrix, in three of four training cities under the strictest per-backbone reading (DINOv2) and in four of four under the per-train-city reading. No architectural changes to DiffusionDrive were applied after the matrix was scored.
 
 % ============================================================================
 \section{Study Sequence}
 \label{sec:meth-exp-protocol}
 
-The experiments are organised as one exploratory study followed by four load-bearing studies. The exploratory lightweight-head study of~\ref{sec:meth-lightweight-head} motivates the representation-first framing. The cross-city SSL benchmark of~\ref{sec:meth-phase1-cc} produces the backbone-by-city matrix that Chapter~\ref{chap:experiments} reports. The generative-planning study adds DiffusionDrive with SSL backbones on the standard NAVSIM split, using the integration described in~\ref{sec:meth-diffusiondrive}. The cross-city generative study extends that integration to the city-disjoint setting; partial rows are reported in Chapter~\ref{chap:experiments}, but the study is not used as load-bearing evidence because the full matched matrix is incomplete. The mechanistic analysis uses CKA, linear probing, MMD, and feature-covariance effective rank on the trained checkpoints, with no additional training.
+The experiments are organised as one exploratory study followed by four load-bearing studies. The exploratory lightweight-head study of~\ref{sec:meth-lightweight-head} motivates the representation-first framing. The cross-city SSL benchmark of~\ref{sec:meth-phase1-cc} produces the backbone-by-city matrix that Chapter~\ref{chap:experiments} reports. The generative-planning study adds DiffusionDrive with SSL backbones on the standard NAVSIM split, using the integration described in~\ref{sec:meth-diffusiondrive}. The cross-city generative study extends that integration to the city-disjoint setting; the completed $4 \times 4 \times 4$ matrix is reported in Chapter~\ref{chap:experiments} as load-bearing evidence, with the pre-registered criterion in~\ref{sec:meth-dd-success} met under the natural reading. The mechanistic analysis uses CKA, linear probing, MMD, and feature-covariance effective rank on the trained checkpoints, with no additional training.
 
 % ============================================================================
 \section{Metrics}

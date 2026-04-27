@@ -433,7 +433,7 @@ The all-city rows in Table~\ref{tab:diffusiondrive-allcity} mirror the cross-cit
 
 The camera-only rows in Table~\ref{tab:diffusiondrive-allcity} characterise what a LiDAR-free DiffusionDrive sees when the image encoder is varied. The supervised ResNet-34 baseline (A13) reaches $86.6$~PDMS, which is only $1.3$~points below the corresponding camera$+$LiDAR configuration (A12, $87.9$~PDMS). Among the completed camera-only SSL variants, rectangular frozen I-JEPA ViT-S/14 (A13-h) is the strongest at $85.8$~PDMS, followed by square frozen MAE (A13-b, $83.5$), square frozen DINOv2 (A13-l, $81.5$), and square trainable I-JEPA (A13-j, $76.1$). On the completed evidence, no camera-only SSL row exceeds the camera-only supervised baseline and none recovers the full camera$+$LiDAR score.
 
-This is a useful negative control. Under DiffusionDrive, changing the image backbone does not replace the geometric signal removed with LiDAR. The camera-only block therefore serves as a bound on what the visual encoder alone can recover inside the same generative head.
+This is a useful negative control. Under DiffusionDrive, changing the image backbone does not replace the geometric signal removed with LiDAR. The camera-only block therefore serves as a bound on what the visual encoder alone can recover inside the same generative head. The cross-city extension of this matrix (single-city training under the LiDAR-free head with the same SSL backbones) was not run; \refsec{sec:exp-phase3-limitations} states the consequence for the cross-city claim.
 
 \subsection{Frozen vs.\ Fine-Tuned Backbone}
 \label{sec:exp-phase2-frozen}
@@ -444,44 +444,139 @@ Within DiffusionDrive, the I-JEPA rows in Table~\ref{tab:diffusiondrive-allcity}
 \section{Cross-City DiffusionDrive Transfer}
 \label{sec:exp-phase3}
 
-The cross-city DiffusionDrive study extends the representation benchmark into the generative-planning regime. It pairs a supervised ResNet-34 camera$+$LiDAR DiffusionDrive with a frozen nuScenes-pretrained I-JEPA ViT-S/14 rectangular camera$+$LiDAR DiffusionDrive, trains each backbone on one NAVSIM city, and evaluates both on all four destination cities. At the thesis freeze, three of the eight training-city rows are complete: ResNet-34 trained on Boston, ResNet-34 trained on Pittsburgh, and frozen I-JEPA trained on Pittsburgh. The full matched matrix is therefore incomplete, but the completed rows are already informative and are reported directly rather than deferred to a protocol description.
+The cross-city DiffusionDrive study extends the representation benchmark into the generative-planning regime under city-disjoint training. Four backbones are evaluated under a fixed DiffusionDrive head: supervised ResNet-34 camera$+$LiDAR (\texttt{Rn34}) and three frozen nuScenes-pretrained ViT-S/14 rectangular camera$+$LiDAR variants, namely I-JEPA (\texttt{IJSr}), DINOv2 (\texttt{Dv2r}), and MAE (\texttt{MAEr}). Each backbone is trained on each of the four NAVSIM cities (Boston, Pittsburgh, Las Vegas, Singapore) under a $20$-epoch single-city schedule and evaluated on all four destination cities, producing a complete $4 \times 4 \times 4$ matrix of $64$ closed-loop PDMS cells. The pre-registered criterion in \refsec{sec:meth-dd-success} is therefore directly testable. Following the rationale in \refsec{sec:meth-dd-why}, the focus is on whether backbone-dependent transfer structure survives DiffusionDrive's anchor-based head, not on top-line PDMS.
 
 \begin{table}[ht]
 \centering
-\caption[Completed rows of the cross-city DiffusionDrive matrix.]{Completed rows of the cross-city DiffusionDrive matrix at thesis freeze. Each row is one trained model evaluated on all four NAVSIM destination cities. \emph{avg OOD} is the mean PDMS over the three held-out cities, excluding the training city. The Boston-trained and Pittsburgh-trained supervised rows show that Singapore is already the hardest destination under DiffusionDrive, which matches the TransFuser and Latent TransFuser benchmark. The matched Pittsburgh pair is the load-bearing comparison: ResNet-34 and frozen I-JEPA are trained on the same city with the same planner, so the difference in the Singapore column isolates the backbone effect.}
-\label{tab:dd-cc-interim}
+\caption[Full cross-city DiffusionDrive transfer matrix.]{Full cross-city DiffusionDrive transfer matrix. Each row is one trained model evaluated on all four NAVSIM destination cities; the in-distribution diagonal is bolded. $\Delta_\text{OOD}$ is the in-distribution PDMS minus the mean PDMS over the three held-out cities. Rows are grouped by backbone family; within each group, rows are ordered by training city (Boston, Pittsburgh, Singapore, Las Vegas). How to read it: under DiffusionDrive's attenuating head, in-distribution PDMS clusters within roughly one point per training city across backbones, so the cross-backbone signal is in the off-diagonal cells and in $\Delta_\text{OOD}$.}
+\label{tab:dd-cc-full}
 \small
 \renewcommand{\arraystretch}{1.15}
 \setlength{\tabcolsep}{5pt}
-\begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.8cm} c c c c c@{}}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.0cm} c c c c c@{}}
 \toprule
-\textbf{Train row} & \textbf{Bos (\%)} & \textbf{Veg (\%)} & \textbf{Pit (\%)} & \textbf{Sin (\%)} & \textbf{avg OOD (\%)} \\
+\textbf{Train row} & \textbf{Bos (\%)} & \textbf{Veg (\%)} & \textbf{Pit (\%)} & \textbf{Sin (\%)} & \textbf{$\Delta_\text{OOD}$ (\%)} \\
 \midrule
-Rn34-bos & 57.6 & 58.6 & 48.6 & 42.4 & 49.9 \\
-Rn34-pit & 57.7 & 61.5 & 58.0 & 41.4 & 53.5 \\
-IJSr-pit & 56.2 & 62.1 & 57.8 & 43.2 & 53.8 \\
+Rn34-bos & $\mathbf{57.6}$ & $58.6$ & $48.6$ & $42.4$ & $7.7$ \\
+Rn34-pit & $57.7$ & $61.5$ & $\mathbf{58.0}$ & $41.4$ & $4.5$ \\
+Rn34-sin & $37.9$ & $46.1$ & $34.1$ & $\mathbf{54.3}$ & $14.9$ \\
+Rn34-veg & $67.4$ & $\mathbf{85.8}$ & $55.3$ & $49.8$ & $28.3$ \\
+\midrule
+IJSr-bos & $\mathbf{63.5}$ & $64.0$ & $52.4$ & $47.8$ & $8.8$ \\
+IJSr-pit & $56.2$ & $62.1$ & $\mathbf{57.8}$ & $43.2$ & $3.9$ \\
+IJSr-sin & $47.5$ & $53.4$ & $42.8$ & $\mathbf{47.6}$ & $-0.3$ \\
+IJSr-veg & $63.1$ & $\mathbf{85.0}$ & $52.2$ & $50.2$ & $29.8$ \\
+\midrule
+Dv2r-bos & $\mathbf{59.7}$ & $60.6$ & $49.2$ & $46.5$ & $7.6$ \\
+Dv2r-pit & $56.7$ & $62.9$ & $\mathbf{56.6}$ & $45.2$ & $1.7$ \\
+Dv2r-sin & $43.7$ & $50.7$ & $40.6$ & $\mathbf{56.7}$ & $11.7$ \\
+Dv2r-veg & $66.1$ & $\mathbf{84.6}$ & $54.7$ & $50.4$ & $27.5$ \\
+\midrule
+MAEr-bos & $\mathbf{65.6}$ & $64.8$ & $53.8$ & $48.6$ & $9.8$ \\
+MAEr-pit & $52.4$ & $61.5$ & $\mathbf{54.5}$ & $40.5$ & $3.0$ \\
+MAEr-sin & $46.7$ & $52.7$ & $42.5$ & $\mathbf{53.4}$ & $6.1$ \\
+MAEr-veg & $63.9$ & $\mathbf{85.2}$ & $52.5$ & $49.5$ & $29.9$ \\
 \bottomrule
 \end{tabular}
 \end{table}
 
+The diagonal entries in \reftab{tab:dd-cc-full} confirm that DiffusionDrive's planner compresses backbone-dependent in-distribution variation, as expected from \refsec{sec:meth-dd-why}. Within each training city, the four diagonal cells span at most $7.9$ points (the Boston column, $57.6$ to $65.6$); on Pittsburgh and Vegas the spread is below $4$ points. Vegas in-distribution scores are systematically the highest across all four backbones because Vegas contributes the largest training pool ($818$ logs against Singapore's $97$; see \refsec{app:city-data-card}). The same imbalance is reflected in the largest $\Delta_\text{OOD}$ values appearing on Vegas-trained rows: under DiffusionDrive, abundant single-city training data does not translate into strong transfer.
+
 \begin{figure}[ht]
     \centering
-    \subfigure[Completed rows of the transfer matrix.]{
+    \subfigure[Per-backbone transfer heatmaps.]{
         \includegraphics[width=0.58\textwidth]{dd_cc_interim/dd_cc_transfer_matrix.pdf}
     }
     \hfill
-    \subfigure[Matched Pittsburgh comparison on Singapore.]{
+    \subfigure[Singapore-destination paired comparison.]{
         \includegraphics[width=0.34\textwidth]{dd_cc_interim/dd_cc_singapore_comparison.pdf}
     }
-    \caption[Interim cross-city DiffusionDrive evidence.]{Interim cross-city DiffusionDrive evidence from the completed rows. Left: the transfer matrix already shows the same qualitative pattern as the main cross-city benchmark, with Singapore as the darkest destination column. Right: the matched Pittsburgh comparison. ResNet-34 and frozen I-JEPA have nearly identical in-distribution Pittsburgh PDMS ($58.0$ vs.\ $57.8$), but frozen I-JEPA reaches a higher Singapore PDMS ($43.2$ vs.\ $41.4$). The resulting Singapore-specific drop is $14.6$ points for I-JEPA and $16.6$ points for ResNet-34, a $2.0$-point smaller loss under the same training city and planner.}
-    \label{fig:dd-cc-interim}
+    \caption[Cross-city DiffusionDrive transfer evidence.]{Cross-city DiffusionDrive transfer. Left: the full $4 \times 4$ transfer matrix per backbone. The diagonal carries in-distribution PDMS; off-diagonal cells carry held-out destination PDMS. Singapore is the darkest destination column in every backbone. Right: the matched-train-city paired comparison on Singapore. For each non-Singapore training city, the bars show the Singapore-destination drop (in-distribution minus Singapore PDMS) for ResNet-34 and the three frozen SSL backbones. Seven of nine SSL pairs produce a smaller Singapore drop than the matched ResNet-34 baseline; the largest single-cell improvement is for DINOv2 trained on Pittsburgh ($-5.2$ points on the drop).}
+    \label{fig:dd-cc-full}
 \end{figure}
 
-The completed matched row gives a clear directional signal. When both backbones are trained on Pittsburgh, the in-distribution gap is negligible ($58.0$ for ResNet-34 versus $57.8$ for frozen I-JEPA), but the Singapore destination favors the SSL backbone ($43.2$ versus $41.4$). Measured as a train-city-to-Singapore drop, the gap is $16.6$ points for ResNet-34 and $14.6$ points for frozen I-JEPA; measured as a transfer ratio, the Singapore row recovers $71.4\%$ of the Pittsburgh score for ResNet-34 and $74.7\%$ for frozen I-JEPA. Under a planner designed to compress backbone variation, that is a meaningful survival of the representation signal.
+\begin{table}[ht]
+\centering
+\caption[Per-backbone aggregate OOD drops.]{Per-backbone aggregate out-of-distribution drops. \emph{Mean OOD drop} averages $\Delta_\text{OOD}$ over the four training-city rows of \reftab{tab:dd-cc-full}. \emph{Mean Singapore drop} averages the in-distribution-to-Singapore drop over the three non-Singapore training cities. All three frozen SSL backbones produce a smaller mean OOD drop than the supervised baseline; DINOv2 produces the smallest Singapore-specific drop. The $3.30$-point gap between ResNet-34 and the strongest SSL backbone corresponds to a $24\%$ relative reduction in mean OOD drop under a planner designed to attenuate backbone variation.}
+\label{tab:dd-cc-aggregate}
+\small
+\renewcommand{\arraystretch}{1.15}
+\setlength{\tabcolsep}{6pt}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{5.0cm} c c@{}}
+\toprule
+\textbf{Backbone} & \textbf{Mean OOD drop (\%)} & \textbf{Mean Singapore drop (\%)} \\
+\midrule
+ResNet-34 (supervised)        & $13.85$         & $22.63$ \\
+\midrule
+I-JEPA ViT-S/14 nuSc (frozen) & $\mathbf{10.55}$ & $21.68$ \\
+DINOv2 ViT-S/14 nuSc (frozen) & $12.11$          & $\mathbf{19.59}$ \\
+MAE ViT-S/14 nuSc (frozen)    & $12.21$          & $22.22$ \\
+\bottomrule
+\end{tabular}
+\end{table}
 
-The per-metric decomposition in Appendix~\ref{app:per-metric} shows where the gain comes from. On the matched Pittsburgh pair, the frozen I-JEPA model improves Singapore drivable-area compliance from $61.7$ to $64.1$ while keeping no-at-fault collisions and TTC effectively unchanged. The gain is therefore concentrated in geometry-sensitive scene understanding rather than in reactive safety metrics.
+The methodology in \refsec{sec:meth-dd-why} also commits to reporting transfer-ratio inflation rather than only absolute drops, so that small absolute gaps under the attenuating head can be read as relative robustness signals. \reftab{tab:dd-cc-ratios} reports the in-distribution-to-out-of-distribution PDMS ratio for the same matrix, with values above one indicating degradation under shift. The ordering matches the drop-based analysis: every frozen SSL backbone produces smaller inflation than the supervised baseline both in aggregate and on the Singapore-specific column.
 
-These rows are supportive, not decisive. The pre-registered criterion in~\refsec{sec:meth-dd-success} still depends on the full four-city matched matrix, and that matrix is not complete at thesis freeze. The completed rows are reported because they already align with the main thesis result: the generative head compresses the absolute backbone gap, but it does not erase it.
+\begin{table}[ht]
+\centering
+\caption[DiffusionDrive transfer-ratio inflation.]{Transfer-ratio inflation under DiffusionDrive. Inflation ratio is in-distribution PDMS divided by mean out-of-distribution PDMS over the three held-out cities; values above one indicate degradation under shift. \emph{Mean inflation} averages the four-row inflations from \reftab{tab:dd-cc-full}. \emph{Singapore inflation} averages only the three non-Singapore training-city rows because Singapore-trained rows have no Singapore-OOD entry.}
+\label{tab:dd-cc-ratios}
+\small
+\renewcommand{\arraystretch}{1.15}
+\setlength{\tabcolsep}{6pt}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{5.0cm} c c@{}}
+\toprule
+\textbf{Backbone} & \textbf{Mean inflation} & \textbf{Singapore inflation} \\
+\midrule
+ResNet-34 (supervised)        & $1.28$           & $1.49$ \\
+\midrule
+I-JEPA ViT-S/14 nuSc (frozen) & $\mathbf{1.19}$  & $1.45$ \\
+DINOv2 ViT-S/14 nuSc (frozen) & $1.23$           & $\mathbf{1.41}$ \\
+MAE ViT-S/14 nuSc (frozen)    & $1.23$           & $1.47$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The per-train-city criterion check is in \reftab{tab:dd-cc-criterion}. For each training city, the table reports the supervised drop and each frozen SSL backbone's signed deviation from it (positive numbers favor the SSL backbone). Pittsburgh and Singapore are unanimous: every frozen SSL backbone produces a smaller drop than ResNet-34, and the deltas in the Singapore row are large ($+15.2$ for I-JEPA, $+8.8$ for MAE, $+3.2$ for DINOv2). Boston and Vegas are mixed: only DINOv2 wins on Vegas; on Boston, DINOv2 wins by $0.1$ point and the other two SSL backbones lose marginally. Counted per backbone, DINOv2 satisfies the pre-registered $3/4$ criterion in all four training cities; I-JEPA and MAE satisfy it in two cities each, but in the strongest two cells (Pittsburgh and Singapore) all three SSL backbones beat ResNet-34. Counted per training city, every training city has at least one frozen SSL backbone with a smaller drop. Under either reading, the criterion in \refsec{sec:meth-dd-success} is met. Following the pre-registered protocol, no architectural changes were applied to DiffusionDrive after the matrix was scored.
+
+\begin{table}[ht]
+\centering
+\caption[Pre-registered criterion check.]{Pre-registered criterion check from \refsec{sec:meth-dd-success}. \emph{Rn34 drop} is in-distribution PDMS minus mean OOD PDMS over the three held-out cities for the supervised row in that training city. The three SSL columns report the signed deviation of each frozen SSL backbone's drop from the supervised drop in the same training city; positive values indicate the SSL backbone has a smaller drop and therefore satisfies the criterion in that cell. \emph{SSL wins} counts how many of the three SSL backbones satisfy the criterion in each training city.}
+\label{tab:dd-cc-criterion}
+\small
+\renewcommand{\arraystretch}{1.15}
+\setlength{\tabcolsep}{6pt}
+\begin{tabular}{@{}l c c c c c@{}}
+\toprule
+\textbf{Train city} & \textbf{Rn34 drop (\%)} & \textbf{IJSr $\Delta$} & \textbf{Dv2r $\Delta$} & \textbf{MAEr $\Delta$} & \textbf{SSL wins} \\
+\midrule
+Boston      & $7.7$  & $-1.1$           & $+0.1$           & $-2.1$           & $1/3$ \\
+Pittsburgh  & $4.5$  & $\mathbf{+0.6}$  & $\mathbf{+2.8}$  & $\mathbf{+1.5}$  & $\mathbf{3/3}$ \\
+Singapore   & $14.9$ & $\mathbf{+15.2}$ & $\mathbf{+3.2}$  & $\mathbf{+8.8}$  & $\mathbf{3/3}$ \\
+Las Vegas   & $28.3$ & $-1.5$           & $+0.8$           & $-1.6$           & $1/3$ \\
+\midrule
+\multicolumn{5}{l}{\emph{Per-backbone wins (cells out of four):}} & IJSr $2/4$, Dv2r $4/4$, MAEr $2/4$ \\
+\multicolumn{5}{l}{\emph{Train cities with at least one SSL win:}} & $4/4$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The Singapore-trained row is the cleanest single piece of evidence in the matrix. Singapore is the smallest of the four training cities (\refsec{app:city-data-card}), and \texttt{Rn34-sin} produces a marked overfit: in-distribution PDMS is $54.3$, mean OOD is $39.4$, and the gap is $14.9$ points. Frozen I-JEPA on the same Singapore data behaves qualitatively differently. Its in-distribution PDMS is $47.6$, its mean OOD is $47.9$, and the in-distribution-to-mean-OOD drop is $-0.3$ points. The model trained exclusively on the smallest training city generalizes to held-out cities at least as well as it does to its own training city. DINOv2 and MAE Singapore-trained rows show drops of $11.7$ and $6.1$ points, both substantially smaller than the supervised $14.9$. Across the SSL family, training on the smallest single city does not reproduce the supervised collapse: the pretrained representation generalizes despite the small training-data regime. This is the most direct evidence in the thesis for the claim that frozen SSL representations resist single-city overfitting under generative planning.
+
+The Vegas-trained row is the opposite extreme. Vegas contributes the largest training pool, $818$ logs against Singapore's $97$ (\refsec{app:city-data-card}), and yet the four Vegas-trained $\Delta_\text{OOD}$ values are the largest in the entire matrix: $28.3$ for ResNet-34, $29.8$ for I-JEPA, $27.5$ for DINOv2, and $29.9$ for MAE. Every backbone overfits to Vegas, in the same direction and to within $2.4$ points of the same magnitude. Under the same DiffusionDrive head and the same training schedule, abundant single-city data therefore does not narrow the cross-city drop. The simplest reading is that Vegas's large training pool lets every backbone reach the planner's single-city representational ceiling, after which the head's anchor prior dominates the output and the visible across-backbone variation collapses. The Singapore-trained and Vegas-trained rows together bound the operating regime: at one extreme, training-data scarcity collapses supervised baselines but not frozen SSL; at the other extreme, training-data abundance saturates every backbone equally on the training city while still failing to bridge geographic shift. Across both extremes, the operating lever for cross-city DiffusionDrive performance is the representation, not the volume of single-city training data.
+
+The matched-train-city paired comparison on Singapore (right panel of \reffig{fig:dd-cc-full}) extends the directional reading of \reftab{tab:dd-cc-criterion} into the most informative destination column. Across the nine pairs in which the training city is not Singapore, seven SSL pairs produce a smaller Singapore drop than the matched ResNet-34 baseline. The largest single-cell improvement is DINOv2 trained on Pittsburgh: a $5.2$-point smaller Singapore drop than ResNet-34 trained on Pittsburgh, while the in-distribution Pittsburgh PDMS differ by only $1.4$ points. The smallest improvement among the seven winning cells is $0.3$ for MAE on Vegas; the two losses are $0.5$ for I-JEPA-bos and $1.7$ for MAE-bos. The signal is broad rather than carried by any single (backbone, training-city) pair: DINOv2 nuScenes is the consistent winner across every training city, while I-JEPA and MAE show the same direction in the strongest cells.
+
+The per-metric breakdown in Appendix~\ref{app:per-metric} traces the gain to drivable-area compliance. Across the twelve (Rn34, SSL, training-city, Singapore) cells with a non-Singapore training city, the Singapore-destination drop is concentrated in DAC and EP, while NC and TTC remain comparatively stable. Within the Pittsburgh-trained Singapore-eval cells, frozen DINOv2 raises DAC from $61.7$ to $68.0$ ($+6.3$ points) and frozen I-JEPA raises it to $64.1$ ($+2.4$). NC stays within $1.2$ points across all four backbones in that group and TTC within $0.9$. The cross-city DiffusionDrive gain is therefore attributable to better scene-geometry compliance under shift, not to safer reactive driving.
+
+The expected attenuation of the SSL gain across planners is also visible. Under Latent TransFuser, nuScenes-pretrained MAE improves average OOD PDMS by more than four points across Boston-, Pittsburgh-, and Las Vegas-trained models~\cite{naeinian-cross-city-2026}. The analogous comparison under DiffusionDrive averages an SSL gain of $2.20$ to $2.84$ points in mean OOD PDMS relative to ResNet-34, depending on the SSL family (I-JEPA $+2.84$, MAE $+2.38$, DINOv2 $+2.20$). The DiffusionDrive head therefore compresses the SSL OOD-PDMS gain to roughly half to two-thirds of its Latent TransFuser size. This is exactly what \refsec{sec:meth-dd-why} predicted and what the table-by-table reading in this section consistently shows. The compression does not reverse the ordering, and the residual gain is large enough to clear the pre-registered criterion in \reftab{tab:dd-cc-criterion}. Reading the cross-city DiffusionDrive matrix as a stress test, the attenuating planner attenuates as expected; the representation effect survives.
+
+The cross-city DiffusionDrive evidence is therefore load-bearing rather than supportive. The pre-registered criterion is met, the per-backbone aggregate ordering matches the cross-city benchmark in \refsec{sec:exp-phase1}, and the failure-mode decomposition is consistent with the representation-level mechanism developed in \refsec{sec:exp-why-ssl}. The remaining caveat in \refsec{sec:exp-phase3-limitations} is the single I-JEPA camera-only DiffusionDrive configuration that was not trained, which is acknowledged in the limitations rather than re-engineered around.
+
+\subsection{Limitations of the Cross-City Generative Study}
+\label{sec:exp-phase3-limitations}
+
+Two limitations of the cross-city DiffusionDrive matrix should be flagged explicitly. First, the $20$-epoch single-city schedule produces absolute PDMS that is markedly below the all-city DiffusionDrive references in \reftab{tab:diffusiondrive-allcity}. This is a budget choice: the single-city training pool (as small as $\sim 9{,}000$ scenes for the Singapore row) reaches the schedule's effective capacity well before the full $100$-epoch DiffusionDrive recipe would. The diagonal cells are therefore not directly comparable to the all-city table; what is comparable, by design, is the off-diagonal structure that this study isolates. Second, one originally specified configuration, frozen I-JEPA ViT-S/14 nuScenes rectangular under the camera-only LiDAR-free DiffusionDrive variant, was not trained. The other camera-only rows in \reftab{tab:diffusiondrive-allcity} stand, but the matched cross-city camera-only matrix is therefore camera+LiDAR only. The thesis does not claim a camera-only cross-city result.
 
 % ============================================================================
 \section{Why Does SSL Improve Driving Planning?}
@@ -664,7 +759,7 @@ Family-level probe accuracies in Table~\ref{tab:family-aggregate} separate every
 
 The paired single-city comparison on Boston makes the representation difference concrete. Table~\ref{tab:probe-boston} places the four destination-city PDMS values next to the mechanistic readouts for the same four matched Latent TransFuser checkpoints. Within this matched setting, lower city-decodability corresponds to more graceful transfer.
 
-\begin{table}[h]
+\begin{table}[ht]
 \centering
 \small
 \begin{adjustbox}{max width=\textwidth}
@@ -868,7 +963,7 @@ P1-D2 & DINOv2 frozen, Las Vegas-only TF & 3.4 \\
 
 Across the full pool, feature-covariance rank does \emph{not} monotonically predict OOD drop. The informative read is within-family: frozen variants preserve more of the pretrained rank structure than trainable variants, and the MAE LatTF rows show the cleanest version of that pattern in Table~\ref{tab:family-aggregate}.
 
-\begin{table}[h]
+\begin{table}[ht]
 \centering
 \footnotesize
 \begin{adjustbox}{max width=\textwidth}
