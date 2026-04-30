@@ -3,7 +3,7 @@
 LaTeX source for the M.S. thesis by **Ali Hamza** at NYU Tandon School of Engineering (ECE), 2026.
 
 [![Code](https://img.shields.io/badge/code-navsim--ssl--city--generalization-orange.svg)](https://github.com/hurryingauto3/navsim-ssl-city-generalization)
-[![Showcase](https://img.shields.io/badge/showcase-thesis--showcase-9cf.svg)](https://github.com/hurryingauto3/thesis-showcase)
+[![Showcase](https://img.shields.io/badge/showcase-navsim--showcase-9cf.svg)](https://github.com/hurryingauto3/navsim-showcase)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
 - **Advisor**: Prof. Anna Choromanska
@@ -29,7 +29,7 @@ Cross-city generalization failure in end-to-end autonomous driving is a **repres
 | Repo | What it is |
 |---|---|
 | [`hurryingauto3/navsim-ssl-city-generalization`](https://github.com/hurryingauto3/navsim-ssl-city-generalization) | Code, configs, splits, results, figures |
-| [`hurryingauto3/thesis-showcase`](https://github.com/hurryingauto3/thesis-showcase) | Browser-based interactive demo |
+| [`hurryingauto3/navsim-showcase`](https://github.com/hurryingauto3/navsim-showcase) | Browser-based interactive demo |
 | `hurryingauto3/masters-thesis` (this repo) | LaTeX manuscript |
 
 ## Build
