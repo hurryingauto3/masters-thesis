@@ -7,7 +7,7 @@
 
 %% Replace the title, name, advisor name, graduation date and dedication below with
 %% your own. Graduation months must be January, May or September.
-\newcommand{\thesistitle}{Self-Supervised Visual Representations for Cross-City Generalization in End-to-End Autonomous Driving}
+\newcommand{\thesistitle}{Representation Learning for Cross-City Generalization in End-to-End Autonomous Driving}
 \newcommand{\thesisauthor}{Ali Hamza}
 \newcommand{\thesisadvisor}{Anna Choromanska}
 \newcommand{\graddate}{May 2026}
@@ -26,19 +26,8 @@
 %% subsections, but not subsubsections, decrease this counter to 2.
 \setcounter{secnumdepth}{3}
 
-% Setting a gap between page number and text block
-
-
-%% Page layout (customized to letter paper and NYU requirements):
-%% Left margin = 1" (default) + \oddsidemargin = 1.5" (binding edge)
-%% Right margin = 8.5" - 1.5" - 6.0" = 1.0"
-\setlength{\oddsidemargin}{.5in}
-\setlength{\textwidth}{6.0in}
-\setlength{\topmargin}{0.5in}
-\setlength{\headheight}{0in}
-\setlength{\headsep}{0in}
-\setlength{\textheight}{8.3in}
-\setlength{\footskip}{.5in}
+%% Page layout: one-inch margins on letter paper, including the page header.
+\usepackage[letterpaper,margin=1in,includehead,headheight=20pt,headsep=0pt,footskip=.5in]{geometry}
 
 %% Use the following commands, if desired, during production.
 %% Comment them out for final version.
@@ -63,6 +52,7 @@
 \usepackage{url}
 \usepackage{lipsum}
 \usepackage{fancyhdr}
+\usepackage{etoolbox}
 % \newfloat{algorithm}{t}{lop}
 
 \pagestyle{fancy}
@@ -78,9 +68,18 @@
 
 \setlength{\headheight}{20pt} 
 
-%% Use a slightly tighter custom line spacing for readability.
-%% Adjust this value if you want to move closer to single- or 1.5-spacing.
-\setstretch{1.2} % requires package setspace, invoked above
+%% ProQuest requires a double-spaced manuscript body and front matter.
+\doublespacing
+
+%% ProQuest permits single spacing in tables, captions, quotations, and
+%% bibliography entries. Apply that policy globally so chapter files do not
+%% need local spacing overrides.
+\AtBeginEnvironment{table}{\singlespacing}
+\AtBeginEnvironment{figure}{\singlespacing}
+\AtBeginEnvironment{longtable}{\singlespacing}
+\AtBeginEnvironment{quote}{\singlespacing}
+\AtBeginEnvironment{quotation}{\singlespacing}
+\AtBeginEnvironment{thebibliography}{\singlespacing}
 
 %% Each of the following lines defines the \com command, which produces
 %% a comment (notes for yourself, for instance) in the output file.
@@ -93,6 +92,26 @@
 %% This inputs your auxiliary file with \usepackage's and \newcommand's:
 %% It is assumed that that file is called "definitions.tex".
 \input{definitions}
+
+\renewcommand{\contentsname}{Table of Contents}
+
+\makeatletter
+\newcommand{\centeredtableofcontents}{%
+  \chapter*{\centering\contentsname
+    \@mkboth{\MakeUppercase\contentsname}{\MakeUppercase\contentsname}}%
+  \@starttoc{toc}%
+}
+\newcommand{\centeredlistoffigures}{%
+  \chapter*{\centering\listfigurename
+    \@mkboth{\MakeUppercase\listfigurename}{\MakeUppercase\listfigurename}}%
+  \@starttoc{lof}%
+}
+\newcommand{\centeredlistoftables}{%
+  \chapter*{\centering\listtablename
+    \@mkboth{\MakeUppercase\listtablename}{\MakeUppercase\listtablename}}%
+  \@starttoc{lot}%
+}
+\makeatother
 
 %% Cross-referencing utilities. Use one or the other--whichever you prefer--
 %% but comment out both lines for final version.
@@ -111,16 +130,18 @@
 \pagenumbering{roman}
 \hypersetup{pageanchor=false}
 \thispagestyle{empty}
+\begingroup
+\singlespacing
 \begin{center}
 {\bfseries
   {\large\thesistitle}
-  \vspace{0.5in}
+  \vspace{0.35in}
 
   \rule{2.5in}{0.4pt}
-  \vspace{0.5in}
+  \vspace{0.35in}
 
  {\large {\bf THESIS}}\\
-  \vspace{.5in}
+  \vspace{.35in}
   
   \begin{doublespace}
   {\large  
@@ -130,32 +151,33 @@
   % \vspace{.1in}
   the Degree of\\}
   \end{doublespace}
-  \vspace{.5in}
+  \vspace{.35in}
   
   {\large MASTER OF SCIENCE (Computer Engineering)}\\
-  \vspace{.5in}
+  \vspace{.35in}
 
   at the \\
-  \vspace{.2in}
+  \vspace{.15in}
 
   {\large
   NEW YORK UNIVERSITY\\
   \vspace{-0.05in}
   TANDON SCHOOL OF ENGINEERING\\
   }
-  \vspace{.2in}
+  \vspace{.15in}
 
   by
-  \vspace{.5in}
+  \vspace{.35in}
 
   {\large\thesisauthor}
-  \vspace{.5in}
+  \vspace{.35in}
   % \vfill
 
   {\large\graddate}
 }
 
 \end{center}
+\endgroup
 
 \newpage
 
@@ -164,6 +186,8 @@
 \setcounter{page}{1}
 %% No numbering in the title page:
 \thispagestyle{empty}
+\begingroup
+\singlespacing
 %
 \begin{center}
 {\bfseries
@@ -172,7 +196,7 @@
   \rule{2.5in}{0.4pt}
 
   THESIS\\
-  \vspace{.25in}
+  \vspace{.18in}
 
   \begin{doublespace}
   Submitted in Partial Fulfillment of\\
@@ -181,10 +205,10 @@
   % \vspace{.1in}
   the Degree of\\
   \end{doublespace}
-  \vspace{.25in}
+  \vspace{.18in}
 
   MASTER OF SCIENCE (Computer Engineering)\\
-  \vspace{.25in}
+  \vspace{.18in}
   
   at the \\
   \vspace{.1in}
@@ -194,13 +218,13 @@
   \vspace{-0.05in}
   TANDON SCHOOL OF ENGINEERING\\
   }
-  \vspace{.2in}
+  \vspace{.15in}
   
   by
-  \vspace{.3in}
+  \vspace{.2in}
 
   \thesisauthor
-  \vspace{.3in}
+  \vspace{.2in}
   % \vfill
 
   \graddate
@@ -208,27 +232,13 @@
 
 \end{center}
 
-\vspace{0.3in}
+\vspace{0.18in}
 
 \begin{flushright}
-\begin{minipage}{2.5in}
-Approved: \vspace{0.1in}
-
-\hrule\vspace{4pt}
-\centerline{\small Department Chair Signature}
-\vspace{0.2in}
-
-\hrule\vspace{4pt}
-\centerline{\small Date}
-\end{minipage}
+\includegraphics[width=2.7in]{fig/signatures/signature_chair.png}
 \end{flushright}
 
-\vspace{0.3in}
-\noindent
-\underline{University ID}: \underline{N\#13728791}
-
-\noindent
-\underline{Net ID}: \hspace{.415in} \underline{ah7072}
+\endgroup
 
 \newpage
 
@@ -240,21 +250,12 @@ Approved: \vspace{0.1in}
 \setcounter{page}{2}
 \noindent
 Approved by the Guidance Committee:
-\singlespacing
 
-\underline{Major}: Computer Engineering
-\vspace{0.7in}
+\underline{MS Major}: Computer Engineering
+\vspace{0.45in}
 
-\hfill\parbox{3in}{%
-\hrule\vspace{2pt}
-\centerline{\textbf{Anna Choromanska}}
-\centerline{Professor of}
-\centerline{Electrical and Computer Engineering}
-\vspace{0.3in}
-\hrule\vspace{2pt}
-\centerline{Date}
-}
-\vspace{0.5in}
+\hfill\includegraphics[width=3.22in]{fig/signatures/signatures_commitee.png}
+\vspace{0.35in}
 
 \doublespacing
 \newpage
@@ -264,7 +265,7 @@ Approved by the Guidance Committee:
 \thispagestyle{plain}
 \vspace*{\fill}
 \begin{center}
-Microfilm or other copies of this thesis are obtainable from\\
+Copies of this thesis are obtainable from\\
 \vspace{1in}
 UMI Dissertation Publishing\\
 ProQuest CSA\\
@@ -324,16 +325,16 @@ Ann Arbor, MI 48106-1346
 \newpage
 
 %%%% Table of Contents %%%%%%%%%%%%
-\tableofcontents
+\centeredtableofcontents
 % \clearpage
 % \pagestyle{headings}
 
 %%%%% List of Figures %%%%%%%%%%%%%
-\listoffigures\addcontentsline{toc}{section}{\listfigurename}
+\centeredlistoffigures\addcontentsline{toc}{section}{\listfigurename}
 \newpage
 
 %%%%% List of Tables %%%%%%%%%%%%%
-\listoftables\addcontentsline{toc}{section}{\listtablename}
+\centeredlistoftables\addcontentsline{toc}{section}{\listtablename}
 \newpage
 
 %%%%% Body of thesis starts %%%%%%%%%%%%

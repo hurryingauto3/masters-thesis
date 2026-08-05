@@ -2,11 +2,7 @@
 \chapter{Experiments and Results}
 \label{chap:experiments}
 
-%% This chapter presents all experimental results.
-%% Structure: 4 phases matching the methodology, plus "Why SSL Works" analysis.
-%% Approx. 20 pages (the core of the thesis).
-
-This chapter follows the same order used in the defense. It starts with baseline validation and the lightweight-head study, then moves to the main cross-city TransFuser and Latent TransFuser benchmark, then to DiffusionDrive as a second planner family, and finally to the mechanistic analysis that explains the observed transfer gains. The chapter closes with a discussion of the practical implications, including what the completed evidence does and does not justify for deployment.
+This chapter follows the study sequence introduced in Chapter~\ref{chap:introduction}. It starts with baseline validation and the lightweight-head study, then moves to the main cross-city TransFuser and Latent TransFuser benchmark, then to DiffusionDrive as a second planner family, and finally to the mechanistic analysis that explains the observed transfer gains. The chapter closes with practical implications and deployment limits.
 
 % ============================================================================
 \section{Baseline Validation}
@@ -33,37 +29,16 @@ Latent TransFuser (ResNet-34, C+L)                   & Published~\cite{dauner-na
 \midrule
 TransFuser (ResNet-34, C+L)                          & Internal repro (v1.1, 100\,ep)     & $\mathbf{83.22}$   & within published range \\
 Latent TransFuser (ResNet-34, C+L)                   & Internal repro (v1.1, 100\,ep)     & $\mathbf{83.18}$   & within published range \\
-TransFuser (ResNet-34, C+L)                          & Internal repro (v2.2, 100\,ep)     & $\mathbf{85.3}$    & same checkpoint, higher under v2.2 \\
-Latent TransFuser (ResNet-34, C+L)                   & Internal repro (v2.2, 100\,ep)     & $\mathbf{84.9}$    & same checkpoint, higher under v2.2 \\
+TransFuser (ResNet-34, C+L)                          & Internal repro (v2.2, 100\,ep)     & $\mathbf{85.4}$    & separate 100-epoch validation run \\
+Latent TransFuser (ResNet-34, C+L)                   & Internal repro (v2.2, 100\,ep)     & $\mathbf{84.9}$    & separate 100-epoch validation run \\
 DiffusionDrive (ResNet-34, C+L)                      & Published~\cite{jia-diffusiondrive-2025} & $88.1$       & generative head reference \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-The upper block gives non-learning and low-capacity references; the middle block gives the published TransFuser and Latent TransFuser means; the bottom block gives internal $100$-epoch validation runs and the published DiffusionDrive reference~\cite{dauner-navsim-2024,jia-diffusiondrive-2025}. The v1.1 validation is the load-bearing sanity check, because the canonical cross-city matrix later in this chapter is also scored under v1.1. On that devkit, TF reaches $83.22$ and LatTF reaches $83.18$, both within the published ranges. Re-evaluating the same checkpoints under v2.2 shifts both scores upward by about two points, to $85.3$ and $84.9$, which indicates a systematic devkit offset rather than a planner-specific pipeline error.
+The upper block gives non-learning and low-capacity references; the middle block gives the published TransFuser and Latent TransFuser means; the bottom block gives internal $100$-epoch validation runs and the published DiffusionDrive reference~\cite{dauner-navsim-2024,jia-diffusiondrive-2025}. The v1.1 validation is the canonical sanity check, because the cross-city matrix later in this chapter is also scored under v1.1. On that devkit, TF reaches $83.22$ and LatTF reaches $83.18$, both within the published ranges. Separate $100$-epoch v2.2 validation runs reach $85.4$ and $84.9$, which indicates an upward devkit shift of roughly two points rather than a planner-specific pipeline error.
 
-Experiment identifiers in this chapter are labels that pick out a single trained model within each study, not hyperparameters. Each label is built from a family prefix plus a short suffix: the prefix names the study (all-city, single-city, lightweight-head, generative planning), and the suffix selects a specific backbone or adaptation variant. Table~\ref{tab:exp-id-guide} is the small legend needed to read those labels when they appear in a results table. Readers who do not wish to trace individual rows can safely ignore the labels; the thesis claims are developed at the level of backbone families (ResNet-34, I-JEPA, DINOv2, MAE) rather than individual run identifiers.
-
-\begin{table}[ht]
-\centering
-\caption[Experiment-label legend used in Chapter 5.]{Legend for the experiment labels that appear in the results tables of this chapter. Each entry pairs a family prefix with the experimental scope it denotes and with the convention used to read the suffix. Labels are included only so that individual rows in large matrices can be cross-referenced; they carry no additional meaning beyond what this legend specifies.}
-\label{tab:exp-id-guide}
-\small
-\renewcommand{\arraystretch}{1.15}
-\setlength{\tabcolsep}{5pt}
-\begin{tabular}{@{}>{\raggedright\arraybackslash}p{2.5cm} >{\raggedright\arraybackslash}p{4.5cm} >{\raggedright\arraybackslash}p{5.0cm}@{}}
-\toprule
-\textbf{Prefix} & \textbf{Scope} & \textbf{How to read the suffix} \\
-\midrule
-\texttt{A*} & All-city NAVSIM runs, including DiffusionDrive all-city variants & Suffix letters select a backbone or a backbone-adaptation variant within the all-city study. \\
-\texttt{P1-*} & TransFuser runs trained on a single city and evaluated on all four cities & Family letter: \texttt{B}=ResNet, \texttt{I}=I-JEPA, \texttt{D}=DINOv2, \texttt{M}=MAE; numeric suffix is the training city. \\
-\texttt{F1-*} & Latent TransFuser single-city cross-city runs (LiDAR-free) & Same family-letter convention as \texttt{P1-*}; these are the LiDAR-free rows used by the mechanistic analysis. \\
-\texttt{LH-B1-*} & Lightweight-head backbone sweep (front-camera, MLP head, pooled \texttt{navtest}) & Suffix records the backbone family and whether the backbone is frozen or fully fine-tuned. \\
-\texttt{LH-CC-*} & Lightweight-head cross-city probe (front-camera, frozen MLP, single-city training) & City suffix: \texttt{bos}, \texttt{pit}, \texttt{sin}, \texttt{veg}. \\
-\texttt{DD-CC-*} & DiffusionDrive cross-city variants & City suffix follows the same convention as \texttt{LH-CC-*}. \\
-\bottomrule
-\end{tabular}
-\end{table}
+Experiment identifiers are row labels, not hyperparameters. Prefixes identify the study family: \texttt{A*} for all-city NAVSIM runs, \texttt{P1-*} for single-city TransFuser, \texttt{F1-*} for single-city Latent TransFuser, \texttt{LH-*} for lightweight-head runs, and \texttt{DD-CC-*} for cross-city DiffusionDrive. Suffixes identify the backbone or training city. The claims are made at the backbone-family level rather than at the level of individual run IDs.
 
 These references establish two points used throughout the rest of the chapter. First, the benchmark is non-trivial: ego-state prediction alone is insufficient. Second, planner architecture can clearly improve mixed-city PDMS, as seen in the jump from TransFuser to DiffusionDrive. The thesis question is therefore more specific than which planner scores highest in aggregate. It is which parts of that performance survive under geographic transfer.
 
@@ -80,7 +55,7 @@ The Priority-1 sweep holds the planner at its minimum capacity and varies only t
 
 \begin{table}[H]
 \centering
-\caption[Priority-1 lightweight-head sweep on \texttt{navtest}.]{Priority-1 lightweight-head sweep on \texttt{navtest} ($12{,}146$ scenarios), pooled all-city. All rows use the same frozen encoder, single-front-camera, MLP$(256,256)$ head, AdamW, 20-epoch recipe from~\ref{sec:meth-lh-recipe}. PDMS and sub-scores are reported as percentages; evaluation is one-stage, devkit v1.0, non-reactive.}
+\caption[Priority-1 lightweight-head sweep on \texttt{navtest}.]{Priority-1 lightweight-head sweep on pooled \texttt{navtest}. All rows use the same frozen encoder, front camera, MLP head, and 20-epoch recipe. PDMS and sub-scores are reported as percentages.}
 \label{tab:exp-phase0-p1}
 \footnotesize
 \renewcommand{\arraystretch}{1.15}
@@ -113,7 +88,7 @@ Priority-3 repeats the same backbone matrix in full-backbone fine-tuning mode un
 
 \begin{table}[ht]
 \centering
-\caption[Priority-3 lightweight-head sweep (fully fine-tuned backbone).]{Priority-3 lightweight-head sweep on pooled \texttt{navtest}, using the same front-camera, MLP$(256, 256)$ head and 20-epoch recipe as~\reftab{tab:exp-phase0-p1} but with the backbone fully unfrozen under the two-group AdamW schedule of~\ref{sec:meth-lh-recipe}. PDMS and the five sub-scores are reported as percentages. Comparing row-for-row against~\reftab{tab:exp-phase0-p1} isolates the effect of full-backbone fine-tuning at otherwise fixed planner capacity; \reftab{tab:exp-phase0-lift} gives the corresponding per-backbone PDMS deltas.}
+\caption[Priority-3 lightweight-head sweep (fully fine-tuned backbone).]{Priority-3 lightweight-head sweep on pooled \texttt{navtest}. The setup matches \reftab{tab:exp-phase0-p1} except that the backbone is fully unfrozen. PDMS and sub-scores are reported as percentages.}
 \label{tab:exp-phase0-p3}
 \footnotesize
 \renewcommand{\arraystretch}{1.15}
@@ -146,7 +121,7 @@ Pairing each row of Table~\ref{tab:exp-phase0-p1} with its Table~\ref{tab:exp-ph
 
 \begin{table}[ht]
 \centering
-\caption[Fine-tuning deltas: Priority-3 minus Priority-1.]{Per-backbone PDMS lift from fully fine-tuning the encoder (Priority-3) relative to the frozen-encoder baseline (Priority-1). Deltas are in percentage points; a positive value means fine-tuning helped that backbone, a negative value means it hurt. The pattern is ordinal and consistent with the representation-centric story: backbones whose pretrained features already transfer well (frozen I-JEPA, ImageNet MAE) benefit least from fine-tuning, while weaker-out-of-the-box backbones (DINOv2 variants, ResNet-34) benefit most.}
+\caption[Fine-tuning deltas: Priority-3 minus Priority-1.]{Per-backbone PDMS lift from fully fine-tuning the encoder relative to the frozen-encoder baseline. Deltas are in percentage points. Positive values indicate that fine-tuning helped.}
 \label{tab:exp-phase0-lift}
 \scriptsize
 \renewcommand{\arraystretch}{1.15}
@@ -179,7 +154,7 @@ The cross-city leg of the Exploratory matrix trains four frozen backbones on eac
 
 \begin{table}[ht]
 \centering
-\caption[Exploratory cross-city probe (lightweight head).]{Lightweight-head cross-city probe: one frozen-encoder MLP model is trained on each single NAVSIM city and then evaluated on the full pooled \texttt{navtest} split. Columns are backbone families (ResNet-34, frozen I-JEPA ViT-H/14, frozen DINOv2, frozen MAE); rows are training cities. Each score is PDMS as a percentage, accompanied by the experiment label for cross-referencing. The final row gives each backbone's mean PDMS across the four training cities, which is the summary used in the body text to compare representations at fixed planner capacity.}
+\caption[Exploratory cross-city probe (lightweight head).]{Lightweight-head cross-city probe. Rows are single-city training sources; columns are backbone families. Each cell reports pooled \texttt{navtest} PDMS as a percentage plus the corresponding run label.}
 \label{tab:exp-phase0-cc}
 \footnotesize
 \renewcommand{\arraystretch}{1.2}
@@ -227,7 +202,7 @@ The spread in Tables~\ref{tab:exp-phase0-p1}--\ref{tab:exp-phase0-p3} is consist
 
 \begin{table}[ht]
 \centering
-\caption[Drive-JEPA context: thesis lightweight-head rows vs.\ published Drive-JEPA.]{Drive-JEPA context for the post-saturation framing of the lightweight-head study. The first two rows are the strongest frozen and fine-tuned lightweight-head configurations from~\reftab{tab:exp-phase0-p1} and~\reftab{tab:exp-phase0-p3}; the next two rows are Drive-JEPA's published pooled NAVSIM numbers~\cite{wang-drive-jepa}. The gap is deliberate context, not a competition: on pooled NAVSIM, mixed-city PDMS is close to saturating, which is the observation that motivated the pivot to city-disjoint evaluation.}
+\caption[Drive-JEPA context: thesis lightweight-head rows vs.\ published Drive-JEPA.]{Drive-JEPA context for the lightweight-head study. The first two rows are the strongest thesis lightweight-head configurations; the next two rows are Drive-JEPA's published pooled NAVSIM numbers~\cite{wang-drive-jepa}.}
 \label{tab:exp-drivejepa-context}
 \footnotesize
 \renewcommand{\arraystretch}{1.15}
@@ -264,7 +239,7 @@ The in-distribution story is intentionally unspectacular. \reftab{tab:exp-law-in
 
 \begin{table}[ht]
 \centering
-\caption[Mixed-city LAW results on nuScenes.]{Representative mixed-city LAW results on nuScenes. Models are trained on the pooled Boston$+$Singapore nuScenes split and evaluated on the held-out pooled validation set. Columns report L2 displacement error (metres) and collision rate (percent); lower is better for both. These pooled numbers intentionally do not separate the two cities; the purpose is to show the regime in which all backbones look approximately interchangeable, which motivates the cross-city splits used in the rest of this section.}
+\caption[Mixed-city LAW results on nuScenes.]{Representative mixed-city LAW results on nuScenes. Models are trained on pooled Boston$+$Singapore and evaluated on the pooled validation set. Columns report L2 displacement error and collision rate; lower is better for both.}
 \label{tab:exp-law-indist}
 \small
 \renewcommand{\arraystretch}{1.15}
@@ -289,9 +264,9 @@ The transfer matrices reveal structure that is invisible in the pooled metrics. 
 
 \begin{figure}[ht]
     \centering
-    \includegraphics[width=0.48\textwidth]{iros/fig1_tf_pdms_heatmaps.pdf}
-    \includegraphics[width=0.48\textwidth]{iros/fig1_latf_pdms_heatmaps.pdf}
-    \caption[Four-city cross-city PDMS heatmaps (TF vs.\ LatTF).]{Four-city cross-city PDMS heatmaps, with TransFuser on the left and Latent TransFuser on the right, reproduced from the companion cross-city benchmark study~\cite{naeinian-cross-city-2026}. Each cell is a trained model: rows are training cities, columns are evaluation cities, and each panel corresponds to a backbone family (supervised ResNet-34, frozen I-JEPA ViT-H/14, frozen DINOv2, frozen MAE). Cell colour encodes PDMS (higher = brighter). The diagonal is in-distribution performance; off-diagonal cells are zero-shot transfer. How to read it: a panel with a bright diagonal and dim off-diagonals indicates a representation that fits its training city but fails to transfer; a panel with uniformly bright cells indicates a representation that preserves competence under city shift. The Singapore column is consistently the harshest destination, and the supervised ResNet-34 panel is the most uneven across cities.}
+    \includegraphics[width=0.48\textwidth]{iros/fig1_tf_pdms_heatmaps.png}
+    \includegraphics[width=0.48\textwidth]{iros/fig1_latf_pdms_heatmaps.png}
+    \caption[Four-city cross-city PDMS heatmaps (TF vs.\ LatTF).]{Four-city cross-city PDMS heatmaps, with TransFuser on the left and Latent TransFuser on the right~\cite{naeinian-cross-city-2026}. Rows are training cities, columns are evaluation cities, and colour encodes PDMS. The diagonal is in-distribution performance; off-diagonal cells are zero-shot transfer.}
     \label{fig:iros-pdms-heatmaps}
 \end{figure}
 
@@ -302,7 +277,7 @@ The most direct open-loop evidence comes from Boston-to-Singapore transfer on nu
 
 \begin{table}[ht]
 \centering
-\caption[Boston$\rightarrow$Singapore LAW transfer (nuScenes).]{Boston$\rightarrow$Singapore zero-shot LAW transfer on nuScenes. Each row is one trained model; the $\mathrm{L}2_{\text{in}}$ and $\mathrm{Coll}_{\text{in}}$ columns give in-distribution error (trained and evaluated on Boston), and the $\mathrm{L}2_{\text{xcity}}$ and $\mathrm{Coll}_{\text{xcity}}$ columns give zero-shot error on Singapore (trained on Boston only). The ratio columns ($\mathrm{L}2_{\text{xcity}} / \mathrm{L}2_{\text{in}}$ and $\mathrm{Coll}_{\text{xcity}} / \mathrm{Coll}_{\text{in}}$) are the load-bearing comparison: they factor out in-distribution ability and expose the transfer inflation directly. Lower is better for every column; a ratio near $1$ means the model degrades little under the city shift.}
+\caption[Boston$\rightarrow$Singapore LAW transfer (nuScenes).]{Boston$\rightarrow$Singapore zero-shot LAW transfer on nuScenes. Each row is one trained model. In-distribution columns evaluate Boston-trained models on Boston; cross-city columns evaluate the same training source on Singapore. Lower values and ratios closer to $1$ indicate less degradation.}
 \label{tab:exp-law-bos-sg}
 \small
 \renewcommand{\arraystretch}{1.15}
@@ -321,8 +296,8 @@ The same point is easier to see visually in Fig.~\ref{fig:law_in_to_cross_lines}
 
 \begin{figure}[ht]
     \centering
-    \includegraphics[width=0.7\textwidth]{iros/law_transfer_lines_stacked.pdf}
-    \caption[In-domain vs.\ zero-shot cross-city LAW performance.]{In-domain vs.\ zero-shot cross-city LAW performance on nuScenes, reproduced from the companion cross-city benchmark study~\cite{naeinian-cross-city-2026}. Circles mark in-domain Boston performance and triangles mark zero-shot Singapore performance for the same trained model. The connecting segment length is the transfer inflation: shorter segments indicate smaller degradation under the city shift. The supervised baseline shows the largest inflation, while the strongest SSL variants keep both the L2 and collision degradation substantially smaller.}
+    \includegraphics[width=0.7\textwidth]{iros/law_transfer_lines_stacked.png}
+    \caption[In-domain vs.\ zero-shot cross-city LAW performance.]{In-domain vs.\ zero-shot cross-city LAW performance on nuScenes~\cite{naeinian-cross-city-2026}. Circles mark in-domain Boston performance and triangles mark zero-shot Singapore performance for the same trained model. Shorter connecting segments indicate smaller transfer inflation.}
     \label{fig:law_in_to_cross_lines}
 \end{figure}
 
@@ -330,14 +305,12 @@ The closed-loop NAVSIM results point in the same direction. Generic large-scale 
 
 \begin{figure}[ht]
     \centering
-    \includegraphics[width=0.75\textwidth]{iros/fig3_indomain_vs_ood.pdf}
-    \caption[In-distribution vs.\ OOD PDMS scatter (cross-city).]{In-distribution PDMS versus average out-of-distribution PDMS across every cross-city configuration~\cite{naeinian-cross-city-2026}. Each point is one trained model; the x-axis is the PDMS on the training city and the y-axis is the mean PDMS across the three held-out cities. The diagonal is the reference ``no transfer penalty'' line; a point on the diagonal transfers losslessly, and a point far below the diagonal overfits to its training city. Supervised ResNet-34 points (red) sit furthest below the diagonal at every in-distribution score; frozen SSL points (blue) sit closer to the diagonal, which is the visual form of the representation claim.}
+    \includegraphics[width=0.75\textwidth]{iros/fig3_indomain_vs_ood.png}
+    \caption[In-distribution vs.\ OOD PDMS scatter (cross-city).]{In-distribution PDMS versus average out-of-distribution PDMS across the cross-city configurations~\cite{naeinian-cross-city-2026}. Each point is one trained model. The diagonal is the no-transfer-penalty reference; points farther below it have larger city-transfer drops.}
     \label{fig:iros-indomain-vs-ood}
 \end{figure}
 
-Closed-loop cross-city transfer is further evaluated with NAVSIM PDMS, which measures driving task completion while penalizing infractions. The full v1.1 and v2.2 checkpoint roster is retained in Appendix~\ref{app:cross-city-matrices}. That is where the thesis stores the complete record. The appendix now prints planner-specific tables: Tables~\ref{tab:navsim_pdms_merged_v11} and~\ref{tab:navsim_pdms_merged_v11_latf} are the canonical v1.1 TransFuser and Latent TransFuser roster tables, and each row joins the per-city PDMS values to the phase-4 mechanistic readouts. Tables~\ref{tab:navsim_pdms_merged} and~\ref{tab:navsim_pdms_merged_latf} preserve the earlier v2.2 PDMS-only provenance numbers used in the companion cross-city benchmark paper~\cite{naeinian-cross-city-2026}. The main text uses the heatmaps, the training-city summaries, and the compact Boston-only table below so that the argument stays readable. The compact Boston-only Latent TransFuser summary in Table~\ref{tab:navsim_pdms_boston_v11} is extracted from the v1.1 appendix roster table and is the row-for-row matched supervised-vs-SSL comparison used by the mechanistic analysis later in this chapter. Figure~\ref{fig:iros-pdms-heatmaps} gives a visual cross-city view of the same data; rows are training cities and columns are evaluation cities.
-
-\input{experiments/tab_navsim_pdms_boston_v11}
+Closed-loop cross-city transfer is further evaluated with NAVSIM PDMS, which measures driving task completion while penalizing infractions. The full v1.1 and v2.2 checkpoint roster is retained in Appendix~\ref{app:cross-city-matrices}. The appendix prints planner-specific tables: Tables~\ref{tab:navsim_pdms_merged_v11} and~\ref{tab:navsim_pdms_merged_v11_latf} are the canonical v1.1 TransFuser and Latent TransFuser roster tables, and each row joins the per-city PDMS values to the phase-4 mechanistic readouts. Tables~\ref{tab:navsim_pdms_merged} and~\ref{tab:navsim_pdms_merged_latf} preserve the earlier v2.2 PDMS-only provenance numbers used in the companion cross-city benchmark paper~\cite{naeinian-cross-city-2026}. The main text uses heatmaps and training-city summaries for the benchmark-scale patterns. The row-for-row Boston-only Latent TransFuser comparison is kept in the mechanistic section, where the same PDMS rows are paired with probe, CKA, MMD, and effective-rank readouts in Table~\ref{tab:probe-boston}. Figure~\ref{fig:iros-pdms-heatmaps} gives a visual cross-city view of the same data; rows are training cities and columns are evaluation cities.
 \noindent
 The appendix tables serve two purposes. The v1.1 planner pair is the canonical source for every cross-city PDMS quoted in this thesis. It is the full re-evaluation of the cross-city roster under the official NAVSIM v1.1 devkit, with the mechanistic readouts printed on the same rows. The v2.2 planner pair is retained because it preserves direct traceability to the companion benchmark paper~\cite{naeinian-cross-city-2026}. The devkit change shifts some absolute values, but it does not alter the structural findings: transfer remains asymmetric, Singapore remains the harshest destination, the strongest frozen SSL rows remain the most geographically reliable, and the Singapore-specific cases in which Latent TransFuser exceeds TransFuser are preserved under v1.1.
 \FloatBarrier
@@ -349,15 +322,15 @@ Which source city gives the most transferable planner? \reffig{fig:iros-best-tra
 
 \begin{figure}[ht]
     \centering
-    \includegraphics[width=0.75\textwidth]{iros/fig6_best_training_city.pdf}
-    \caption[Best training city for cross-city transfer.]{Average cross-city PDMS achieved by each of the four single-city training sources~\cite{naeinian-cross-city-2026}. For each backbone family (panel), bars report the mean PDMS over the three held-out cities when a model is trained on a single source city. Higher bars indicate more transferable training sources. The ranking Las Vegas $\geq$ Boston $>$ Pittsburgh $>$ Singapore is stable across every backbone, and the spread between the best and worst training source is largest for supervised ResNet-34 and smallest for the frozen SSL backbones.}
+    \includegraphics[width=0.75\textwidth]{iros/fig6_best_training_city.png}
+    \caption[Best training city for cross-city transfer.]{Average cross-city PDMS for each single-city training source~\cite{naeinian-cross-city-2026}. Bars report mean PDMS over the three held-out cities for each backbone family. Higher bars indicate more transferable source cities.}
     \label{fig:iros-best-training-city}
 \end{figure}
 
 \begin{figure}[ht]
     \centering
-    \includegraphics[width=0.9\textwidth]{iros/fig12_radar_summary.pdf}
-    \caption[Radar summary: per-city PDMS by training source and backbone.]{Per-city radar summary of cross-city transfer~\cite{naeinian-cross-city-2026}. Each panel is a (training source, backbone family) combination, and the four radii correspond to the four destination cities (LV, B, P, S). The filled area is proportional to the mean per-city PDMS; a circular filled shape means the model performs similarly across all four cities, a triangular shape means its competence is concentrated on one or two destinations. Frozen-SSL panels are visibly rounder than supervised-ResNet panels, which is a compact visual summary of the representation-dependent robustness.}
+    \includegraphics[width=0.9\textwidth]{iros/fig12_radar_summary.png}
+    \caption[Radar summary: per-city PDMS by training source and backbone.]{Per-city radar summary of cross-city transfer~\cite{naeinian-cross-city-2026}. Each panel is a training-source and backbone-family pair; the four radii are LV, B, P, and S destination scores. Rounder filled shapes indicate more even transfer across cities.}
     \label{fig:iros-radar}
 \end{figure}
 
@@ -368,8 +341,8 @@ Transfer asymmetry is not noise; it is one of the most important findings of the
 
 \begin{figure}[ht]
     \centering
-    \includegraphics[width=0.7\textwidth]{iros/fig8_asymmetry.pdf}
-    \caption[Boston--Singapore transfer asymmetry (bar chart).]{Boston$\leftrightarrow$Singapore transfer asymmetry~\cite{naeinian-cross-city-2026}. Each grouped pair of bars shows OOD PDMS at the destination city for a fixed backbone, comparing Boston$\rightarrow$Singapore (left bar of each pair) with Singapore$\rightarrow$Boston (right bar). Boston$\rightarrow$Singapore is the harsher direction for every backbone; the height difference within a pair is the directional asymmetry. The asymmetry is largest for supervised ResNet-34 and visibly smaller for frozen SSL variants, consistent with the interpretation that city-specific cues picked up by the supervised backbone are what makes the left-hand-traffic transfer especially harsh.}
+    \includegraphics[width=0.7\textwidth]{iros/fig8_asymmetry.png}
+    \caption[Boston--Singapore transfer asymmetry (bar chart).]{Boston$\leftrightarrow$Singapore transfer asymmetry~\cite{naeinian-cross-city-2026}. Each grouped pair compares Boston$\rightarrow$Singapore with Singapore$\rightarrow$Boston for a fixed backbone. Larger height gaps indicate stronger directional asymmetry.}
     \label{fig:iros-asymmetry}
 \end{figure}
 
@@ -380,8 +353,8 @@ The phase-1 preprint primarily reports aggregate PDMS rather than a full decompo
 
 \begin{figure}[ht]
     \centering
-    \includegraphics[width=0.85\textwidth]{iros/fig14_allcity_training.pdf}
-    \caption[All-city training: the regime in which representation effects wash out.]{All-city PDMS under mixed-city NAVSIM training~\cite{naeinian-cross-city-2026}. When the training set pools Boston, Pittsburgh, Las Vegas, and Singapore, the gap between supervised and SSL backbones shrinks sharply relative to any single-city row in the main cross-city matrix (\reftab{tab:navsim_pdms_merged_v11}). The figure is cited as a warning rather than as a positive result: the thesis argument explicitly does not live on mixed-city PDMS, because mixed-city evaluation washes out exactly the representation question it cares about.}
+    \includegraphics[width=0.85\textwidth]{iros/fig14_allcity_training.png}
+    \caption[All-city training: the regime in which representation effects wash out.]{All-city PDMS under mixed-city NAVSIM training~\cite{naeinian-cross-city-2026}. The training set pools Boston, Pittsburgh, Las Vegas, and Singapore. The gap between supervised and SSL backbones is much smaller than in the single-city transfer matrices.}
     \label{fig:iros-allcity}
 \end{figure}
 
@@ -389,11 +362,11 @@ The phase-1 preprint primarily reports aggregate PDMS rather than a full decompo
 \section{SSL Backbones in Generative Planning}
 \label{sec:exp-phase2}
 
-The generative-planning study revisits in-distribution NAVSIM under a planner that is designed to attenuate backbone contributions: DiffusionDrive~\cite{jia-diffusiondrive-2025}. Chapter~\ref{chap:methodology}, Section~\ref{sec:meth-dd-why} develops the rationale in full; the short form is that DiffusionDrive denoises trajectories from K-means anchor initializations in two steps, conditions through grid-sampled BEV cross-attention, and uses time-only FiLM, and the composite effect is a head that can produce good trajectories even when the image features are weak. This makes DiffusionDrive a demanding test of the representation claim. The goal of this study is therefore not to top an in-distribution leaderboard; it is to measure whether any backbone-dependent structure survives DiffusionDrive's attenuation, because that is the harder precondition for the cross-city generative study in \refsec{sec:exp-phase3}. The ViT adapter is held identical to the one used in the cross-city benchmark (both pipelines import \texttt{create\_image\_encoder} from the same TransFuser backbone module), so the planner head is the only manipulated variable between the two studies.
+The generative-planning study revisits in-distribution NAVSIM under DiffusionDrive~\cite{jia-diffusiondrive-2025}. As described in \refsec{sec:meth-dd-why}, DiffusionDrive starts from K-means trajectory anchors, performs two denoising steps, conditions through grid-sampled BEV cross-attention, and uses time-only FiLM. These design choices reduce the visible contribution of the image backbone. The study therefore asks whether any backbone-dependent structure remains under the generative head before moving to city-disjoint DiffusionDrive in \refsec{sec:exp-phase3}. The ViT adapter is held identical to the one used in the cross-city benchmark, so the planner head is the manipulated variable.
 
 \begin{table}[ht]
 \centering
-\caption[Completed DiffusionDrive + SSL all-city NAVSIM results.]{Completed DiffusionDrive + SSL backbone results on all-city NAVSIM (mixed Boston, Pittsburgh, Las Vegas, Singapore). Rows are grouped by input modality (camera+LiDAR vs.\ camera only); within each group, rows are ordered by descending PDMS. The \emph{Frozen} column marks whether the image encoder was held frozen at the pretrained weights or fine-tuned end-to-end with the planner. PDMS is total driver score, reported as a percentage. How to read it: a small spread within the C+L block means the generative head has absorbed much of the backbone variation, which is the main point of the pooled DiffusionDrive study; the cross-modality gap between C+L and camera-only shows how much of the missing geometric signal the image encoder can recover on its own.}
+\caption[Completed DiffusionDrive + SSL all-city NAVSIM results.]{Completed DiffusionDrive + SSL backbone results on all-city NAVSIM. Rows are grouped by input modality and ordered by descending PDMS within each group. The \emph{Frozen} column marks whether the image encoder is frozen or fine-tuned.}
 \label{tab:diffusiondrive-allcity}
 \small
 \renewcommand{\arraystretch}{1.15}
@@ -431,14 +404,14 @@ The all-city rows in Table~\ref{tab:diffusiondrive-allcity} mirror the cross-cit
 \subsection{Camera-Only: SSL Under a LiDAR-Free Generative Head}
 \label{sec:exp-phase2-camera-only}
 
-The camera-only rows in Table~\ref{tab:diffusiondrive-allcity} characterise what a LiDAR-free DiffusionDrive sees when the image encoder is varied. The supervised ResNet-34 baseline (A13) reaches $86.6$~PDMS, which is only $1.3$~points below the corresponding camera$+$LiDAR configuration (A12, $87.9$~PDMS). Among the completed camera-only SSL variants, rectangular frozen I-JEPA ViT-S/14 (A13-h) is the strongest at $85.8$~PDMS, followed by square frozen MAE (A13-b, $83.5$), square frozen DINOv2 (A13-l, $81.5$), and square trainable I-JEPA (A13-j, $76.1$). On the completed evidence, no camera-only SSL row exceeds the camera-only supervised baseline and none recovers the full camera$+$LiDAR score.
+The camera-only rows in Table~\ref{tab:diffusiondrive-allcity} characterise what a LiDAR-free DiffusionDrive sees when the image encoder is varied. The supervised ResNet-34 baseline (A13) reaches $86.6$~PDMS, which is only $1.3$~points below the corresponding camera$+$LiDAR configuration (A12, $87.9$~PDMS). Among the reported camera-only SSL variants, rectangular frozen I-JEPA ViT-S/14 (A13-h) is the strongest at $85.8$~PDMS, followed by square frozen MAE (A13-b, $83.5$), square frozen DINOv2 (A13-l, $81.5$), and square trainable I-JEPA (A13-j, $76.1$). In these rows, no camera-only SSL variant exceeds the camera-only supervised baseline and none recovers the full camera$+$LiDAR score.
 
 This is a useful negative control. Under DiffusionDrive, changing the image backbone does not replace the geometric signal removed with LiDAR. The camera-only block therefore serves as a bound on what the visual encoder alone can recover inside the same generative head. The cross-city extension of this matrix (single-city training under the LiDAR-free head with the same SSL backbones) was not run; \refsec{sec:exp-phase3-limitations} states the consequence for the cross-city claim.
 
 \subsection{Frozen vs.\ Fine-Tuned Backbone}
 \label{sec:exp-phase2-frozen}
 
-Within DiffusionDrive, the I-JEPA rows in Table~\ref{tab:diffusiondrive-allcity} show that preprocessing matters at least as much as fine-tuning. The simplest interpretation is that matching the ViT pretraining geometry is more important than unfreezing the backbone on the mixed-city split. This fits the broader thesis argument that frozen SSL weights act as a form of implicit regularization: they preserve pretrained invariances while still allowing the adapter and planner to specialize downstream.
+Within DiffusionDrive, the I-JEPA rows in Table~\ref{tab:diffusiondrive-allcity} show that preprocessing matters at least as much as fine-tuning. Matching the ViT pretraining geometry appears more useful than unfreezing the backbone on the mixed-city split. This fits the broader thesis argument that frozen SSL weights preserve pretrained invariances while still allowing the adapter and planner to specialize downstream.
 
 % ============================================================================
 \section{Cross-City DiffusionDrive Transfer}
@@ -448,7 +421,7 @@ The cross-city DiffusionDrive study extends the representation benchmark into th
 
 \begin{table}[ht]
 \centering
-\caption[Full cross-city DiffusionDrive transfer matrix.]{Full cross-city DiffusionDrive transfer matrix. Each row is one trained model evaluated on all four NAVSIM destination cities; the in-distribution diagonal is bolded. $\Delta_\text{OOD}$ is the in-distribution PDMS minus the mean PDMS over the three held-out cities. Rows are grouped by backbone family; within each group, rows are ordered by training city (Boston, Pittsburgh, Singapore, Las Vegas). How to read it: under DiffusionDrive's attenuating head, in-distribution PDMS clusters within roughly one point per training city across backbones, so the cross-backbone signal is in the off-diagonal cells and in $\Delta_\text{OOD}$.}
+\caption[Full cross-city DiffusionDrive transfer matrix.]{Full cross-city DiffusionDrive transfer matrix. Each row is one trained model evaluated on all four NAVSIM destination cities; the in-distribution diagonal is bolded. $\Delta_\text{OOD}$ is the in-distribution PDMS minus the mean PDMS over the three held-out cities.}
 \label{tab:dd-cc-full}
 \small
 \renewcommand{\arraystretch}{1.15}
@@ -485,19 +458,19 @@ The diagonal entries in \reftab{tab:dd-cc-full} confirm that DiffusionDrive's pl
 \begin{figure}[ht]
     \centering
     \subfigure[Per-backbone transfer heatmaps.]{
-        \includegraphics[width=0.58\textwidth]{dd_cc_interim/dd_cc_transfer_matrix.pdf}
+        \includegraphics[width=0.58\textwidth]{dd_cc_interim/dd_cc_transfer_matrix.png}
     }
     \hfill
     \subfigure[Singapore-destination paired comparison.]{
-        \includegraphics[width=0.34\textwidth]{dd_cc_interim/dd_cc_singapore_comparison.pdf}
+        \includegraphics[width=0.34\textwidth]{dd_cc_interim/dd_cc_singapore_comparison.png}
     }
-    \caption[Cross-city DiffusionDrive transfer evidence.]{Cross-city DiffusionDrive transfer. Left: the full $4 \times 4$ transfer matrix per backbone. The diagonal carries in-distribution PDMS; off-diagonal cells carry held-out destination PDMS. Singapore is the darkest destination column in every backbone. Right: the matched-train-city paired comparison on Singapore. For each non-Singapore training city, the bars show the Singapore-destination drop (in-distribution minus Singapore PDMS) for ResNet-34 and the three frozen SSL backbones. Seven of nine SSL pairs produce a smaller Singapore drop than the matched ResNet-34 baseline; the largest single-cell improvement is for DINOv2 trained on Pittsburgh ($-5.2$ points on the drop).}
+    \caption[Cross-city DiffusionDrive transfer evidence.]{Cross-city DiffusionDrive transfer. Left: the $4 \times 4$ transfer matrix per backbone, with diagonal cells as in-distribution PDMS. Right: matched-train-city Singapore-drop comparison for ResNet-34 and the three frozen SSL backbones.}
     \label{fig:dd-cc-full}
 \end{figure}
 
 \begin{table}[ht]
 \centering
-\caption[Per-backbone aggregate OOD drops.]{Per-backbone aggregate out-of-distribution drops. \emph{Mean OOD drop} averages $\Delta_\text{OOD}$ over the four training-city rows of \reftab{tab:dd-cc-full}. \emph{Mean Singapore drop} averages the in-distribution-to-Singapore drop over the three non-Singapore training cities. All three frozen SSL backbones produce a smaller mean OOD drop than the supervised baseline; DINOv2 produces the smallest Singapore-specific drop. The $3.30$-point gap between ResNet-34 and the strongest SSL backbone corresponds to a $24\%$ relative reduction in mean OOD drop under a planner designed to attenuate backbone variation.}
+\caption[Per-backbone aggregate OOD drops.]{Per-backbone aggregate out-of-distribution drops. \emph{Mean OOD drop} averages $\Delta_\text{OOD}$ over the four training-city rows of \reftab{tab:dd-cc-full}. \emph{Mean Singapore drop} averages the in-distribution-to-Singapore drop over the three non-Singapore training cities.}
 \label{tab:dd-cc-aggregate}
 \small
 \renewcommand{\arraystretch}{1.15}
@@ -519,7 +492,7 @@ The methodology in \refsec{sec:meth-dd-why} also commits to reporting transfer-r
 
 \begin{table}[ht]
 \centering
-\caption[DiffusionDrive transfer-ratio inflation.]{Transfer-ratio inflation under DiffusionDrive. Inflation ratio is in-distribution PDMS divided by mean out-of-distribution PDMS over the three held-out cities; values above one indicate degradation under shift. \emph{Mean inflation} averages the four-row inflations from \reftab{tab:dd-cc-full}. \emph{Singapore inflation} averages only the three non-Singapore training-city rows because Singapore-trained rows have no Singapore-OOD entry.}
+\caption[DiffusionDrive transfer-ratio inflation.]{Transfer-ratio inflation under DiffusionDrive. Inflation ratio is in-distribution PDMS divided by mean out-of-distribution PDMS; values above one indicate degradation under shift. \emph{Singapore inflation} averages only the three non-Singapore training-city rows.}
 \label{tab:dd-cc-ratios}
 \small
 \renewcommand{\arraystretch}{1.15}
@@ -541,7 +514,7 @@ The per-train-city criterion check is in \reftab{tab:dd-cc-criterion}. For each 
 
 \begin{table}[ht]
 \centering
-\caption[Pre-registered criterion check.]{Pre-registered criterion check from \refsec{sec:meth-dd-success}. \emph{Rn34 drop} is in-distribution PDMS minus mean OOD PDMS over the three held-out cities for the supervised row in that training city. The three SSL columns report the signed deviation of each frozen SSL backbone's drop from the supervised drop in the same training city; positive values indicate the SSL backbone has a smaller drop and therefore satisfies the criterion in that cell. \emph{SSL wins} counts how many of the three SSL backbones satisfy the criterion in each training city.}
+\caption[Pre-registered criterion check.]{Pre-registered criterion check from \refsec{sec:meth-dd-success}. \emph{Rn34 drop} is in-distribution PDMS minus mean OOD PDMS for the supervised row in that training city. The SSL columns report signed deviations from the supervised drop; positive values indicate smaller SSL drops.}
 \label{tab:dd-cc-criterion}
 \small
 \renewcommand{\arraystretch}{1.15}
@@ -561,17 +534,32 @@ Las Vegas   & $28.3$ & $-1.5$           & $+0.8$           & $-1.6$           & 
 \end{tabular}
 \end{table}
 
-The Singapore-trained row is the cleanest single piece of evidence in the matrix. Singapore is the smallest of the four training cities (\refsec{app:city-data-card}), and \texttt{Rn34-sin} produces a marked overfit: in-distribution PDMS is $54.3$, mean OOD is $39.4$, and the gap is $14.9$ points. Frozen I-JEPA on the same Singapore data behaves qualitatively differently. Its in-distribution PDMS is $47.6$, its mean OOD is $47.9$, and the in-distribution-to-mean-OOD drop is $-0.3$ points. The model trained exclusively on the smallest training city generalizes to held-out cities at least as well as it does to its own training city. DINOv2 and MAE Singapore-trained rows show drops of $11.7$ and $6.1$ points, both substantially smaller than the supervised $14.9$. Across the SSL family, training on the smallest single city does not reproduce the supervised collapse: the pretrained representation generalizes despite the small training-data regime. This is the most direct evidence in the thesis for the claim that frozen SSL representations resist single-city overfitting under generative planning.
+The Singapore-trained row is the most direct overfitting comparison in the matrix. Singapore is the smallest of the four training cities (\refsec{app:city-data-card}), and \texttt{Rn34-sin} produces a marked overfit: in-distribution PDMS is $54.3$, mean OOD is $39.4$, and the gap is $14.9$ points. Frozen I-JEPA on the same Singapore data behaves differently. Its in-distribution PDMS is $47.6$, its mean OOD is $47.9$, and the in-distribution-to-mean-OOD drop is $-0.3$ points. DINOv2 and MAE Singapore-trained rows show drops of $11.7$ and $6.1$ points, both smaller than the supervised $14.9$. Across the SSL family, training on the smallest single city does not reproduce the supervised collapse.
 
-The Vegas-trained row is the opposite extreme. Vegas contributes the largest training pool, $818$ logs against Singapore's $97$ (\refsec{app:city-data-card}), and yet the four Vegas-trained $\Delta_\text{OOD}$ values are the largest in the entire matrix: $28.3$ for ResNet-34, $29.8$ for I-JEPA, $27.5$ for DINOv2, and $29.9$ for MAE. Every backbone overfits to Vegas, in the same direction and to within $2.4$ points of the same magnitude. Under the same DiffusionDrive head and the same training schedule, abundant single-city data therefore does not narrow the cross-city drop. The simplest reading is that Vegas's large training pool lets every backbone reach the planner's single-city representational ceiling, after which the head's anchor prior dominates the output and the visible across-backbone variation collapses. The Singapore-trained and Vegas-trained rows together bound the operating regime: at one extreme, training-data scarcity collapses supervised baselines but not frozen SSL; at the other extreme, training-data abundance saturates every backbone equally on the training city while still failing to bridge geographic shift. Across both extremes, the operating lever for cross-city DiffusionDrive performance is the representation, not the volume of single-city training data.
+The Vegas-trained row is the opposite extreme. Vegas contributes the largest training pool, $818$ logs against Singapore's $97$ (\refsec{app:city-data-card}), and yet the four Vegas-trained $\Delta_\text{OOD}$ values are the largest in the matrix: $28.3$ for ResNet-34, $29.8$ for I-JEPA, $27.5$ for DINOv2, and $29.9$ for MAE. Every backbone overfits to Vegas in the same direction and within $2.4$ points of the same magnitude. Abundant single-city data therefore improves the training-city score without narrowing the cross-city drop. The Singapore-trained and Vegas-trained rows together bound the operating regime: scarcity exposes supervised overfitting, while abundance saturates all backbones on the training city without solving geographic shift.
 
 The matched-train-city paired comparison on Singapore (right panel of \reffig{fig:dd-cc-full}) extends the directional reading of \reftab{tab:dd-cc-criterion} into the most informative destination column. Across the nine pairs in which the training city is not Singapore, seven SSL pairs produce a smaller Singapore drop than the matched ResNet-34 baseline. The largest single-cell improvement is DINOv2 trained on Pittsburgh: a $5.2$-point smaller Singapore drop than ResNet-34 trained on Pittsburgh, while the in-distribution Pittsburgh PDMS differ by only $1.4$ points. The smallest improvement among the seven winning cells is $0.3$ for MAE on Vegas; the two losses are $0.5$ for I-JEPA-bos and $1.7$ for MAE-bos. The signal is broad rather than carried by any single (backbone, training-city) pair: DINOv2 nuScenes is the consistent winner across every training city, while I-JEPA and MAE show the same direction in the strongest cells.
 
 The per-metric breakdown in Appendix~\ref{app:per-metric} traces the gain to drivable-area compliance. Across the twelve (Rn34, SSL, training-city, Singapore) cells with a non-Singapore training city, the Singapore-destination drop is concentrated in DAC and EP, while NC and TTC remain comparatively stable. Within the Pittsburgh-trained Singapore-eval cells, frozen DINOv2 raises DAC from $61.7$ to $68.0$ ($+6.3$ points) and frozen I-JEPA raises it to $64.1$ ($+2.4$). NC stays within $1.2$ points across all four backbones in that group and TTC within $0.9$. The cross-city DiffusionDrive gain is therefore attributable to better scene-geometry compliance under shift, not to safer reactive driving.
 
-The expected attenuation of the SSL gain across planners is also visible. Under Latent TransFuser, nuScenes-pretrained MAE improves average OOD PDMS by more than four points across Boston-, Pittsburgh-, and Las Vegas-trained models~\cite{naeinian-cross-city-2026}. The analogous comparison under DiffusionDrive averages an SSL gain of $2.20$ to $2.84$ points in mean OOD PDMS relative to ResNet-34, depending on the SSL family (I-JEPA $+2.84$, MAE $+2.38$, DINOv2 $+2.20$). The DiffusionDrive head therefore compresses the SSL OOD-PDMS gain to roughly half to two-thirds of its Latent TransFuser size. This is exactly what \refsec{sec:meth-dd-why} predicted and what the table-by-table reading in this section consistently shows. The compression does not reverse the ordering, and the residual gain is large enough to clear the pre-registered criterion in \reftab{tab:dd-cc-criterion}. Reading the cross-city DiffusionDrive matrix as a stress test, the attenuating planner attenuates as expected; the representation effect survives.
+\reffig{fig:dd-qualitative-case} gives a qualitative anchor for this component-level reading. The scene is a Vegas case from the existing cross-city visualization assets, not a Singapore-specific statistical sample. It is included to show how representation-dependent trajectory differences appear in BEV and in camera projection: the predicted paths can follow the same broad maneuver while differing in lateral placement and curvature, the types of deviations that DAC and EP penalize when they cross drivable-area or lane-geometry boundaries.
 
-The cross-city DiffusionDrive evidence is therefore load-bearing rather than supportive. The pre-registered criterion is met, the per-backbone aggregate ordering matches the cross-city benchmark in \refsec{sec:exp-phase1}, and the failure-mode decomposition is consistent with the representation-level mechanism developed in \refsec{sec:exp-why-ssl}. The remaining caveat in \refsec{sec:exp-phase3-limitations} is the single I-JEPA camera-only DiffusionDrive configuration that was not trained, which is acknowledged in the limitations rather than re-engineered around.
+\begin{figure}[ht]
+    \centering
+    \subfigure[BEV view.]{
+        \includegraphics[width=0.38\textwidth]{iros/cc6022c226c15d80_overlay_bev.png}
+    }
+    \hfill
+    \subfigure[Front-camera crop.]{
+        \includegraphics[width=0.55\textwidth]{iros/cc6022c226c15d80_front_traj.png}
+    }
+    \caption[Illustrative NAVSIM trajectory case.]{Illustrative NAVSIM trajectory case from the cross-city visualization assets. The BEV overlay and front-camera crop show the same Vegas scene with ground truth and four backbone trajectories. The figure is qualitative and is not used to rank backbones.}
+    \label{fig:dd-qualitative-case}
+\end{figure}
+
+The expected attenuation of the SSL gain across planners is also visible. Under Latent TransFuser, nuScenes-pretrained MAE improves average OOD PDMS by more than four points across Boston-, Pittsburgh-, and Las Vegas-trained models~\cite{naeinian-cross-city-2026}. The analogous comparison under DiffusionDrive averages an SSL gain of $2.20$ to $2.82$ points in mean OOD PDMS relative to ResNet-34, depending on the SSL family (I-JEPA $+2.82$, MAE $+2.38$, DINOv2 $+2.20$). The DiffusionDrive head therefore compresses the SSL OOD-PDMS gain to roughly half to two-thirds of its Latent TransFuser size. The compression does not reverse the ordering, and the residual gain is large enough to clear the pre-registered criterion in \reftab{tab:dd-cc-criterion}.
+
+The cross-city DiffusionDrive evidence is part of the main empirical argument. The pre-registered criterion is met, the per-backbone aggregate ordering matches the cross-city benchmark in \refsec{sec:exp-phase1}, and the failure-mode decomposition is consistent with the representation-level mechanism developed in \refsec{sec:exp-why-ssl}. The remaining caveat in \refsec{sec:exp-phase3-limitations} is the camera-only cross-city matrix, which was not trained.
 
 \subsection{Limitations of the Cross-City Generative Study}
 \label{sec:exp-phase3-limitations}
@@ -591,41 +579,41 @@ The earlier phases establish the phenomenon. This section addresses the mechanis
     \resizebox{\linewidth}{!}{%
     \begin{tikzpicture}[
         node distance = 4mm and 5mm,
-        ckp/.style   = {draw, rounded corners=2pt, minimum height=8mm, minimum width=22mm, align=center, font=\scriptsize, fill=black!3},
-        cache/.style = {draw, rounded corners=2pt, minimum height=10mm, minimum width=24mm, align=center, font=\scriptsize, fill=black!6},
-        probe/.style  = {draw, rounded corners=2pt, minimum height=8mm, minimum width=26mm, align=center, font=\scriptsize},
-        loadbearing/.style = {draw=black!80, line width=0.7pt, fill=black!8},
-        supporting/.style  = {draw=black!40, dashed, fill=black!2},
-        syn/.style   = {draw, rounded corners=2pt, minimum height=10mm, minimum width=30mm, align=center, font=\scriptsize, fill=black!10},
-        arrow/.style = {-{Stealth[length=1.8mm]}, thin},
-        dashedarrow/.style = {-{Stealth[length=1.8mm]}, thin, dashed, draw=black!45},
+        ckp/.style   = {draw=diagline, rounded corners=3pt, minimum height=8mm, minimum width=22mm, align=center, font=\scriptsize, fill=diagsky},
+        cache/.style = {draw=diagline, rounded corners=3pt, minimum height=10mm, minimum width=24mm, align=center, font=\scriptsize, fill=diaglavender},
+        probe/.style  = {draw=diagline, rounded corners=3pt, minimum height=8mm, minimum width=28mm, align=center, font=\scriptsize, inner sep=2pt},
+        primaryprobe/.style = {line width=0.6pt, fill=diagsage},
+        supporting/.style  = {draw=diagline!70, dashed, fill=diagcream},
+        syn/.style   = {draw=diagline, rounded corners=3pt, minimum height=11mm, minimum width=30mm, align=center, font=\scriptsize, fill=diagrose},
+        arrow/.style = {-{Stealth[length=1.8mm]}, semithick, draw=diagline},
+        dashedarrow/.style = {-{Stealth[length=1.8mm]}, semithick, dashed, draw=diagline!60},
     ]
-        \node[ckp] (ckpt) {188 trained\\checkpoints};
+        \node[ckp] (ckpt) {188 analysed\\checkpoints};
         \node[cache, right=8mm of ckpt] (cache) {Cached features\\$(B, 512)$ per city};
-        \node[probe, loadbearing, right=12mm of cache, yshift=13mm] (probe) {Linear city-ID probe\\(load-bearing)};
+        \node[probe, primaryprobe, right=12mm of cache, yshift=13mm] (probe) {Linear city-ID probe\\(primary)};
         \node[probe, supporting, right=12mm of cache, yshift=4mm] (cka) {Cross-city CKA\\(supporting)};
         \node[probe, supporting, right=12mm of cache, yshift=-5mm] (mmd) {City-pair MMD$^2$\\(supporting)};
-        \node[probe, loadbearing, right=12mm of cache, yshift=-14mm] (rank) {Effective rank\\(load-bearing)};
+        \node[probe, primaryprobe, right=12mm of cache, yshift=-14mm] (rank) {Effective rank\\(primary)};
         \node[syn, right=12mm of probe, yshift=-9mm] (syn) {Synthesis table\\and claim};
         \draw[arrow] (ckpt) -- (cache) node[midway, above, font=\tiny] {extract};
         \draw[arrow] (cache.east) -- (probe.west);
         \draw[dashedarrow] (cache.east) -- (cka.west);
         \draw[dashedarrow] (cache.east) -- (mmd.west);
         \draw[arrow] (cache.east) -- (rank.west);
-        \draw[arrow] (probe.east) -- (syn.west);
-        \draw[dashedarrow] (cka.east) -- (syn.west);
-        \draw[dashedarrow] (mmd.east) -- (syn.west);
-        \draw[arrow] (rank.east) -- (syn.west);
+        \draw[arrow] (probe.east) -- ([yshift=4mm]syn.west);
+        \draw[dashedarrow] (cka.east) -- ([yshift=1.5mm]syn.west);
+        \draw[dashedarrow] (mmd.east) -- ([yshift=-1.5mm]syn.west);
+        \draw[arrow] (rank.east) -- ([yshift=-4mm]syn.west);
     \end{tikzpicture}}
-    \caption[Mechanistic analysis pipeline: four probes, one feature cache.]{The shared mechanistic pipeline used throughout this section. One cached feature tensor per (checkpoint, city) pair feeds four probes in parallel. Two probes are load-bearing (linear city-ID probe and effective rank; solid); two are supporting (cross-city CKA and MMD$^2$; dashed). All four feed into the synthesis table (\reftab{tab:family-aggregate}) and into the bounded interpretation in~\refsec{sec:exp-why-synthesis}.}
+    \caption[Mechanistic analysis pipeline: four probes, one feature cache.]{Shared mechanistic analysis pipeline. One cached feature tensor per (checkpoint, city) pair feeds four probes. Linear city-ID probing and effective rank are primary readouts; CKA and MMD$^2$ are supporting diagnostics.}
     \label{fig:exp-mech-pipeline}
 \end{figure}
 
-The mechanistic study operates on cached features from the trained TransFuser / Latent TransFuser checkpoints. \reftab{tab:exp-mech-feature-cache} summarizes the feature-extraction substrate; no additional model training is required.
+The mechanistic study operates on cached features from the full v1.1 TransFuser / Latent TransFuser roster rather than on the earlier Tier-A pilot subset. \reftab{tab:exp-mech-feature-cache} summarizes the feature-extraction substrate; no additional model training is required.
 
 \begin{table}[ht]
 \centering
-\caption[Feature cache for the mechanistic analyses.]{Feature substrate used by every mechanistic analysis in this section. All probes, CKA heatmaps, MMD statistics, and effective-rank measurements are produced from the same cached tensor for each (checkpoint, city) pair, so the comparisons across panels are strictly like-for-like.}
+\caption[Feature cache for the mechanistic analyses.]{Feature substrate used by the mechanistic analyses. Each probe is computed from the same cached tensor for each (checkpoint, city) pair.}
 \label{tab:exp-mech-feature-cache}
 \small
 \renewcommand{\arraystretch}{1.15}
@@ -634,7 +622,7 @@ The mechanistic study operates on cached features from the trained TransFuser / 
 \toprule
 \textbf{Axis} & \textbf{Value} \\
 \midrule
-Checkpoint scope & 13 Tier-A TransFuser / Latent TransFuser checkpoints \\
+Checkpoint scope & Full v1.1 TransFuser / Latent TransFuser roster (190 rows; 188 analysed checkpoints) \\
 Backbone families & ResNet-34, I-JEPA, DINOv2, MAE \\
 Adaptation modes & Frozen and fully trainable where available \\
 Feature source & Deepest backbone stage, global-average pooled \\
@@ -647,7 +635,7 @@ Feature dimension & 512 after the TransFuser ViT-to-CNN adapter; CLS token dropp
 \subsection{Representation Similarity Across Cities (CKA)}
 \label{sec:exp-cka}
 
-Linear CKA is defined on two representations of the same samples, so we use the cross-dataset form that compares feature second-moment structures. For cities $A$ and $B$ with centered feature matrices $X_A$ and $X_B$, we report
+Linear CKA~\cite{kornblith-cka-2019} is defined on two representations of the same samples, so we use the cross-dataset form that compares feature second-moment structures. For cities $A$ and $B$ with centered feature matrices $X_A$ and $X_B$, we report
 \begin{equation}
 \mathrm{CKA}(X_A, X_B)
 =
@@ -660,28 +648,32 @@ which is bounded in $[0, 1]$, invariant to orthogonal rotations of the feature b
 
 \begin{figure}[ht]
     \centering
-    \resizebox{0.9\linewidth}{!}{%
+    \resizebox{0.92\linewidth}{!}{%
     \begin{tikzpicture}[
-        cloud/.style = {draw, rounded corners=3pt, minimum width=28mm, minimum height=20mm, align=center, font=\scriptsize, fill=black!4},
-        cov/.style   = {draw, minimum width=18mm, minimum height=18mm, align=center, font=\tiny, fill=black!8},
-        label/.style = {font=\tiny},
-        arrow/.style = {-{Stealth[length=1.8mm]}, thin},
+        cloud/.style = {draw=diagline, rounded corners=4pt, minimum width=36mm, minimum height=20mm, align=center, font=\scriptsize, fill=diagsky, inner sep=2pt},
+        cov/.style   = {draw=diagline, rounded corners=2pt, minimum width=24mm, minimum height=18mm, align=center, font=\scriptsize, fill=diagsage, inner sep=2pt},
+        eqbox/.style = {draw=diagline, rounded corners=4pt, text width=86mm, minimum height=12mm, align=center, font=\scriptsize, fill=diagcream, inner sep=3pt},
+        note/.style  = {draw=diagline!45, rounded corners=3pt, text width=80mm, align=center, font=\scriptsize, fill=diagrose, inner sep=2pt},
+        arrow/.style = {-{Stealth[length=1.8mm]}, semithick, draw=diagline},
+        edgelabel/.style = {font=\tiny, fill=white, inner sep=1pt},
     ]
-        \node[cloud] (xa) {Features on city A\\$X_A \in \mathbb{R}^{N_A \times d}$};
-        \node[cloud, right=30mm of xa] (xb) {Features on city B\\$X_B \in \mathbb{R}^{N_B \times d}$};
-        \node[cov, below=10mm of xa] (ca) {$X_A^{\top}\! X_A$};
-        \node[cov, below=10mm of xb] (cb) {$X_B^{\top}\! X_B$};
-        \node[label, below=0.5mm of ca] {$d \times d$ feature covariance};
-        \node[label, below=0.5mm of cb] {$d \times d$ feature covariance};
-        \draw[arrow] (xa) -- (ca) node[midway, right, font=\tiny] {centred Gram};
-        \draw[arrow] (xb) -- (cb) node[midway, right, font=\tiny] {centred Gram};
-        \node[draw, rounded corners, minimum width=60mm, minimum height=9mm, align=center, font=\scriptsize, below=12mm of $(ca)!0.5!(cb)$, fill=black!10]
-          (cka) {$\mathrm{CKA}(X_A, X_B) = \frac{\langle X_A^\top X_A,\, X_B^\top X_B\rangle_F}{\lVert X_A^\top X_A\rVert_F\,\lVert X_B^\top X_B\rVert_F}$};
-        \draw[arrow] (ca.south) -- (cka.north -| ca);
-        \draw[arrow] (cb.south) -- (cka.north -| cb);
-        \node[font=\tiny, right=4mm of cka, text width=38mm, align=left] {CKA is high when city A and city B's variance-carrying directions align, even if the sample counts differ.};
+        \node[cloud] (xa) at (-32mm,18mm) {Features on city A\\$X_A \in \mathbb{R}^{N_A \times d}$};
+        \node[cloud] (xb) at (32mm,18mm) {Features on city B\\$X_B \in \mathbb{R}^{N_B \times d}$};
+        \node[cov] (ca) at (-32mm,-11mm) {$d \times d$ covariance\\$X_A^{\top}X_A$};
+        \node[cov] (cb) at (32mm,-11mm) {$d \times d$ covariance\\$X_B^{\top}X_B$};
+        \node[eqbox] (cka) at (0mm,-39mm)
+          {$\displaystyle \mathrm{CKA}(X_A, X_B)=
+          \frac{\langle X_A^\top X_A,\,X_B^\top X_B\rangle_F}
+          {\lVert X_A^\top X_A\rVert_F\,\lVert X_B^\top X_B\rVert_F}$};
+        \node[note] (note) at (0mm,-58mm) {The score compares variance-carrying directions across cities. It does not require matched samples or equal row counts.};
+
+        \draw[arrow] (xa.south) -- (ca.north) node[midway, left=1mm, edgelabel] {center + multiply};
+        \draw[arrow] (xb.south) -- (cb.north) node[midway, right=1mm, edgelabel] {center + multiply};
+        \draw[arrow] (ca.south) -- ++(0,-5mm) -| ([xshift=-24mm]cka.north);
+        \draw[arrow] (cb.south) -- ++(0,-5mm) -| ([xshift=24mm]cka.north);
+        \draw[arrow] (cka.south) -- (note.north);
     \end{tikzpicture}}
-    \caption[Cross-dataset linear CKA: covariance alignment, not feature-value alignment.]{Intuition for the cross-dataset form of linear CKA used in this section. The two feature matrices come from disjoint city samples and can have different row counts ($N_A \ne N_B$). The quantity compared is the $d \times d$ feature-covariance matrix of each city, i.e.\ the directions that carry variance in the backbone's latent space. A high CKA value means those directions coincide across cities, even though the specific feature vectors do not.}
+    \caption[Cross-dataset linear CKA: covariance alignment, not feature-value alignment.]{Cross-dataset linear CKA construction. The two feature matrices come from disjoint city samples and may have different row counts. CKA compares the city-level feature-covariance matrices, not matched feature vectors.}
     \label{fig:exp-cka-concept}
 \end{figure}
 
@@ -689,27 +681,27 @@ Mean off-diagonal CKA is high across families, as shown in the CKA column of Tab
 
 \begin{figure}[t]
     \centering
-    \includegraphics[width=0.45\textwidth]{phase4/cka_F1-B1.pdf}
-    \includegraphics[width=0.45\textwidth]{phase4/cka_P1-I1.pdf}
-    \caption[Cross-city linear-CKA heatmaps: supervised vs.\ frozen I-JEPA.]{Cross-city linear-CKA heatmaps for two Boston-only checkpoints: a supervised ResNet-34 Latent TransFuser (left) and a frozen I-JEPA ViT-H/14 TransFuser (right). Each cell $(i,j)$ is the linear CKA between the planning-backbone features on city~$i$ and city~$j$; bright diagonals are expected by construction, and the off-diagonal structure carries the signal. Both backbones preserve strong covariance alignment across cities (off-diagonal CKA $>0.9$), which is why CKA does not cleanly separate supervised from SSL features in the aggregate analysis. The heatmaps also recover the dataset-level geography: Boston and Pittsburgh align most tightly, and Singapore is the per-backbone outlier.}
+    \includegraphics[width=0.45\textwidth]{phase4/cka_F1-B1.png}
+    \includegraphics[width=0.45\textwidth]{phase4/cka_P1-I1.png}
+    \caption[Cross-city linear-CKA heatmaps: supervised vs.\ frozen I-JEPA.]{Cross-city linear-CKA heatmaps for two Boston-only checkpoints. Each cell $(i,j)$ is the linear CKA between planning-backbone features on city~$i$ and city~$j$. Off-diagonal cells show that both backbones preserve strong covariance alignment across cities.}
     \label{fig:cka-grid}
 \end{figure}
 
 \subsection{Linear Probing for City Classification}
 \label{sec:exp-linear-probe}
 
-We fit a multinomial logistic regression on standardized features to predict the four-way city label, using the split and negative control summarized in \reftab{tab:exp-probe-protocol}. \reffig{fig:exp-probe-schematic} sketches the procedure.
+Following the linear-probing methodology of Alain and Bengio~\cite{alain-linearprobe-2017}, we fit a multinomial logistic regression on standardized features to predict the four-way city label, using the split and negative control summarized in \reftab{tab:exp-probe-protocol}. \reffig{fig:exp-probe-schematic} sketches the procedure.
 
 \begin{figure}[ht]
     \centering
     \resizebox{0.92\linewidth}{!}{%
     \begin{tikzpicture}[
-        city/.style = {draw, rounded corners=2pt, minimum width=22mm, minimum height=7mm, align=center, font=\scriptsize, fill=black!5},
-        split/.style = {draw, rounded corners=2pt, minimum width=20mm, minimum height=8mm, align=center, font=\scriptsize, fill=black!3},
-        lr/.style = {draw, rounded corners=2pt, minimum width=26mm, minimum height=12mm, align=center, font=\scriptsize, fill=black!8},
-        acc/.style = {draw, rounded corners=2pt, minimum width=24mm, minimum height=10mm, align=center, font=\scriptsize, fill=black!10},
-        ctrl/.style = {draw, rounded corners=2pt, minimum width=24mm, minimum height=8mm, align=center, font=\scriptsize, dashed, fill=black!2},
-        arrow/.style = {-{Stealth[length=1.8mm]}, thin},
+        city/.style = {draw=diagline, rounded corners=3pt, minimum width=22mm, minimum height=7mm, align=center, font=\scriptsize, fill=diagsky},
+        split/.style = {draw=diagline, rounded corners=3pt, minimum width=22mm, minimum height=8mm, align=center, font=\scriptsize, fill=diagsage},
+        lr/.style = {draw=diagline, rounded corners=3pt, minimum width=27mm, minimum height=12mm, align=center, font=\scriptsize, fill=diaglavender},
+        acc/.style = {draw=diagline, rounded corners=3pt, minimum width=24mm, minimum height=10mm, align=center, font=\scriptsize, fill=diagrose},
+        ctrl/.style = {draw=diagline!70, rounded corners=3pt, minimum width=24mm, minimum height=8mm, align=center, font=\scriptsize, dashed, fill=diagcream},
+        arrow/.style = {-{Stealth[length=1.8mm]}, semithick, draw=diagline},
     ]
         \node[city] (lv) {LV features};
         \node[city, below=1.5mm of lv] (b)  {B features};
@@ -718,8 +710,8 @@ We fit a multinomial logistic regression on standardized features to predict the
         \node[split, right=10mm of b] (pool) {pool +\\$z$-score};
         \node[split, right=5mm of pool] (stratsplit) {stratified\\80/20 split};
         \node[lr, right=6mm of stratsplit] (clf) {multinomial\\logistic\\regression};
-        \node[acc, right=8mm of clf] (acc) {probe accuracy\\(0--1)};
-        \node[ctrl, below=6mm of acc] (rand) {random-Gaussian\\control: $0.254$};
+        \node[acc, right=8mm of clf] (acc) {probe accuracy};
+        \node[ctrl, below=6mm of acc] (rand) {random-Gaussian\\control: $25.4\%$};
         \draw[arrow] (lv.east) -- (pool.west);
         \draw[arrow] (b.east)  -- (pool.west);
         \draw[arrow] (p.east)  -- (pool.west);
@@ -728,16 +720,14 @@ We fit a multinomial logistic regression on standardized features to predict the
         \draw[arrow] (stratsplit) -- (clf);
         \draw[arrow] (clf) -- (acc);
         \draw[arrow, dashed] (clf.south) |- (rand.west);
-        \node[font=\tiny, below=8mm of clf, text width=65mm, align=center]
-          {High accuracy means city identity is linearly decodable from the features; accuracy near the random control means it is not.};
     \end{tikzpicture}}
-    \caption[City-classification linear probe, schematic.]{Procedure for the city-classification linear probe. Cached features from each of the four NAVSIM cities are pooled and standardised, split into $80/20$ stratified train and test, and used to fit a multinomial logistic regression that predicts the city label. The scalar output is the classification accuracy on the held-out $20\%$. A random-Gaussian control yields $0.254$ and calibrates the no-information baseline.}
+    \caption[City-classification linear probe, schematic.]{City-classification linear-probe procedure. Cached features from the four NAVSIM cities are pooled, standardised, split $80/20$, and used to fit a multinomial logistic regression. The output is held-out city-label accuracy.}
     \label{fig:exp-probe-schematic}
 \end{figure}
 
 \begin{table}[ht]
 \centering
-\caption[City-classification probe protocol.]{Protocol for the city-classification linear probe. The probe is a multinomial logistic regression that reads a single cached feature vector per scene and predicts which of the four NAVSIM cities that scene comes from. A high probe accuracy means the planning-backbone features expose the training city as a decodable signal; a probe accuracy close to the random-Gaussian control ($25.4\%$) means city identity is not linearly accessible from the features. The probe is evaluated on an $80/20$ stratified split of the cached-feature pool summarised in~\reftab{tab:exp-mech-feature-cache}.}
+\caption[City-classification probe protocol.]{Protocol for the city-classification linear probe. The probe predicts the four-way NAVSIM city label from one cached feature vector per scene. A random-Gaussian control gives $25.4\%$ accuracy.}
 \label{tab:exp-probe-protocol}
 \small
 \renewcommand{\arraystretch}{1.15}
@@ -774,7 +764,7 @@ F1-D1 & DINOv2 ViT-S/14 LatTF frozen & 70.7 & \textbf{63.6} & 55.8 & 45.5 & 57.3
 \bottomrule
 \end{tabular}
 \end{adjustbox}
-\caption[Matched Boston-only cross-city PDMS and mechanistic readouts.]{Matched Boston-only Latent TransFuser comparison for the four load-bearing backbone families. LV/B/P/S are the v1.1 destination-city PDMS values from the canonical appendix roster table; Boston is the in-distribution column. \emph{OOD mean} averages the three held-out cities and \emph{Drop} is Boston PDMS minus that mean in percentage points. \emph{Probe} is linear city-ID classification accuracy, \emph{CKA} is mean off-diagonal cross-city linear CKA, \emph{MMD\textsuperscript{2}} is mean cross-city feature-distribution shift, and \emph{Eff.\ rank} is the Roy--Vetterli effective rank of the per-city feature covariance. This is the matched illustrative combined table used in the mechanism discussion; the full run-by-run v1.1 combined record now appears in Tables~\ref{tab:navsim_pdms_merged_v11} and~\ref{tab:navsim_pdms_merged_v11_latf}.}
+\caption[Matched Boston-only cross-city PDMS and mechanistic readouts.]{Matched Boston-only Latent TransFuser comparison. LV/B/P/S are destination-city PDMS percentages, with Boston in distribution. The final columns report OOD mean, OOD drop, and mechanistic readouts.}
 \label{tab:probe-boston}
 \end{table}
 
@@ -782,15 +772,15 @@ Across the full roster the story is more nuanced. The pooled correlation and the
 
 \begin{figure}[t]
     \centering
-    \includegraphics[width=\textwidth]{phase4/scatter_probe_vs_ood_by_training_city.pdf}
-    \caption[Probe accuracy vs.\ OOD drop, stratified by training city.]{Linear-probe city-ID accuracy (x-axis) against train-city-minus-test-city PDMS in percentage points (y-axis), one panel per training city. Within the Boston, Pittsburgh, and Las Vegas panels the expected ordering (higher probe accuracy corresponds to a larger OOD drop) is visible as an upward trend; within the Singapore panel the relationship is flat, reflecting the data-scale and traffic-convention asymmetry already established earlier in the chapter. Pooling across panels washes the signal out; the stratified view is the correct one for reading the mechanism.}
+    \includegraphics[width=\textwidth]{phase4/scatter_probe_vs_ood_by_training_city.png}
+    \caption[Probe accuracy vs.\ OOD drop, stratified by training city.]{Linear-probe city-ID accuracy against OOD PDMS drop, stratified by training city. Each panel holds the training city fixed. The trend is clearer within panels than in the pooled view.}
     \label{fig:probe-vs-ood-stratified}
 \end{figure}
 
 \begin{figure}[t]
     \centering
-    \includegraphics[width=0.65\textwidth]{phase4/scatter_probe_vs_ood.pdf}
-    \caption[Pooled probe accuracy vs.\ OOD drop (all analysed checkpoints).]{Pooled scatter of linear city-ID probe accuracy against OOD PDMS drop across every analysed checkpoint. Each point is one trained model; colour encodes the training city and marker shape encodes the backbone family. The weak global Spearman correlation ($\rho = -0.13$) is a warning that training city dominates the aggregate picture: probe-vs-drop structure surfaces only once training city is held fixed, as in the stratified view of Fig.~\ref{fig:probe-vs-ood-stratified} and the matched comparison in Table~\ref{tab:probe-boston}.}
+    \includegraphics[width=0.65\textwidth]{phase4/scatter_probe_vs_ood.png}
+    \caption[Pooled probe accuracy vs.\ OOD drop (all analysed checkpoints).]{Pooled scatter of linear city-ID probe accuracy against OOD PDMS drop. Each point is one trained model; colour encodes training city and marker shape encodes backbone family. The weak global correlation motivates the stratified view in Fig.~\ref{fig:probe-vs-ood-stratified}.}
     \label{fig:probe-vs-ood}
 \end{figure}
 
@@ -800,9 +790,9 @@ Across the full roster the story is more nuanced. The pooled correlation and the
     \centering
     \resizebox{0.95\linewidth}{!}{%
     \begin{tikzpicture}[
-        panel/.style = {draw, minimum width=36mm, minimum height=28mm, rounded corners=1pt},
+        panel/.style = {draw=diagline, minimum width=36mm, minimum height=28mm, rounded corners=3pt, fill=diagsky!45},
         lbl/.style = {font=\tiny, anchor=north},
-        arrow/.style = {-{Stealth[length=1.6mm]}, thin},
+        arrow/.style = {-{Stealth[length=1.6mm]}, semithick, draw=diagline},
     ]
         % Panel (a): pooled, messy cloud
         \node[panel] (a) {};
@@ -810,10 +800,10 @@ Across the full roster the story is more nuanced. The pooled correlation and the
         \foreach \i in {1,...,40} {
           \pgfmathsetmacro{\xx}{rand * 1.5 + 0.0}
           \pgfmathsetmacro{\yy}{rand * 1.2 + 0.0}
-          \fill[black!55] ([xshift=\xx cm, yshift=\yy cm] a.center) circle (0.5mm);
+          \fill[diagblue!75] ([xshift=\xx cm, yshift=\yy cm] a.center) circle (0.5mm);
         }
         % Panel (b): coloured by training city
-        \node[panel, right=5mm of a] (b) {};
+        \node[panel, fill=diagsage!45, right=5mm of a] (b) {};
         \node[lbl] at (b.south) {(b) coloured by training city};
         \foreach \i in {1,...,10} {
           \pgfmathsetmacro{\xx}{rand * 0.8 - 0.6}
@@ -827,10 +817,10 @@ Across the full roster the story is more nuanced. The pooled correlation and the
           \fill[nyuviolet] ([xshift=\xx cm, yshift=\yy cm] b.center) circle (0.5mm);
           \pgfmathsetmacro{\xx}{rand * 0.8 - 0.2}
           \pgfmathsetmacro{\yy}{rand * 0.6 + 0.5}
-          \fill[avgray] ([xshift=\xx cm, yshift=\yy cm] b.center) circle (0.5mm);
+          \fill[diagamber!85] ([xshift=\xx cm, yshift=\yy cm] b.center) circle (0.5mm);
         }
         % Panel (c): faceted, clear upward trend within each sub-cloud
-        \node[panel, right=5mm of b] (c) {};
+        \node[panel, fill=diagcream!55, right=5mm of b] (c) {};
         \node[lbl] at (c.south) {(c) stratified: upward trend};
         \foreach \row in {-1, 1} {
           \foreach \col in {-1, 1} {
@@ -839,34 +829,34 @@ Across the full roster the story is more nuanced. The pooled correlation and the
             \foreach \t in {0,0.2,...,1.0} {
               \pgfmathsetmacro{\xx}{\cx - 0.4 + \t*0.8}
               \pgfmathsetmacro{\yy}{\cy - 0.3 + \t*0.55 + rand * 0.05}
-              \fill[black!55] ([xshift=\xx cm, yshift=\yy cm] c.center) circle (0.4mm);
+              \fill[diagteal!80] ([xshift=\xx cm, yshift=\yy cm] c.center) circle (0.4mm);
             }
           }
         }
         \node[font=\scriptsize, below=7mm of b, text width=90mm, align=center]
           {Probe accuracy $\to$ OOD drop within city. Scatter shape is schematic; real data is in Fig.~\ref{fig:probe-vs-ood-stratified}.};
     \end{tikzpicture}}
-    \caption[Probe-vs-drop confounder decomposition, schematic.]{Schematic illustration of why the pooled probe-vs-OOD-drop correlation is weak while the stratified version is strong. (a) Pooled across training cities: no visible trend. (b) The same points coloured by training city: the sub-populations have different locations and slopes. (c) Faceted by training city: the upward trend (higher probe accuracy goes with larger OOD drop) appears within each panel. This is a schematic cartoon; the corresponding real data is in Fig.~\ref{fig:probe-vs-ood-stratified} and Fig.~\ref{fig:probe-vs-ood}.}
+    \caption[Probe-vs-drop confounder decomposition, schematic.]{Schematic probe-vs-drop confounder decomposition. Pooling across training cities obscures structure; colouring and faceting by training city recover within-city trends. The corresponding real data is in Figs.~\ref{fig:probe-vs-ood-stratified} and~\ref{fig:probe-vs-ood}.}
     \label{fig:exp-probe-confounder}
 \end{figure}
 
 \subsection{Feature Distribution Shift (MMD)}
 \label{sec:exp-mmd}
 
-We compute biased RBF-kernel MMD\textsuperscript{2} between city-pair feature distributions with a median-heuristic bandwidth $\sigma^2$ estimated from a shared 500-sample pool, clamping all squared distances at 0 to avoid numerical blow-up on near-duplicate samples (observed on a handful of trainable single-city DINOv2 runs pre-clamp). Absolute MMD\textsuperscript{2} values are not directly comparable across backbones because $\sigma^2$ differs; within-regime comparisons remain informative. Fig.~\ref{fig:mmd-vs-ood} is the pooled scatter; the Boston-only cluster reproduces the single-city ordering (Table~\ref{tab:probe-boston}).
+We compute biased RBF-kernel MMD\textsuperscript{2}~\cite{gretton-mmd-2012} between city-pair feature distributions with a median-heuristic bandwidth $\sigma^2$ estimated from a shared 500-sample pool, clamping all squared distances at 0 to avoid numerical blow-up on near-duplicate samples (observed on a handful of trainable single-city DINOv2 runs pre-clamp). Absolute MMD\textsuperscript{2} values are not directly comparable across backbones because $\sigma^2$ differs; within-regime comparisons remain informative. Fig.~\ref{fig:mmd-vs-ood} is the pooled scatter; the Boston-only cluster reproduces the single-city ordering (Table~\ref{tab:probe-boston}).
 
 \reffig{fig:exp-mmd-concept} gives the intuition for the two non-obvious choices. The bandwidth $\sigma^2$ is set to the median of the pairwise squared distances in a shared pool of features, which fixes the kernel scale to a quantity the data itself defines. The zero-clamp on squared distances prevents a handful of near-duplicate frames (two video frames a fraction of a second apart) from producing a negative squared distance under floating-point rounding, which would then blow up the exponent.
 
 \begin{figure}[ht]
     \centering
-    \resizebox{0.75\linewidth}{!}{%
+    \resizebox{0.95\linewidth}{!}{%
     \begin{tikzpicture}[
-        arrow/.style = {-{Stealth[length=1.6mm]}, thin},
+        arrow/.style = {-{Stealth[length=1.6mm]}, semithick, draw=diagline},
     ]
         % City A cloud (red-ish) and B cloud (ssl purple)
         \begin{scope}
-          \draw[dashed, black!30] (-3.5,-1.8) rectangle (3.5,1.8);
-          \node[font=\tiny, anchor=south] at (0,1.85) {2-D PCA projection of cached features};
+          \draw[dashed, draw=diagline!35, fill=diagsky!20] (-3.5,-1.8) rectangle (3.5,1.8);
+          \node[font=\scriptsize, anchor=south] at (0,1.85) {2-D PCA projection of cached features};
           \foreach \i in {1,...,24} {
             \pgfmathsetmacro{\xx}{rand * 0.9 - 1.6}
             \pgfmathsetmacro{\yy}{rand * 0.7 - 0.3}
@@ -880,15 +870,15 @@ We compute biased RBF-kernel MMD\textsuperscript{2} between city-pair feature di
           \node[font=\scriptsize, text=sup, anchor=east] at (-1.6,-1.1) {city $A$};
           \node[font=\scriptsize, text=ssl, anchor=west] at (1.6,1.1) {city $B$};
           % Median-distance RBF contour, drawn as concentric ellipses around each centre
-          \draw[gray!60, densely dashed] (-1.6,-0.3) ellipse (1.2 and 0.95);
-          \draw[gray!60, densely dashed] (1.6,0.3) ellipse (1.2 and 0.95);
-          \node[font=\tiny, anchor=south] at (-1.6,0.8) {$\sigma^2$ contour};
-          \node[font=\tiny, anchor=south] at (1.6,1.4) {$\sigma^2$ contour};
+          \draw[diagline!60, densely dashed] (-1.6,-0.3) ellipse (1.2 and 0.95);
+          \draw[diagline!60, densely dashed] (1.6,0.3) ellipse (1.2 and 0.95);
+          \node[font=\scriptsize, anchor=south] at (-1.6,0.8) {$\sigma^2$ contour};
+          \node[font=\scriptsize, anchor=south] at (1.6,1.4) {$\sigma^2$ contour};
         \end{scope}
-        \node[draw, rounded corners, minimum width=75mm, minimum height=10mm, align=center, font=\scriptsize, below=4mm of current bounding box.south, fill=black!8]
-          (rule) {$\sigma^2 = \mathrm{median}\,\lVert x_i - x_j \rVert^2$ over a shared $500$-sample pool; squared distances are clamped at $0$ before $\exp$ to avoid numerical blow-up on near-duplicate frames.};
+        \node[draw=diagline, rounded corners=3pt, text width=95mm, minimum height=11mm, align=center, font=\scriptsize, below=4mm of current bounding box.south, fill=diagcream]
+          (rule) {$\sigma^2 = \mathrm{median}\,\lVert x_i - x_j \rVert^2$ over a shared $500$-sample pool. Squared distances are clamped at $0$ before $\exp$ to avoid numerical blow-up on near-duplicate frames.};
     \end{tikzpicture}}
-    \caption[MMD$^2$ bandwidth and clamping, intuition.]{Schematic of the RBF-kernel MMD$^2$ setup. Two per-city feature distributions are compared at a bandwidth $\sigma^2$ chosen as the median pairwise squared distance from a shared pool of features, which adapts the kernel scale to each backbone without manual tuning. Near-duplicate frames can produce tiny negative squared distances under floating-point rounding; the non-negativity clamp prevents the kernel from blowing up on those cases. The diagram is schematic and does not depict real feature values.}
+    \caption[MMD$^2$ bandwidth and clamping, intuition.]{Schematic of the RBF-kernel MMD$^2$ setup. The bandwidth $\sigma^2$ is the median pairwise squared distance from a shared feature pool. Squared distances are clamped at zero to avoid numerical artifacts on near-duplicate frames.}
     \label{fig:exp-mmd-concept}
 \end{figure}
 
@@ -896,8 +886,8 @@ Family-level MMD\textsuperscript{2} is reported in Table~\ref{tab:family-aggrega
 
 \begin{figure}[t]
     \centering
-    \includegraphics[width=0.65\textwidth]{phase4/scatter_mmd_vs_ood.pdf}
-    \caption[Cross-city MMD\textsuperscript{2} vs.\ OOD drop.]{$\log_{10}$ mean cross-city MMD\textsuperscript{2} (x-axis) against OOD PDMS drop in percentage points (y-axis) across the full analysed roster. Each point is one trained checkpoint; single-city training rows sit in the upper half of the plot (non-zero OOD drop), all-city training rows collapse to the bottom (drop $\approx 0$). Within the single-city cluster the MAE and ResNet-34 backbones occupy the higher-MMD region and the DINOv2 backbones occupy the lower-MMD region; there is no tight global MMD-drop correlation, which is why MMD is read as a sanity check on feature-distribution shift rather than as a robust transfer predictor.}
+    \includegraphics[width=0.65\textwidth]{phase4/scatter_mmd_vs_ood.png}
+    \caption[Cross-city MMD\textsuperscript{2} vs.\ OOD drop.]{$\log_{10}$ mean cross-city MMD\textsuperscript{2} against OOD PDMS drop across the analysed roster. Each point is one trained checkpoint. MMD separates some feature-distribution regimes but does not form a reliable global transfer predictor.}
     \label{fig:mmd-vs-ood}
 \end{figure}
 
@@ -912,32 +902,32 @@ The original plan was to measure the effective rank of learned planning-head wei
     \centering
     \resizebox{0.95\linewidth}{!}{%
     \begin{tikzpicture}[
-        panel/.style = {draw, minimum width=40mm, minimum height=28mm, rounded corners=1pt},
+        panel/.style = {draw=diagline, minimum width=40mm, minimum height=28mm, rounded corners=3pt, fill=diagsky!30},
     ]
         % (a) all mass on one direction
         \node[panel] (a) {};
         \draw[fill=sup!70, draw=sup] (a.south west) ++(3mm,0) rectangle ++(3mm,2.5cm);
         \foreach \k in {1,...,9} {
-          \draw[fill=black!20, draw=black!50] (a.south west) ++(3mm + \k*3.5mm,0) rectangle ++(3mm,0.1cm);
+          \draw[fill=diagsky!70, draw=diagblue!55] (a.south west) ++(3mm + \k*3.5mm,0) rectangle ++(3mm,0.1cm);
         }
         \node[font=\tiny, anchor=north] at (a.south) {(a) spike: eff.\ rank $\approx 1.0$};
         % (b) uniform across ten directions
-        \node[panel, right=5mm of a] (b) {};
+        \node[panel, fill=diagsage!35, right=5mm of a] (b) {};
         \foreach \k in {0,...,9} {
           \draw[fill=ssl!60, draw=ssl] (b.south west) ++(3mm + \k*3.5mm,0) rectangle ++(3mm,1.5cm);
         }
         \node[font=\tiny, anchor=north] at (b.south) {(b) uniform over 10: eff.\ rank $\approx 10.0$};
         % (c) exponential decay
-        \node[panel, right=5mm of b] (c) {};
+        \node[panel, fill=diagcream!50, right=5mm of b] (c) {};
         \foreach \k in {0,...,9} {
           \pgfmathsetmacro{\hh}{2.5 * exp(-0.35*\k)}
-          \draw[fill=avgray!60, draw=avgray] (c.south west) ++(3mm + \k*3.5mm,0) rectangle ++(3mm,\hh cm);
+          \draw[fill=diagamber!55, draw=diagamber!90] (c.south west) ++(3mm + \k*3.5mm,0) rectangle ++(3mm,\hh cm);
         }
         \node[font=\tiny, anchor=north] at (c.south) {(c) decay: eff.\ rank $\approx 3.8$};
         \node[font=\tiny, below=8mm of b, text width=100mm, align=center]
           {x-axis: singular-value index, sorted. y-axis: normalised squared singular value $\tilde\sigma_i^2$. The effective rank is $\exp\bigl(-\sum_i \tilde\sigma_i^2 \log \tilde\sigma_i^2\bigr)$.};
     \end{tikzpicture}}
-    \caption[Effective rank: three toy spectra and their values.]{Three toy spectra illustrating the Roy--Vetterli effective rank. (a) All probability mass on one singular direction produces an effective rank close to $1$. (b) A uniform spectrum across $10$ directions produces an effective rank close to $10$. (c) An exponentially decaying spectrum falls between the two. The effective rank is the exponential of the entropy of the normalised squared singular values, which collapses the spectrum into a single interpretable number.}
+    \caption[Effective rank: three toy spectra and their values.]{Three toy spectra illustrating Roy--Vetterli effective rank. A spike gives rank near $1$, a uniform ten-direction spectrum gives rank near $10$, and an exponential decay falls between them.}
     \label{fig:exp-rank-concept}
 \end{figure}
 
@@ -945,7 +935,7 @@ Family-level effective ranks in Table~\ref{tab:family-aggregate} separate the SS
 
 \begin{table}[ht]
 \centering
-\caption[Most severe feature-rank collapses in the mechanistic roster.]{Three most severe feature-rank collapses observed across the checkpoint roster. \emph{Eff.\ rank} is the Roy--Vetterli effective rank of the per-city feature covariance, averaged over the four cities. Low effective rank indicates that the backbone's features have collapsed onto a small number of directions and are no longer reliably usable by the planning head. The three worst cases are an all-city trainable DINOv2 run, an all-city trainable I-JEPA run, and a single-city frozen DINOv2 run on Las Vegas; fine-tuning on the driving loss is therefore not always safe for high-capacity SSL backbones at this data scale, as discussed in the body text.}
+\caption[Most severe feature-rank collapses in the mechanistic roster.]{Three most severe feature-rank collapses in the checkpoint roster. \emph{Eff.\ rank} is the Roy--Vetterli effective rank of per-city feature covariance, averaged over the four cities. Lower values indicate stronger concentration into a small number of feature directions.}
 \label{tab:exp-rank-collapse}
 \small
 \renewcommand{\arraystretch}{1.15}
@@ -961,7 +951,7 @@ P1-D2 & DINOv2 frozen, Las Vegas-only TF & 3.4 \\
 \end{tabular}
 \end{table}
 
-Across the full pool, feature-covariance rank does \emph{not} monotonically predict OOD drop. The informative read is within-family: frozen variants preserve more of the pretrained rank structure than trainable variants, and the MAE LatTF rows show the cleanest version of that pattern in Table~\ref{tab:family-aggregate}.
+Across the full pool, feature-covariance rank does \emph{not} monotonically predict OOD drop. The informative comparison is within-family: frozen variants preserve more of the pretrained rank structure than trainable variants, and the MAE LatTF rows show the clearest version of that pattern in Table~\ref{tab:family-aggregate}.
 
 \begin{table}[ht]
 \centering
@@ -987,15 +977,15 @@ MAE       & trainable  & LatTF & 15 & 80.8 & 0.89 & 0.78 & 0.097 & 49.1 & 9.2 \\
 \bottomrule
 \end{tabular}
 \end{adjustbox}
-\caption[Comprehensive cross-city and mechanistic summary across the roster.]{Comprehensive summary of the cross-city and mechanistic evidence averaged across every analysed run in each cell. Each row is a (backbone family, adaptation mode, planner) cell; $N$ is the number of checkpoints contributing. \emph{All-city} is the mean v1.1 \emph{Total} PDMS over the all-city rows in the canonical appendix planner tables. \emph{Probe} is linear-probe city-ID classification accuracy; \emph{CKA} is mean off-diagonal cross-city linear CKA; \emph{MMD\textsuperscript{2}} is the RBF median-bandwidth biased MMD\textsuperscript{2} averaged over city pairs; \emph{Eff.\ rank} is the Roy--Vetterli effective rank of per-city feature covariance averaged across the four cities; \emph{OOD drop} is train-city minus test-city PDMS in percentage points, read from the canonical v1.1 appendix tables. This is the global main-text synthesis table for the thesis: the appendix now keeps the full run-by-run consolidated tables, while this table averages those same rows into family-level summaries for the discussion. Trainable supervised ResNet-34 sits at the high-probe, large-OOD-drop corner on the Latent TransFuser row; frozen DINOv2 and MAE sit at the opposite corner. The supervised TransFuser single-city row is omitted because only one checkpoint is available for it (Singapore-trained) and its in-distribution PDMS is degenerate; the matched supervised-vs-SSL comparison used throughout the thesis is therefore the Latent TransFuser row of this table, together with \reftab{tab:probe-boston}.}
+\caption[Comprehensive cross-city and mechanistic summary across the roster.]{Family-level cross-city and mechanistic summary across the analysed roster. Each row is a backbone-family, adaptation-mode, and planner cell; $N$ is the number of contributing checkpoints. Columns report all-city PDMS, probe accuracy, CKA, MMD\textsuperscript{2}, effective rank, and OOD drop.}
 \label{tab:family-aggregate}
 \end{table}
 
 \begin{figure}[t]
     \centering
-    \includegraphics[width=0.45\textwidth]{phase4/spectra/spectrum_A6.pdf}
-    \includegraphics[width=0.45\textwidth]{phase4/spectra/spectrum_A6-b.pdf}
-    \caption[Feature-spectrum collapse under full fine-tuning.]{Per-city normalised singular-value spectrum of the planning-backbone features for I-JEPA ViT-H/14, all-city training, frozen (left) vs.\ fully fine-tuned (right). Each curve is the spectrum on one of the four NAVSIM cities; the y-axis is in log scale. Fine-tuning the ViT-H encoder compresses the spectrum by more than two orders of magnitude, leaving only the top two directions usable; the corresponding city-ID probe collapses from $0.94$ to $0.38$, and the effective feature rank collapses from $36.6$ to $2.9$. This is the mechanistic signature of the large-backbone fine-tuning failure mode discussed in~\refsec{sec:exp-implicit-reg}.}
+    \includegraphics[width=0.45\textwidth]{phase4/spectra/spectrum_A6.png}
+    \includegraphics[width=0.45\textwidth]{phase4/spectra/spectrum_A6-b.png}
+    \caption[Feature-spectrum collapse under full fine-tuning.]{Per-city normalised singular-value spectra for I-JEPA ViT-H/14 under all-city training. The left panel is frozen; the right panel is fully fine-tuned. Fine-tuning compresses the spectrum and lowers the effective feature rank.}
     \label{fig:spectrum-collapse}
 \end{figure}
 
@@ -1008,9 +998,9 @@ First, trainable supervised backbones drift toward city-discriminative cues. The
 
 Second, the pooled probe-vs-drop correlation is weak because training-city confounds dominate and because the MAE family is both city-decodable and robust. The pretraining objective therefore matters beyond its effect on probe accuracy: the masked-autoencoder objective preserves scene content in a way that can remain useful under transfer.
 
-Third, the frozen constraint is itself load-bearing. The effective-rank rows in Table~\ref{tab:family-aggregate} and the collapse cases in Table~\ref{tab:exp-rank-collapse} show that fine-tuning can compress SSL feature subspaces enough to erase useful variation. Preserving the pretrained rank structure is, empirically, what keeps the SSL representation useful for transfer.
+Third, the frozen constraint is itself central. The effective-rank rows in Table~\ref{tab:family-aggregate} and the collapse cases in Table~\ref{tab:exp-rank-collapse} show that fine-tuning can compress SSL feature subspaces enough to erase useful variation. Preserving the pretrained rank structure is, empirically, what keeps the SSL representation useful for transfer.
 
-Two cautions matter for committee-facing interpretation. CKA is descriptive rather than decisive: it shows that feature-covariance structure is broadly aligned across cities, but it does not by itself explain why one family transfers better than another. MMD is a sanity check rather than a predictor: absolute values depend on the backbone-specific kernel scale and are only informative within matched comparisons. The load-bearing mechanistic evidence is therefore the matched probe ordering and the frozen-vs-trainable rank contrast, not the pooled global correlations.
+Two cautions matter for committee-facing interpretation. CKA is descriptive rather than decisive: it shows that feature-covariance structure is broadly aligned across cities, but it does not by itself explain why one family transfers better than another. MMD is a sanity check rather than a predictor: absolute values depend on the backbone-specific kernel scale and are only informative within matched comparisons. The primary mechanistic evidence is therefore the matched probe ordering and the frozen-vs-trainable rank contrast, not the pooled global correlations.
 
 The confounders are also explicit. Training-city scale and traffic convention clearly affect the raw transfer matrices; Singapore is both the smallest training source and the only left-hand-traffic city. Pretraining domain and backbone capacity matter as well: domain-specific nuScenes pretraining can help independently of the SSL objective, and ViT-H versus ViT-S comparisons are not capacity matched. For that reason, the strongest causal claims in this thesis are restricted to matched settings where those variables are held fixed, and the full-roster summaries are treated as synthesis rather than as a single pooled law.
 
@@ -1039,9 +1029,9 @@ Backbone scale is a practical trade-off rather than a purely academic one. The l
 \section{Discussion}
 \label{sec:exp-discussion}
 
-Taken together, the studies support a single thesis argument. The exploratory pilots showed that SSL could already make lightweight planners competitive, which justified treating representation quality as a controlled variable rather than as a background implementation choice. The cross-city benchmark then made the key point visible: once evaluation is city-disjoint, backbone choice dominates robustness. The generative-planning study showed that this representation-centric story survives a major planner change in-distribution, and the mechanistic analysis explained why: frozen SSL features are less city-discriminative and occupy a more stable feature subspace than supervised or fully fine-tuned alternatives.
+Taken together, the studies support a single thesis argument. The exploratory pilots showed that SSL could already make lightweight planners competitive, which justified treating representation quality as a controlled variable rather than as a background implementation choice. The cross-city benchmark then showed that backbone choice dominates robustness once evaluation is city-disjoint. The generative-planning studies show the same directional representation effect under DiffusionDrive, a planner designed to attenuate backbone differences. The mixed-city rows demonstrate that the adapter integration is stable under the generative head; the city-disjoint matrix shows that the same backbone ordering survives under geographic shift. The mechanistic analysis explains why: frozen SSL features are less city-discriminative in matched comparisons and preserve a more stable feature subspace than supervised or fully fine-tuned alternatives.
 
-The practical recommendation is therefore asymmetric. If the target deployment environment is well matched to the training mix, the strongest supervised in-distribution planner may be adequate. If deployment includes genuinely new cities, the better trade-off is usually to accept a small in-distribution cost in exchange for much smaller geographic failure modes. The main limitations of the current evidence are the restriction to four cities, the heavy reliance on benchmark proxy evaluation, and the fact that the cross-city DiffusionDrive matrix is only partially complete. Even so, the completed DiffusionDrive rows already point in the same direction as the main benchmark: Singapore remains the hardest destination and the frozen SSL backbone loses less performance on the matched Pittsburgh transfer.
+The practical recommendation is therefore asymmetric. If the target deployment environment is well matched to the training mix, the strongest supervised in-distribution planner may be adequate. If deployment includes genuinely new cities, the better trade-off is usually to accept a small in-distribution cost in exchange for much smaller geographic failure modes. The main limitations of the current evidence are the restriction to four cities, the heavy reliance on benchmark proxy evaluation, and the missing city-disjoint camera-only DiffusionDrive configuration. The camera+LiDAR cross-city DiffusionDrive matrix is complete: Singapore remains the hardest destination, the same frozen SSL families produce smaller mean out-of-distribution drops than supervised ResNet-34, and the pre-registered per-training-city criterion is met. The missing camera-only matrix limits the sensor-suite claim, not the main generative-planner transfer result.
 
 \paragraph{Industrial implications.}
-The main industrial implication is operational rather than architectural. A fleet that is expanded city by city cannot assume that strong pooled-benchmark performance will survive deployment in a new geography. The completed TF and LatTF matrices show that this assumption is unsafe, especially for Singapore-like shifts. In that setting, a frozen SSL backbone is attractive because it trades a small in-distribution cost for a more stable transfer profile without requiring expensive city-specific relabelling or a full planner redesign. The camera-only DiffusionDrive results also speak to deployment cost: better visual representations help lower-cost sensing stacks, but they do not fully recover the geometric signal removed with LiDAR. For industrial benchmarking, the broader lesson is that pooled leaderboard numbers are insufficient. Geographic holdout evaluation should be part of any serious validation protocol for end-to-end driving.
+The main industrial implication is operational rather than architectural. A fleet that is expanded city by city cannot assume that strong pooled-benchmark performance will survive deployment in a new geography. The TF and LatTF matrices show that this assumption is unsafe, especially for Singapore-like shifts. In that setting, a frozen SSL backbone is attractive because it trades a small in-distribution cost for a more stable transfer profile without requiring expensive city-specific relabelling or a full planner redesign. The camera-only DiffusionDrive results also speak to deployment cost: better visual representations help lower-cost sensing stacks, but they do not fully recover the geometric signal removed with LiDAR. For industrial benchmarking, the broader lesson is that pooled leaderboard numbers are insufficient. Geographic holdout evaluation should be part of any serious validation protocol for end-to-end driving.

@@ -2,25 +2,20 @@
 \chapter{Methodology}
 \label{chap:methodology}
 
-%% Approx. 15 pages.
-%% Main thrusts: exploratory lightweight-head SSL, cross-city SSL benchmark,
-%% DiffusionDrive + SSL, and mechanistic analysis.
-%% Ends with the Phase 0--4 experimental protocol.
-
-This chapter is organised to mirror the narrative of the thesis. It starts with the lightweight-head agent, because that is the simplest setting in which representation quality can be isolated from planner capacity. It then explains why Drive-JEPA changed the scope of the project from pooled NAVSIM performance to city-disjoint transfer, and why TransFuser and Latent TransFuser are the main closed-loop anchor planners for the cross-city benchmark. The chapter next introduces DiffusionDrive as a second planner family with stronger built-in priors, and it closes with the mechanistic methods used later to explain the observed SSL gains.
+This chapter defines the experimental protocol used by the thesis. It starts with the lightweight-head agent, the simplest setting in which representation quality can be separated from planner capacity. It then defines the NAVSIM City Splits benchmark and the TransFuser / Latent TransFuser closed-loop protocol. The chapter next introduces DiffusionDrive as a second planner family with stronger built-in priors, and closes with the mechanistic methods used to interpret the transfer results.
 
 % ============================================================================
 \section{Exploratory Lightweight-Head Regime}
 \label{sec:meth-lightweight-head}
 
-The project began with an intentionally simple experimental regime: pair a pretrained visual backbone with a lightweight planning head and ask whether the representation alone already improves end-to-end driving behavior. This regime is deliberately minimal. By holding planner capacity fixed at its lowest meaningful level and varying only the backbone, any change in downstream performance is attributable to the representation rather than to the planner. Understanding the lightweight regime is a prerequisite for the cross-city experiments in~\ref{sec:meth-city-splits} and the generative-head study in~\ref{sec:meth-diffusiondrive}.
+The first study pairs a pretrained visual backbone with a lightweight planning head and asks whether the representation alone changes end-to-end driving behavior. Planner capacity is fixed at a deliberately low level, and the backbone is the controlled variable. The lightweight regime therefore establishes a direct representation-only baseline before the cross-city experiments in~\ref{sec:meth-city-splits} and the generative-head study in~\ref{sec:meth-diffusiondrive}.
 
 \subsection{Role in the Thesis}
 \label{sec:meth-lh-role}
 
-Three questions motivated the exploratory regime. First, whether the in-distribution improvement of SSL over supervised backbones reported in related work~\cite{wang-drive-jepa, naeinian-cross-city-2026} survives when the planner is stripped to a waypoint regressor. Second, whether different SSL objectives (I-JEPA, DINOv2, MAE) separate from one another under the same head, or whether their differences require a heavier planner to become visible. Third, whether fine-tuning the backbone helps or hurts relative to freezing it, once the planning head is this small. The answers to those questions set the prior for every subsequent planner choice in the thesis.
+Three questions motivated the exploratory regime. First, whether SSL gains survive when the planner is reduced to a waypoint regressor. Second, whether I-JEPA, DINOv2, and MAE separate under the same head. Third, whether fine-tuning helps or hurts relative to freezing when the planner is small. These answers set the baseline for the later planner studies.
 
-The answer from Drive-JEPA~\cite{wang-drive-jepa} reframed the scope. Their result that V-JEPA plus a lightweight decoder is already competitive on standard NAVSIM argued that in-distribution PDMS on the pooled benchmark is close to saturation for SSL methods. The exploratory regime therefore serves less as a competitive submission and more as a controlled baseline: it produces the head-fixed, backbone-varying numbers against which the cross-city and diffusion-head studies measure their own contributions.
+Drive-JEPA~\cite{wang-drive-jepa} reframed the scope by showing that V-JEPA with a lightweight decoder is already competitive on standard NAVSIM. The exploratory regime is therefore not a leaderboard study. It provides head-fixed, backbone-varying results against which the city-disjoint and DiffusionDrive studies are read.
 
 \subsection{Agent Architecture}
 \label{sec:meth-lh-arch}
@@ -31,28 +26,32 @@ The exploratory planner is a single configurable agent, \texttt{LightweightPlann
     \centering
     \resizebox{\linewidth}{!}{%
     \begin{tikzpicture}[
-        node distance = 4mm and 5mm,
-        box/.style = {draw, rounded corners=2pt, minimum height=8mm, minimum width=18mm, align=center, font=\scriptsize},
-        ssl/.style = {fill=black!5},
-        arrow/.style = {-{Stealth[length=1.8mm]}, thick},
+        node distance = 5mm and 5mm,
+        box/.style = {draw=diagline, rounded corners=3pt, line width=0.45pt, minimum height=9mm, text width=20mm, align=center, font=\scriptsize, inner sep=2pt},
+        input/.style = {fill=diagsky},
+        encblk/.style = {fill=diaglavender},
+        fuseblk/.style = {fill=diagsage},
+        headblk/.style = {fill=diagcream},
+        outblk/.style = {fill=diagrose},
+        arrow/.style = {-{Stealth[length=1.8mm]}, semithick, draw=diagline},
     ]
-        \node[box] (cams) {Cameras\\$V \in \{1,3,6\}$};
-        \node[box, right=of cams, ssl] (enc) {Backbone\\(ResNet / ViT)};
-        \node[box, right=of enc] (tok) {Tokens\\$B{\times}V{\times}N{\times}C$};
-        \node[box, right=of tok, ssl] (fus) {View fusion\\$f_\text{view}$};
-        \node[box, right=of fus] (vis) {Visual\\$B{\times}C$};
-        \node[box, below=8mm of fus] (ego) {Ego\\$B{\times}8$};
-        \node[box, right=of vis, ssl] (head) {Head\\(MLP / Tx.)};
-        \node[box, right=of head] (traj) {Trajectory\\$B{\times}T{\times}3$};
+        \node[box, input] (cams) {Cameras\\$V \in \{1,3,6\}$};
+        \node[box, encblk, right=of cams] (enc) {Backbone\\(ResNet / ViT)};
+        \node[box, input, right=of enc] (tok) {Tokens\\$B{\times}V{\times}N{\times}C$};
+        \node[box, fuseblk, right=of tok] (fus) {View fusion\\$f_\text{view}$};
+        \node[box, input, right=of fus] (vis) {Visual\\$B{\times}C$};
+        \node[box, headblk, right=of vis] (head) {Head\\(MLP / Tx.)};
+        \node[box, outblk, right=of head] (traj) {Trajectory\\$B{\times}T{\times}3$};
+        \node[box, input, below=8mm of head] (ego) {Ego\\$B{\times}8$};
         \draw[arrow] (cams) -- (enc);
         \draw[arrow] (enc) -- (tok);
         \draw[arrow] (tok) -- (fus);
         \draw[arrow] (fus) -- (vis);
         \draw[arrow] (vis) -- (head);
-        \draw[arrow] (ego) -| (head);
+        \draw[arrow] (ego.north) -- (head.south);
         \draw[arrow] (head) -- (traj);
     \end{tikzpicture}}
-    \caption{The \texttt{LightweightPlanningAgent} forward path. A camera set is encoded by a shared backbone into per-view patch tokens, fused into a single visual vector by one of five interchangeable rules, concatenated with ego status, and decoded to $T{=}8$ waypoints. Shaded blocks are the components swapped during ablations; unshaded blocks are fixed.}
+    \caption[Lightweight planning agent schematic.]{\texttt{LightweightPlanningAgent} forward path. Camera views are encoded into patch tokens, fused into one visual vector, concatenated with ego status, and decoded to $T{=}8$ waypoints. Shaded blocks are varied in ablations.}
     \label{fig:method-lh-arch}
 \end{figure}
 
@@ -61,11 +60,11 @@ Every block in \reffig{fig:method-lh-arch} is addressable by configuration. The 
 \subsection{Design Decisions}
 \label{sec:meth-lh-design}
 
-Four design axes are load-bearing and are reused later in the chapter. Each axis is exposed as a named field on \texttt{LightweightHeadConfig} and selected by a single Hydra override. \reftab{tab:meth-lh-design} enumerates the choice space and the rationale for each axis.
+Four design axes are central and are reused later in the chapter. Each axis is exposed as a named field on \texttt{LightweightHeadConfig} and selected by a single Hydra override. \reftab{tab:meth-lh-design} enumerates the choice space and the rationale for each axis.
 
 \begin{table}[ht]
 \centering
-\caption{Configuration axes of the lightweight-head agent. Each field is a top-level key in \texttt{LightweightHeadConfig}; values are the Hydra strings used at the command line.}
+\caption{Configuration axes of the lightweight-head agent. Each field is a top-level key in \texttt{LightweightHeadConfig}.}
 \label{tab:meth-lh-design}
 \small
 \renewcommand{\arraystretch}{1.2}
@@ -89,11 +88,11 @@ Four design axes are load-bearing and are reused later in the chapter. Each axis
 \texttt{camera\_mode} &
   \texttt{front1}, \texttt{front3}, \texttt{front5\_}\texttt{plus\_b} &
   \texttt{front1} &
-  Selects 1, 3, or 6 nuPlan cameras. Heavier sets reserved for fusion ablations. \\
+  Selects 1, 3, or 6 nuPlan cameras. Heavier sets test whether view coverage changes the representation ordering. \\
 \texttt{view\_fusion} &
   \texttt{single}, \texttt{mean}, \texttt{weighted\_}\texttt{mean}, \texttt{concat\_}\texttt{proj}, \texttt{cross\_attn} &
   \texttt{single} &
-  \texttt{cross\_attn} adds ${\approx}\,21$\,M parameters and restricts the GPU pool. \\
+  \texttt{cross\_attn} adds ${\approx}\,21$\,M parameters and serves as the high-capacity fusion ablation. \\
 \texttt{head\_type} &
   \texttt{mlp}, \texttt{transformer} &
   \texttt{mlp} &
@@ -105,7 +104,7 @@ Four design axes are load-bearing and are reused later in the chapter. Each axis
 Two decisions that cut across the axes in \reftab{tab:meth-lh-design} are worth calling out explicitly. First, when \texttt{trainable\_backbone\_fraction}${=}\,1.0$, the optimizer places encoder parameters in a separate group with a lower learning rate than the head, matching the two-group AdamW schedule used in~\ref{sec:meth-phase1-law}. Second, the fusion rules are defined on the same $(B, V, N, C)\to(B, C)$ signature, which means the fusion choice is a clean independent axis in the experiment matrix rather than a backbone-specific option. Both decisions carry forward into the heavier planners later in this chapter.
 
 \paragraph{Forward pass.}
-The default lightweight head is the canonical diagnostic instrument and is worth writing out. Let $I_v$ denote the input image from view $v$, $\phi_\theta$ the visual backbone, and $f_\text{view}$ the view-fusion rule. The visual feature is
+The default lightweight head is the diagnostic instrument. Let $I_v$ denote the input image from view $v$, $\phi_\theta$ the visual backbone, and $f_\text{view}$ the view-fusion rule. The visual feature is
 \begin{equation}
 \label{eq:lh-visual}
 \mathbf{v} \;=\; f_\text{view}\!\bigl(\phi_\theta(I_1), \dots, \phi_\theta(I_V)\bigr) \,\in\, \mathbb{R}^{C},
@@ -127,35 +126,38 @@ No auxiliary loss is added. The recipe is deliberate: the backbone enters Equati
 \subsection{Exploratory Experiment Taxonomy}
 \label{sec:meth-lh-taxonomy}
 
-The exploratory regime emits a structured experiment matrix rather than a list of hand-tuned runs. Four tiers organize the matrix; they run in priority order so that the main thesis claim is answered before any expensive variant is scheduled. \reffig{fig:method-lh-matrix} summarizes the tiers.
+The exploratory regime is an organized ablation matrix rather than a list of hand-tuned runs. Four tiers separate the comparisons: a frozen-backbone baseline, single-city and fusion ablations, full fine-tuning, and high-capacity multi-camera or transformer variants. \reffig{fig:method-lh-matrix} summarizes the tiers.
 
 \begin{figure}[ht]
     \centering
+    \resizebox{0.98\linewidth}{!}{%
     \begin{tikzpicture}[
-        node distance = 7mm and 10mm,
-        tier/.style = {draw, rounded corners=3pt, minimum height=10mm, minimum width=80mm, align=center, font=\small},
-        t1/.style = {fill=black!10},
-        t2/.style = {fill=black!5},
-        arrow/.style = {-{Stealth[length=1.8mm]}, semithick, gray!70, shorten >=7pt, shorten <=3pt},
+        node distance = 7mm,
+        tier/.style = {draw=diagline, rounded corners=4pt, line width=0.45pt, minimum height=13mm, text width=92mm, align=center, font=\small, inner sep=3pt},
+        t1/.style = {fill=diagsky},
+        t2/.style = {fill=diagsage},
+        t3/.style = {fill=diagcream},
+        t4/.style = {fill=diagrose},
+        arrow/.style = {-{Stealth[length=1.9mm]}, semithick, draw=diagline!75, shorten >=4pt, shorten <=4pt},
     ]
-        \node[tier, t1] (p1) {\textbf{Priority 1}\\11 backbones $\times$ frozen, MLP, front1 (10 runs)};
-        \node[tier, t2, below=of p1] (p2) {\textbf{Priority 2}\\4 backbones $\times$ 4 training cities + 4 fusion-ablation variants (20 runs)};
-        \node[tier, below=of p2] (p3) {\textbf{Priority 3}\\11 backbones $\times$ fully-unfrozen, MLP, front1 (10 runs)};
-        \node[tier, below=of p3] (p4) {\textbf{Priority 4}\\3-cam / 6-cam / cross-attn / transformer-head, fully-unfrozen (5 runs)};
+        \node[tier, t1] (p1) {\textbf{Tier 1: frozen baseline}\\11 backbones $\times$ frozen, MLP, front1 (10 runs)};
+        \node[tier, t2, below=of p1] (p2) {\textbf{Tier 2: city and fusion ablations}\\4 backbones $\times$ 4 training cities + 4 fusion variants (20 runs)};
+        \node[tier, t3, below=of p2] (p3) {\textbf{Tier 3: full fine-tuning}\\11 backbones $\times$ fully-unfrozen, MLP, front1 (10 runs)};
+        \node[tier, t4, below=of p3] (p4) {\textbf{Tier 4: high-capacity variants}\\3-cam / 6-cam / cross-attn / transformer-head (5 runs)};
         \draw[arrow] (p1) -- (p2);
         \draw[arrow] (p2) -- (p3);
         \draw[arrow] (p3) -- (p4);
-    \end{tikzpicture}
-    \caption[Four-tier exploratory experiment matrix (45 runs).]{Four-tier exploratory experiment matrix, totalling $45$ runs. Tier order is enforced: the Priority~1 backbone-controlled baseline completes before heavier variants are scheduled, so that a fully-unfrozen ViT-H/14 cannot overwrite the backbone-only comparison. Priority~2 extends across the four training cities and adds fusion ablations on a fixed I-JEPA backbone; Priority~3 repeats Priority~1 with the encoder fully fine-tuned; Priority~4 reserves the transformer-head and multi-camera variants. Heavier tiers are pinned to higher-memory GPUs because fully-unfrozen ViT-H/14 backbones do not fit on 48\,GB cards.}
+    \end{tikzpicture}}
+    \caption[Four-tier exploratory experiment matrix (45 runs).]{Four-tier exploratory ablation matrix, totalling $45$ runs. The tiers separate frozen-backbone, single-city/fusion, full fine-tuning, and high-capacity variants.}
     \label{fig:method-lh-matrix}
 \end{figure}
 
-Priority~1 is the core scientific instrument of this section. Each backbone in \reftab{tab:backbones} is paired with the same frozen-encoder \texttt{mlp} head and evaluated on the pooled \texttt{navtest} split, so the only variable is backbone identity. Priority~2 extends the protocol across the four nuPlan cities introduced in~\ref{sec:meth-city-splits} and adds fusion ablations on a fixed I-JEPA backbone. Priority~3 repeats the Priority~1 matrix with the encoder fully unfrozen, while Priority~4 reserves the heavier transformer and multi-camera variants. Across all runs, the head, loss, optimizer schedule, camera normalization, and trajectory sampling are held fixed (see \reftab{tab:meth-lh-recipe}).
+Tier~1 is the main representation probe: each backbone in \reftab{tab:backbones} is paired with the same frozen-encoder \texttt{mlp} head on pooled \texttt{navtest}. Tier~2 adds single-city and fusion ablations. Tier~3 repeats Tier~1 with the encoder fully unfrozen. Tier~4 tests whether heavier view fusion or a transformer head changes the ordering. Across all runs, the head, loss, optimizer schedule, camera normalization, and trajectory sampling are held fixed (see \reftab{tab:meth-lh-recipe}).
 
 \subsection{Training and Evaluation Recipe}
 \label{sec:meth-lh-recipe}
 
-All 45 runs share the single recipe in \reftab{tab:meth-lh-recipe}. The recipe is intentionally minimal: no auxiliary losses (world-model, semantic, detection) are used in this regime, because any non-zero auxiliary weight would confound the representational comparison. The only hyperparameters that vary between runs are the encoder learning rate (which takes effect only when the encoder is unfrozen) and the batch size (which drops to 16 for fully-unfrozen or multi-camera runs because of memory).
+All 45 runs share the single recipe in \reftab{tab:meth-lh-recipe}. The recipe is intentionally minimal: no auxiliary losses (world-model, semantic, detection) are used in this regime, because any non-zero auxiliary weight would confound the representational comparison. The only hyperparameters that vary between runs are the encoder learning rate, which applies only when the encoder is unfrozen, and the batch size, which follows the frozen/unfrozen and camera-count settings in the matrix.
 
 \begin{table}[ht]
 \centering
@@ -180,7 +182,6 @@ Epochs                & 20 \\
 Precision             & Mixed (bfloat16 via PyTorch Lightning) \\
 Gradient clipping     & $1.0$ \\
 Batch size            & 32 (frozen, single-camera) / 16 (unfrozen or multi-camera) \\
-Host memory per run   & $128$\,GB (batch $32$) / $256$\,GB (batch $16$) \\
 Eval split            & \texttt{navtest} \\
 Eval scorer           & one-stage PDM (non-reactive) \\
 Devkit                & NAVSIM v1.0 primary; v1.1 re-evaluation \\
@@ -189,7 +190,7 @@ Primary metric        & PDMS (sub-scores NC, DAC, EP, TTC, Comfort also logged) 
 \end{tabular}
 \end{table}
 
-The split, scorer, and devkit choice match the protocol in~\cite{naeinian-cross-city-2026}, which keeps the numbers in Chapter~\ref{chap:experiments} directly comparable to that prior work. The \texttt{v1\_1} re-eval is a defensive control for the eval-version sensitivity discussed in Chapter~\ref{chap:relatedwork}.
+The split, scorer, and devkit choice match the protocol in~\cite{naeinian-cross-city-2026}, which keeps the numbers in Chapter~\ref{chap:experiments} directly comparable to that prior work. The \texttt{v1\_1} re-eval controls for the eval-version sensitivity discussed in Chapter~\ref{chap:relatedwork}.
 
 \subsection{From Lightweight Head to Cross-City}
 \label{sec:meth-lh-bridge}
@@ -236,33 +237,33 @@ NAVSIM & Singapore & 97 & 13 & -- \\
 
 \begin{figure}[ht]
     \centering
+    \resizebox{0.98\linewidth}{!}{%
     \begin{tikzpicture}[
-        city/.style = {draw, rounded corners=3pt, minimum width=26mm, minimum height=14mm, align=center, font=\small},
-        continent/.style = {draw, densely dashed, rounded corners=4pt, inner sep=4mm, font=\scriptsize\itshape, label position=above, label distance=-1mm},
-        citycount/.style = {font=\scriptsize, gray},
+        city/.style = {draw=diagline, rounded corners=4pt, line width=0.45pt, minimum width=28mm, minimum height=15mm, align=center, font=\small, inner sep=2pt},
+        continent/.style = {draw=diagline!55, densely dashed, rounded corners=5pt, inner sep=4mm, font=\scriptsize\itshape, label position=above, label distance=-1mm},
+        citycount/.style = {font=\scriptsize, text=diagline!70},
     ]
-        \node[city, fill=red!8] (lv) {Las Vegas (LV)\\{\scriptsize\color{gray}818 / 50}};
-        \node[city, fill=red!8, right=10mm of lv] (pit) {Pittsburgh (P)\\{\scriptsize\color{gray}140 / 22}};
-        \node[city, fill=red!8, right=10mm of pit] (bos) {Boston (B)\\{\scriptsize\color{gray}255 / 62}};
-        \node[draw, densely dashed, rounded corners=4pt, inner sep=3mm, fit=(lv) (pit) (bos), label=above:\itshape North America, label distance=-1mm] (na) {};
+        \node[city, fill=diagsky] (lv) {Las Vegas (LV)\\{\scriptsize\color{diagline!70}818 / 50}};
+        \node[city, fill=diagsky, right=10mm of lv] (pit) {Pittsburgh (P)\\{\scriptsize\color{diagline!70}140 / 22}};
+        \node[city, fill=diagsky, right=10mm of pit] (bos) {Boston (B)\\{\scriptsize\color{diagline!70}255 / 62}};
+        \node[draw=diagline!55, densely dashed, rounded corners=5pt, inner sep=3mm, fit=(lv) (pit) (bos), label=above:\itshape North America, label distance=-1mm] (na) {};
 
-        \node[city, fill=blue!8, right=18mm of bos] (sg) {Singapore (S)\\{\scriptsize\color{gray}97 / 13}\\\tiny left-hand traffic};
-        \node[draw, densely dashed, rounded corners=4pt, inner sep=3mm, fit=(sg), label=above:\itshape Southeast Asia, label distance=-1mm] {};
+        \node[city, fill=diagrose, right=18mm of bos] (sg) {Singapore (S)\\{\scriptsize\color{diagline!70}97 / 13}\\\tiny left-hand traffic};
+        \node[draw=diagline!55, densely dashed, rounded corners=5pt, inner sep=3mm, fit=(sg), label=above:\itshape Southeast Asia, label distance=-1mm] {};
 
         \node[font=\scriptsize, below=4mm of lv.south west, anchor=north west, text width=120mm] {\textit{trainval / test scene counts from \refapp{app:city-data-card}. Singapore is the only left-hand-traffic city and the smallest training source, making it a stringent cross-city target.}};
-    \end{tikzpicture}
-    \caption{Schematic of the four NAVSIM City Splits. Three North-American cities share traffic conventions (right-hand-side driving) and broadly comparable road-marking standards; Singapore adds a different traffic convention and distinct road-paint conventions. Scene counts are from \reftab{tab:city-splits}.}
+    \end{tikzpicture}}
+    \caption[NAVSIM City Splits schematic.]{Schematic of the four NAVSIM City Splits. Three North-American cities share right-hand traffic; Singapore is the only left-hand-traffic city. Scene counts are from \reftab{tab:city-splits}.}
     \label{fig:method-city-map}
 \end{figure}
 
 \subsection{Evaluation Protocols}
 \label{sec:meth-eval-protocols}
 
-The thesis uses two evaluation settings. The all-city protocol trains and evaluates on the benchmark's original mixed-city split and anchors numbers to published baselines. The stress test is strict single-city transfer: a model is trained on one city and evaluated on unseen cities with no fine-tuning, adaptation, or test-time modification. On nuScenes this yields a two-direction protocol (Boston$\rightarrow$Singapore and Singapore$\rightarrow$Boston); on NAVSIM it yields a full $4 \times 4$ train-city by test-city matrix. Leave-one-city-out evaluation is noted as a future extension. The core empirical results come from the first two settings, matching~\cite{naeinian-cross-city-2026}.
+The thesis uses two reported evaluation settings. The all-city protocol trains and evaluates on the benchmark's original mixed-city split and anchors numbers to published baselines. The city-disjoint protocol trains on one city and evaluates on unseen cities with no fine-tuning, adaptation, or test-time modification. On nuScenes this yields a two-direction protocol (Boston$\rightarrow$Singapore and Singapore$\rightarrow$Boston); on NAVSIM it yields a full $4 \times 4$ train-city by test-city matrix. The reported empirical results match these two settings in~\cite{naeinian-cross-city-2026}.
 \begin{enumerate}
     \item \textbf{All-city (standard)}: Train and test on the full NAVSIM split (all cities mixed). Reproduces published numbers.
     \item \textbf{Single-city (zero-shot transfer)}: Train on city A, test on all cities. Produces a $4 \times 4$ generalization matrix.
-    \item \textbf{Leave-one-city-out (LOCO)}: Train on 3 cities, test on the held-out city. More realistic multi-city regime.
 \end{enumerate}
 
 For score-based metrics such as PDMS, we summarize out-of-distribution performance for a training city $c_i$ by averaging over the other cities~\cite{naeinian-cross-city-2026}:
@@ -290,7 +291,7 @@ All domain-specific SSL pretraining used in this thesis was carried out by Fatem
 \subsection{Common Setup: Dataset, Architecture, and Input Geometry}
 \label{sec:meth-ssl-common}
 
-The three pretraining recipes share a common substrate. The pretraining source is the nuScenes training split~\cite{caesar-nuscenes-2020}, expanded to all six camera rigs (\texttt{CAM\_FRONT}, \texttt{CAM\_FRONT\_LEFT}, \texttt{CAM\_FRONT\_RIGHT}, \texttt{CAM\_BACK}, \texttt{CAM\_BACK\_LEFT}, \texttt{CAM\_BACK\_RIGHT}) rather than the front camera alone. This yields \(168{,}780\) RGB frames. Using every camera matters for two reasons. It increases the pretraining signal roughly six-fold relative to a front-only protocol, and it exposes the encoder to the full driving field of view that downstream planners will see, including side and rear cameras whose statistics differ from front-facing ImageNet pretraining. All frames are normalized with the ImageNet RGB mean and standard deviation; no colour jitter, Gaussian blur, or heavy photometric augmentation is applied, because such augmentations bias the invariance set of the representation toward classification tasks and are not load-bearing for driving planning.
+The three pretraining recipes share a common substrate. The pretraining source is the nuScenes training split~\cite{caesar-nuscenes-2020}, expanded to all six camera rigs (\texttt{CAM\_FRONT}, \texttt{CAM\_FRONT\_LEFT}, \texttt{CAM\_FRONT\_RIGHT}, \texttt{CAM\_BACK}, \texttt{CAM\_BACK\_LEFT}, \texttt{CAM\_BACK\_RIGHT}) rather than the front camera alone. This yields \(168{,}780\) RGB frames. Using every camera increases the pretraining signal roughly six-fold relative to a front-only protocol and exposes the encoder to the full downstream field of view. All frames are normalized with the ImageNet RGB mean and standard deviation. No colour jitter, Gaussian blur, or heavy photometric augmentation is applied, because such augmentations bias the invariance set toward classification tasks rather than planning.
 
 The model architecture is ViT-S/14~\cite{dosovitskiy-vit-2021}. Its concrete size, data source, resolution choices, and hardware envelope are summarized in \reftab{tab:meth-ssl-common}. The design choice is methodological rather than leaderboard-oriented: the domain-specific runs intentionally use a smaller architecture than the large public ImageNet checkpoints, so that the experiments can ask whether driving-domain pretraining compensates for scale under geographic transfer.
 
@@ -470,22 +471,26 @@ Backbones emit features with different dimensions and layouts. A lightweight pro
     \resizebox{\linewidth}{!}{%
     \begin{tikzpicture}[
         node distance = 4mm and 5mm,
-        box/.style = {draw, rounded corners=2pt, minimum height=7mm, minimum width=20mm, align=center, font=\scriptsize},
-        arrow/.style = {-{Stealth[length=1.8mm]}, thick},
+        box/.style = {draw=diagline, rounded corners=3pt, line width=0.45pt, minimum height=8mm, text width=22mm, align=center, font=\scriptsize, inner sep=2pt},
+        input/.style = {fill=diagsky},
+        model/.style = {fill=diaglavender},
+        adapt/.style = {fill=diagsage},
+        outblk/.style = {fill=diagcream},
+        arrow/.style = {-{Stealth[length=1.8mm]}, semithick, draw=diagline},
     ]
-        \node[box] (img) {Image\\$3 \times H_0 \times W_0$};
-        \node[box, right=of img, fill=black!5] (vit) {ViT backbone\\(frozen)};
-        \node[box, right=of vit] (tok) {Patch tokens\\$B{\times}N{\times}C$};
-        \node[box, right=of tok] (rsh) {Reshape +\\linear proj.};
-        \node[box, right=of rsh, fill=black!5] (map) {Spatial map\\$B{\times}C'{\times}H{\times}W$};
-        \node[box, right=of map] (plan) {Planner\\(TF / LAW / DD)};
+        \node[box, input] (img) {Image\\$3 \times H_0 \times W_0$};
+        \node[box, model, right=of img] (vit) {ViT backbone\\(frozen)};
+        \node[box, input, right=of vit] (tok) {Patch tokens\\$B{\times}N{\times}C$};
+        \node[box, adapt, right=of tok] (rsh) {Reshape +\\linear proj.};
+        \node[box, outblk, right=of rsh] (map) {Spatial map\\$B{\times}C'{\times}H{\times}W$};
+        \node[box, model, right=of map] (plan) {Planner\\(TF / LAW / DD)};
         \draw[arrow] (img) -- (vit);
         \draw[arrow] (vit) -- (tok);
         \draw[arrow] (tok) -- (rsh);
         \draw[arrow] (rsh) -- (map);
         \draw[arrow] (map) -- (plan);
     \end{tikzpicture}}
-    \caption{Backbone adapter schematic. A frozen ViT encoder emits $N$ patch tokens; a lightweight reshape and linear projection restructure them into a spatial feature map whose shape matches what the downstream planner expects. ResNet-34 backbones already emit a spatial map and therefore skip the reshape step. This adapter is the only module that differs between the TransFuser/LAW cross-city runs and the DiffusionDrive runs.}
+    \caption[Backbone adapter schematic.]{Backbone adapter schematic. ViT patch tokens are reshaped and projected into a planner-compatible spatial feature map. ResNet-34 backbones already emit a spatial map and skip the reshape step.}
     \label{fig:method-adapter}
 \end{figure}
 
@@ -649,15 +654,15 @@ which averages the closed-loop scores across every unseen test city. \(S_\text{O
 Two practical notes. First, \(S_\text{OOD}\) averages over a heterogeneous set of test cities; it is not symmetric in the sense that training on a hard source and evaluating on easy targets can give the same mean as the reverse, so it is always reported alongside the full matrix rather than in isolation. Second, the ratio \(R_\text{err}\) is sensitive to the denominator: when the in-domain run itself has a degenerate score, the ratio becomes uninformative, and such runs are flagged in the tables of Chapter~\ref{chap:experiments} rather than silently included in ranked comparisons.
 
 % ============================================================================
-\section{Generative Planning with DiffusionDrive: a Backbone-Attenuating Test}
+\section{Generative Planning with DiffusionDrive: Backbone Attenuation}
 \label{sec:meth-diffusiondrive}
 
-The cross-city benchmark establishes that the visual representation dominates planner capacity under geographic transfer, but under two planner families (LAW and TransFuser / Latent TransFuser) whose heads are both regression-based and whose cross-modal fusion is a thin attention stack over a convolutional feature pyramid. A natural follow-up question is whether this finding is specific to planners with low expressive capacity, or whether it also holds under a planner whose own priors do most of the work. DiffusionDrive~\cite{jia-diffusiondrive-2025} is selected for this test because its head sits closer to the second category.
+The cross-city benchmark establishes the representation effect under LAW and TransFuser / Latent TransFuser, both of which use regression-style heads. DiffusionDrive~\cite{jia-diffusiondrive-2025} tests the same question under a planner with stronger trajectory priors. Its anchor-based head should reduce the visible effect of the image backbone; any remaining backbone ordering is therefore informative.
 
-\subsection{Why DiffusionDrive is the Right Stress Test}
+\subsection{Why DiffusionDrive Attenuates Backbone Effects}
 \label{sec:meth-dd-why}
 
-DiffusionDrive's planner absorbs backbone differences by construction. The "head attenuates the backbone" claim is a precise consequence of the truncated denoising procedure, so it is worth writing down. The K-means anchor bank is fitted offline on the \texttt{navtrain} expert-trajectory pool by minimising
+DiffusionDrive attenuates backbone differences through its truncated denoising procedure. The K-means anchor bank is fitted offline on the \texttt{navtrain} expert-trajectory pool by minimising
 \begin{equation}
 \label{eq:dd-kmeans}
 \bigl\{\boldsymbol\tau^{(k)}\bigr\}_{k=1}^{K} \;=\; \arg\min_{\{\boldsymbol\tau^{(k)}\}}\, \sum_{\boldsymbol\tau^\ast \in \mathcal{D}_\text{train}}\, \min_{k}\, \bigl\lVert \boldsymbol\tau^\ast - \boldsymbol\tau^{(k)} \bigr\rVert_2^2,
@@ -668,24 +673,24 @@ with $K = 256$. At inference, given scene features $\mathbf{s} = \phi_\theta(I, 
 \boldsymbol\tau_{\,n-1} \;=\; \boldsymbol\tau_{\,n} \;+\; \alpha_n\,\epsilon_\eta\!\bigl(\boldsymbol\tau_{\,n},\, n,\, \mathrm{BEV}(\mathbf{s},\, \boldsymbol\tau_{\,n})\bigr),
 \qquad n \in \{2,\,1\},
 \end{equation}
-where $\epsilon_\eta$ is the learned trajectory-residual network, $\alpha_n$ are the truncated-schedule coefficients of~\cite{jia-diffusiondrive-2025}, and $\mathrm{BEV}(\mathbf{s},\, \boldsymbol\tau_{\,n})$ is the backbone's contribution: a grid of bird's-eye-view features sampled around the current waypoints rather than a dense feature map. The conditioning enters $\epsilon_\eta$ only through this grid sample plus a time-only FiLM modulation on $n$. Four design choices make this attenuation explicit:
+where $\epsilon_\eta$ is the learned trajectory-residual network, $\alpha_n$ are the truncated-schedule coefficients of~\cite{jia-diffusiondrive-2025}, and $\mathrm{BEV}(\mathbf{s},\, \boldsymbol\tau_{\,n})$ is the backbone contribution: a grid of bird's-eye-view features sampled around the current waypoints rather than a dense feature map. The conditioning enters $\epsilon_\eta$ only through this grid sample plus a time-only FiLM modulation on $n$. Four design choices create the attenuation:
 \begin{enumerate}
-    \item \textbf{K-means anchor trajectories.} Denoising is initialized from one of 256 prototypical trajectories obtained by K-means clustering on \texttt{navtrain} expert motions~\cite{jia-diffusiondrive-2025}. The planner therefore \emph{starts from a plausible trajectory} on every scenario, rather than from Gaussian noise. A weak backbone whose features cannot resolve fine-grained scene geometry can still exit the denoiser close to the expert trajectory, because the anchor has already placed the plan in the right basin.
-    \item \textbf{Truncated two-step denoising.} At inference, DiffusionDrive takes only two denoising steps. The visual conditioning therefore has two opportunities to perturb the anchor before commitment. This is a design decision for real-time throughput~\cite{jia-diffusiondrive-2025}, but its side effect is that each individual conditioning step contributes less than it would under a 50- or 1{,}000-step denoiser.
-    \item \textbf{Grid-sampled BEV cross-attention at waypoint positions.} The cross-attention that injects scene features into the denoising query is evaluated on a regular BEV grid around the current waypoint prediction, not on a dense feature map. This quantizes the planner's access to the backbone features and makes the head robust to differences in token geometry.
-    \item \textbf{Time-only FiLM conditioning.} The final conditioning path uses FiLM modulation on the denoising timestep only. Backbone-dependent modulations that were explored during development did not end up in the production path; the head therefore sees the backbone features only through the grid-sampled cross-attention, with no additional FiLM gate that might amplify them.
+    \item \textbf{K-means anchor trajectories.} Denoising starts from one of 256 prototypical trajectories clustered from \texttt{navtrain} expert motions~\cite{jia-diffusiondrive-2025}, not from Gaussian noise. The initial plan is already plausible before image features are applied.
+    \item \textbf{Truncated two-step denoising.} At inference, DiffusionDrive takes only two denoising steps. Visual conditioning has two opportunities to perturb the anchor before the trajectory is fixed.
+    \item \textbf{Grid-sampled BEV cross-attention.} Scene features enter through a regular BEV grid sampled around the current waypoint prediction. The planner does not attend to a dense feature map directly.
+    \item \textbf{Time-only FiLM conditioning.} The final FiLM path modulates only the denoising timestep. Backbone features enter through grid-sampled cross-attention, without an additional feature-dependent FiLM gate.
 \end{enumerate}
 
-Each of these choices is known from the DiffusionDrive paper~\cite{jia-diffusiondrive-2025} and is preserved verbatim in this thesis. The composite effect is that DiffusionDrive is an \emph{attenuating substrate for the representation claim}: if a different backbone changes planner behavior at all under this head, that change must overcome the anchor-trajectory prior, the two-step budget, and the quantized cross-attention. A planner whose head was already doing most of the work under DiffusionDrive would manifest as an \emph{absence} of backbone effect on this planner, and that would be the cleanest way for the thesis claim to fail.
+These choices are inherited from DiffusionDrive~\cite{jia-diffusiondrive-2025} and are preserved in this thesis. Together they mean that a backbone effect must survive the anchor prior, the two-step budget, and the quantized conditioning path. If the generative head fully dominated the output, the backbone ordering would disappear under this planner.
 
-The consequence for interpretation is that small absolute PDMS differences under DiffusionDrive are more meaningful than similarly-sized differences under a weaker planner. Specifically, the study reports transfer-ratio inflation (in-distribution PDMS divided by out-of-distribution PDMS) rather than raw absolute scores. A ResNet-34 baseline that drops 16 points to Singapore and an SSL variant that drops 14 points is a directionally consistent robustness signal even though the absolute gap is small, because the DiffusionDrive head is actively attenuating the backbone contribution before the PDMS scorer sees the plan.
+The study therefore reports transfer-ratio inflation (in-distribution PDMS divided by out-of-distribution PDMS) in addition to absolute scores. A small drop reduction under DiffusionDrive can still be meaningful, because the head is designed to reduce backbone-dependent variation before the PDMS scorer sees the plan.
 
 \subsection{Integration: Same Adapter as the Cross-City Benchmark}
 \label{sec:meth-dd-ssl}
 
 The central repro-fairness commitment of the generative-planning study is that the SSL backbone is plugged into DiffusionDrive through the \emph{same} adapter used in the cross-city benchmark. In code, both pipelines import \texttt{create\_image\_encoder} from the TransFuser backbone module (\ref{sec:meth-backbones}); DiffusionDrive's image-encoder configuration is a drop-in replacement at the same interface. There is no bespoke DiffusionDrive-specific ViT adapter, no resolution-specific branch divergence, and no "feature pyramid up-sampling" patch that is applied here but not in the cross-city benchmark.
 
-This matters because it forecloses the obvious alternative explanation for any observed effect: "maybe DiffusionDrive sees the backbone more richly because its adapter is different." The adapter is held fixed, and the head is the single manipulated variable between the cross-city benchmark and this study. A separate ViT-bottleneck ablation branch explores resolution-matching commits that could, in principle, further narrow the backbone--planner gap; those commits are \emph{not} merged into the thesis's main branch and \emph{not} applied to any run reported here, so reproducibility under the same adapter is preserved.
+This matters because it removes an obvious alternative explanation: DiffusionDrive does not receive a richer bespoke adapter. The adapter is held fixed, and the head is the manipulated variable between the cross-city benchmark and this study. A separate ViT-bottleneck ablation branch explores resolution matching, but those commits are \emph{not} merged into the thesis branch and are \emph{not} applied to any run reported here.
 
 Integration otherwise follows the minimal recipe:
 \begin{itemize}
@@ -737,13 +742,13 @@ Because DiffusionDrive's head is actively attenuating the backbone contribution,
 \end{quote}
 
 \noindent
-This pre-registered criterion is what the interpretation of the result tables in \refsec{sec:exp-phase3} anchors on. \refsec{sec:exp-phase3} reports that the criterion is met on the completed $4 \times 4 \times 4$ matrix, in three of four training cities under the strictest per-backbone reading (DINOv2) and in four of four under the per-train-city reading. No architectural changes to DiffusionDrive were applied after the matrix was scored.
+This pre-registered criterion is what the interpretation of the result tables in \refsec{sec:exp-phase3} anchors on. \refsec{sec:exp-phase3} reports that the criterion is met on the full $4 \times 4 \times 4$ matrix, in three of four training cities under the strictest per-backbone reading (DINOv2) and in four of four under the per-train-city reading. No architectural changes to DiffusionDrive were applied after the matrix was scored.
 
 % ============================================================================
 \section{Study Sequence}
 \label{sec:meth-exp-protocol}
 
-The experiments are organised as one exploratory study followed by four load-bearing studies. The exploratory lightweight-head study of~\ref{sec:meth-lightweight-head} motivates the representation-first framing. The cross-city SSL benchmark of~\ref{sec:meth-phase1-cc} produces the backbone-by-city matrix that Chapter~\ref{chap:experiments} reports. The generative-planning study adds DiffusionDrive with SSL backbones on the standard NAVSIM split, using the integration described in~\ref{sec:meth-diffusiondrive}. The cross-city generative study extends that integration to the city-disjoint setting; the completed $4 \times 4 \times 4$ matrix is reported in Chapter~\ref{chap:experiments} as load-bearing evidence, with the pre-registered criterion in~\ref{sec:meth-dd-success} met under the natural reading. The mechanistic analysis uses CKA, linear probing, MMD, and feature-covariance effective rank on the trained checkpoints, with no additional training.
+The experiments are organised as one exploratory study followed by four reported studies. The lightweight-head study of~\ref{sec:meth-lightweight-head} motivates the representation-first framing. The cross-city SSL benchmark of~\ref{sec:meth-phase1-cc} produces the backbone-by-city matrix that Chapter~\ref{chap:experiments} reports. The generative-planning study adds DiffusionDrive with SSL backbones on the standard NAVSIM split, using the integration described in~\ref{sec:meth-diffusiondrive}. The cross-city generative study extends that integration to the city-disjoint setting; the full $4 \times 4 \times 4$ matrix is reported in Chapter~\ref{chap:experiments}, and the pre-registered criterion in~\ref{sec:meth-dd-success} is met. The mechanistic analysis uses CKA, linear probing, MMD, and feature-covariance effective rank on the trained checkpoints, with no additional training.
 
 % ============================================================================
 \section{Metrics}

@@ -1,7 +1,7 @@
 \begin{table}[ht]
 \centering
 \caption[Boston-only v1.1 Latent TransFuser cross-city summary.]{%
-Compact summary of the canonical Boston-trained Latent TransFuser rows from the v1.1 appendix roster table in~\reftab{tab:navsim_pdms_merged_v11_latf}. These four rows are used as the matched supervised-vs-SSL comparison throughout the thesis: each model is trained on Boston only and evaluated on every NAVSIM city. LV/B/P/S are destination-city PDMS percentages; the in-distribution column (bold) is Boston; \emph{OOD mean} averages the three remaining cities and \emph{Drop} is the in-distribution-minus-OOD-mean gap in percentage points. A smaller drop indicates a more geographically robust representation under a fixed planner. The MAE row has the best absolute OOD mean; the DINOv2 row has the smallest drop; the ResNet-34 row has the largest drop and is the supervised reference.}
+Compact summary of the canonical Boston-trained Latent TransFuser rows from the v1.1 appendix roster table in~\reftab{tab:navsim_pdms_merged_v11_latf}. Each model is trained on Boston only and evaluated on every NAVSIM city. LV/B/P/S are destination-city PDMS percentages; \emph{OOD mean} averages the held-out cities and \emph{Drop} is the in-distribution-minus-OOD-mean gap in percentage points.}
 \label{tab:navsim_pdms_boston_v11}
 \vspace{0.35em}
 \small

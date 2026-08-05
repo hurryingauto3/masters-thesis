@@ -15,7 +15,7 @@ The main text reads cross-city transfer through figures, compact matched tables,
 \section{Per-Metric PDMS Decomposition}
 \label{app:per-metric}
 
-NAVSIM's aggregate PDMS is a weighted combination of five sub-scores: no-at-fault collisions (NC), drivable-area compliance (DAC), ego progress (EP), time-to-collision (TTC), and comfort. The cross-city matrices in the main text report only the aggregate, which is the primary robustness indicator used by every thesis claim. A component-level decomposition is still useful, because it isolates whether cross-city degradation is dominated by geometry-aware sub-scores (DAC, EP) or by agent-interaction sub-scores (NC, TTC). For the completed DiffusionDrive rows, the answer is clear: Singapore transfer failures concentrate in DAC and EP, while NC and TTC remain comparatively stable.
+NAVSIM's aggregate PDMS is a weighted combination of five sub-scores: no-at-fault collisions (NC), drivable-area compliance (DAC), ego progress (EP), time-to-collision (TTC), and comfort. The cross-city matrices in the main text report only the aggregate, which is the primary robustness indicator used by the thesis. A component-level decomposition is still useful, because it isolates whether cross-city degradation is dominated by geometry-aware sub-scores (DAC, EP) or by agent-interaction sub-scores (NC, TTC). For the completed DiffusionDrive rows, Singapore transfer failures concentrate in DAC and EP, while NC and TTC remain comparatively stable.
 
 On structural grounds, the expected pattern under city shift is:
 
@@ -27,7 +27,7 @@ On structural grounds, the expected pattern under city shift is:
 
 \begin{table}[ht]
 \centering
-\caption[Singapore component breakdown for the cross-city DiffusionDrive matrix.]{Singapore destination component scores for every cross-city DiffusionDrive row whose training city is not Singapore. Each row is one trained model evaluated on Singapore. Values are percentages for the five PDMS sub-scores used in the main-text aggregate. The table is grouped by training city; within each group, the supervised ResNet-34 row is the comparison anchor and the frozen SSL rows follow. The pattern is consistent across training cities: Singapore transfer failure concentrates in DAC and EP (geometry-sensitive sub-scores) while NC and TTC (collision-adjacent sub-scores) remain stable across backbones.}
+\caption[Singapore component breakdown for the cross-city DiffusionDrive matrix.]{Singapore destination component scores for cross-city DiffusionDrive rows trained outside Singapore. Values are percentages for the five PDMS sub-scores. Rows are grouped by training city, with ResNet-34 as the comparison anchor in each group.}
 \label{tab:dd-cc-singapore-components}
 \small
 \renewcommand{\arraystretch}{1.15}
@@ -74,7 +74,7 @@ The recipes below are intended to be sufficient for reproduction. The NAVSIM eva
 
 \input{appendix/hparam_tables}
 
-A subtle but load-bearing detail: the TransFuser recipe in~\reftab{tab:hparam-phase1-tf} uses plain Adam with no weight decay and no learning-rate schedule. Substituting AdamW, or adding a cosine schedule, silently regresses the in-distribution PDMS by more than thirty points with no accompanying error signal. This was the root cause of an early training regression during the cross-city benchmark build-out, and the recipe above is the one that reproduces the published TransFuser mean.
+A practical detail matters for reproducibility: the TransFuser recipe in~\reftab{tab:hparam-phase1-tf} uses plain Adam with no weight decay and no learning-rate schedule. Substituting AdamW, or adding a cosine schedule, silently regresses the in-distribution PDMS by more than thirty points with no accompanying error signal. This was the root cause of an early training regression during the cross-city benchmark build-out, and the recipe above is the one that reproduces the published TransFuser mean.
 
 % ============================================================================
 \section{Mechanistic Artifacts Index}

@@ -10,7 +10,7 @@
 
 End-to-end autonomous driving learns a single visual-to-motion stack, avoiding hand-engineered interfaces between perception, prediction, and planning. Under the standard pooled evaluation protocol, the paradigm appears mature: recent planners evaluated on NAVSIM report strong aggregate PDMS and match or exceed classical modular baselines on geographically mixed test sets~\cite{dauner-navsim-2024}. The protocol itself is the caveat. A model that interpolates well across pooled data from Boston, Pittsburgh, Las Vegas, and Singapore is not necessarily robust to deployment in a city it has not seen.
 
-Once evaluation is re-framed as zero-shot geographic transfer, the picture changes. Naeinian et al.~\cite{naeinian-cross-city-2026} report order-of-magnitude open-loop degradation for supervised Boston-to-Singapore transfer, while closed-loop NAVSIM results show smaller out-of-distribution drops for self-supervised features. Chapter~\ref{chap:experiments} reports the exact matrices and ratios; the point here is conceptual. These failure modes are safety-critical: an autonomous vehicle trained in one city must remain competent when moved to another without expensive re-collection and re-labelling of local data.
+Once evaluation is re-framed as zero-shot geographic transfer, the picture changes. Naeinian et al.~\cite{naeinian-cross-city-2026} report order-of-magnitude open-loop degradation for supervised Boston-to-Singapore transfer, while closed-loop NAVSIM results show smaller out-of-distribution drops for self-supervised features. Chapter~\ref{chap:experiments} reports the exact matrices and ratios. The implication is that mixed-city validation does not expose the failure mode that matters for deployment in a new city.
 
 This thesis studies how visual-representation choice mediates these failures. The central claim is bounded rather than absolute:
 
@@ -33,13 +33,13 @@ The thesis began with a narrower question: whether a frozen self-supervised enco
 
 The subject of study is geographic domain shift in end-to-end planning. The cities used in this thesis differ in road topology, lane geometry, infrastructure layout, traffic density, and driving convention (right-hand traffic in Boston, Pittsburgh, and Las Vegas; left-hand traffic in Singapore). These structural differences create a harder transfer setting than mixed-city validation, because city-specific shortcuts learned during training do not transfer~\cite{naeinian-cross-city-2026}.
 
-The thesis isolates the \textbf{representation axis} as its primary axis: holding the planner, training recipe, and evaluation protocol fixed, we vary the visual backbone across supervised and self-supervised initialisations and measure cross-city behaviour. A secondary \textbf{planner-robustness test} asks whether the representation signal observed under regression-based planners (LAW, TransFuser, Latent TransFuser) also survives under a generative planner designed to attenuate backbone differences (DiffusionDrive). Both portions of this test are completed and reported in Chapter~\ref{chap:experiments}: the mixed-city integration in \refsec{sec:exp-phase2} and the city-disjoint $4 \times 4 \times 4$ matrix in \refsec{sec:exp-phase3}. The pre-registered criterion in \refsec{sec:meth-dd-success} is met on the latter, so the cross-city DiffusionDrive evidence is treated as load-bearing.
+The thesis isolates the \textbf{representation axis} as its primary axis: holding the planner, training recipe, and evaluation protocol fixed, we vary the visual backbone across supervised and self-supervised initialisations and measure cross-city behaviour. A secondary \textbf{planner-generalization analysis} asks whether the representation signal observed under regression-based planners (LAW, TransFuser, Latent TransFuser) also survives under a generative planner designed to attenuate backbone differences (DiffusionDrive). Both portions of this analysis are completed and reported in Chapter~\ref{chap:experiments}: the mixed-city integration in \refsec{sec:exp-phase2} and the city-disjoint $4 \times 4 \times 4$ matrix in \refsec{sec:exp-phase3}. The pre-registered criterion in \refsec{sec:meth-dd-success} is met on the latter, so the cross-city DiffusionDrive evidence is part of the defended result.
 
 % ============================================================================
 \section{Research Questions}
 \label{sec:research-questions}
 
-\reftab{tab:intro-rqs} lists the questions the completed thesis answers, together with the section of Chapter~\ref{chap:experiments} that provides the evidence. Follow-on questions whose evaluation is active are identified separately in \refsec{sec:contributions} and are not included in the formal research-question table.
+\reftab{tab:intro-rqs} lists the questions the completed thesis answers, together with the section of Chapter~\ref{chap:experiments} that provides the evidence.
 
 \begin{table}[ht]
 \centering
@@ -54,7 +54,7 @@ The thesis isolates the \textbf{representation axis} as its primary axis: holdin
 \midrule
 RQ1 & Which self-supervised pre-training objective (I-JEPA, DINOv2, MAE) transfers best across cities relative to supervised ImageNet features, under a fixed planner? & Cross-city SSL benchmark \\
 RQ2 & Which NAVSIM city (Boston, Las Vegas, Pittsburgh, Singapore) is the most reliable single-city training source for zero-shot transfer? & Cross-city SSL benchmark \\
-RQ3 & Do frozen self-supervised features degrade more gracefully than supervised baselines under city shift, and which mechanistic probes (probe accuracy, CKA, MMD, effective rank) track the ranking? & Cross-city benchmark + mechanistic analysis \\
+RQ3 & Do frozen self-supervised features degrade more gracefully than supervised baselines under city shift, and which mechanistic readouts provide useful explanatory signal under matched or training-city-stratified comparison? & Cross-city benchmark + mechanistic analysis \\
 RQ4 & Does the representation-centric pattern observed under regression planners reproduce under a generative planner (DiffusionDrive), under both mixed-city and city-disjoint training? & Generative-planning study (mixed and cross-city) \\
 \bottomrule
 \end{tabular}
@@ -64,7 +64,7 @@ RQ4 & Does the representation-centric pattern observed under regression planners
 \section{Contributions}
 \label{sec:contributions}
 
-The thesis contributions are separated into completed contributions and active validation. Prior-work boundaries are stated explicitly and locally, so the original contribution is easy for a reader to identify.
+The thesis contributions are completed contributions. Prior-work boundaries are stated explicitly and locally, so the original contribution is easy for a reader to identify.
 
 \paragraph{Provenance of external components.}
 Two classes of prior-work components are used inside the study and are named here once so that later chapters do not need to repeat the disclaimer. The LAW open-loop planner~\cite{li-law-2024} is an external baseline; it is included because it lets the representation question be tested on a stable open-loop planner alongside the closed-loop NAVSIM planners, and its world-model head is neither claimed nor modified. Several backbone initialisations (I-JEPA ViT-H/14 on ImageNet, DINOv2, MAE, ResNet-34 supervised) use pretrained checkpoints released in prior work; the contribution of this thesis is their systematic evaluation under city-disjoint closed-loop transfer, not the pretrained weights themselves. Domain-specific nuScenes SSL pretraining was carried out by Fatemeh Naeinian as part of our companion cross-city study~\cite{naeinian-cross-city-2026}; the thesis documents her recipe in Chapter~\ref{chap:methodology} for completeness. Everything else is original to this thesis: the city-disjoint evaluation framing, the representation-centred investigation, the NAVSIM v1.1 re-evaluation, the TF and LatTF reproductions, the lightweight-head studies, the DiffusionDrive integration, and the mechanistic analysis and synthesis.
@@ -73,14 +73,53 @@ Two classes of prior-work components are used inside the study and are named her
 \begin{enumerate}
     \item \textbf{Cross-city evaluation framework}. A per-city train/test partitioning of NAVSIM across Boston, Pittsburgh, Las Vegas, and Singapore, together with the paired open-loop (nuScenes) and closed-loop (NAVSIM) city-disjoint protocol. The partition first appears in our earlier cross-city study~\cite{naeinian-cross-city-2026}; this thesis integrates it into a broader representation-centred investigation and adds a NAVSIM v1.1 re-evaluation that hardens the numbers against devkit-version confounding.
     \item \textbf{Cross-city representation benchmark}. A controlled evaluation of self-supervised backbones (I-JEPA, DINOv2, MAE) against supervised ResNet-34 and Swin-T baselines, using LAW on nuScenes and TransFuser / Latent TransFuser on NAVSIM as fixed planners. Under the evaluated settings, frozen self-supervised backbones reduce cross-city degradation relative to supervised baselines; the matrices and ratios are in Chapter~\ref{chap:experiments}.
-    \item \textbf{DiffusionDrive integration (mixed-city and cross-city)}. Self-supervised backbones are integrated into the DiffusionDrive generative head through the same feature adapter used in the cross-city benchmark, including a camera-only variant. The mixed-city integration shows that the representation signal survives a planner swap under pooled evaluation at a small in-distribution cost relative to the supervised camera$+$LiDAR baseline. The completed $4 \times 4 \times 4$ city-disjoint matrix shows that the representation signal also survives under city shift: every frozen self-supervised family produces a smaller mean out-of-distribution PDMS drop than supervised ResNet-34 under a planner whose anchor-based head is designed to attenuate backbone variation, and the per-training-city criterion in \refsec{sec:meth-dd-success} is met.
-    \item \textbf{Mechanistic analysis}. A study of the trained checkpoint roster using linear probing for city identity, centred kernel alignment, maximum mean discrepancy, and feature-covariance effective rank. In the evaluated matched comparisons the linear-probe ordering tracks the out-of-distribution PDMS drop ordering, and fine-tuning compresses feature-covariance rank for every self-supervised family; no claim is made that this mechanism holds universally across checkpoints.
+    \item \textbf{DiffusionDrive integration (mixed-city and cross-city)}. Self-supervised backbones are integrated into the DiffusionDrive generative head through the same feature adapter used in the cross-city benchmark, including mixed-city camera-only rows. The mixed-city integration shows that the representation signal survives a planner swap under pooled evaluation at a small in-distribution cost relative to the supervised camera$+$LiDAR baseline. The completed $4 \times 4 \times 4$ city-disjoint camera$+$LiDAR matrix shows that the representation signal also survives under city shift: every frozen self-supervised family produces a smaller mean out-of-distribution PDMS drop than supervised ResNet-34 under a planner whose anchor-based head is designed to attenuate backbone variation, and the per-training-city criterion in \refsec{sec:meth-dd-success} is met.
+    \item \textbf{Mechanistic analysis}. A study of the trained checkpoint roster using linear probing for city identity, centred kernel alignment, maximum mean discrepancy, and feature-covariance effective rank. In matched and training-city-stratified comparisons, the linear-probe ordering tracks the out-of-distribution PDMS drop ordering, and fine-tuning compresses feature-covariance rank for every self-supervised family. CKA and MMD are supporting diagnostics rather than decisive mechanisms, and no claim is made that the mechanism holds universally across checkpoints.
 \end{enumerate}
 
-\paragraph{Active validation (not claimed as completed evidence).}
-\begin{itemize}
-    \item \textbf{I-JEPA camera-only DiffusionDrive}. One camera-only configuration matching the strongest all-city SSL row on geometry and pre-training has not been trained under the LiDAR-free head and is not part of the defended contribution set.
-\end{itemize}
+% ============================================================================
+\section{Study Map}
+\label{sec:study-map}
+
+\begin{figure}[ht]
+\centering
+\resizebox{0.96\textwidth}{!}{%
+\begin{tikzpicture}[
+    node distance=5.5mm,
+    study/.style={
+        draw=diagline,
+        rounded corners=4pt,
+        line width=0.45pt,
+        minimum height=12mm,
+        text width=102mm,
+        align=center,
+        font=\small,
+        inner sep=3pt
+    },
+    note/.style={draw=diagline!45, rounded corners=3pt, fill=diagcream, font=\scriptsize, text=diagline!80, align=center, text width=34mm, inner sep=2pt},
+    arrow/.style={-{Stealth[length=2mm]}, semithick, draw=diagline}
+]
+    \node[study, fill=diagsky] (s1) {\textbf{Study I: Lightweight head}\\{\footnotesize Does representation matter with minimal planner capacity?}};
+    \node[study, fill=diagsage, below=of s1] (s2) {\textbf{Study II: TF / LatTF cross-city benchmark}\\{\footnotesize City-disjoint transfer under regression planners}};
+    \node[study, fill=diagcream, below=of s2] (s3) {\textbf{Study III: DiffusionDrive}\\{\footnotesize Representation test under a generative planner}};
+    \node[study, fill=diaglavender, below=of s3] (s4) {\textbf{Study IV: Mechanistic analysis}\\{\footnotesize Probe, CKA, MMD, effective rank}};
+    \node[study, fill=diagrose, below=of s4] (s5) {\textbf{Conclusion}\\{\footnotesize SSL's value is geographic robustness}};
+
+    \draw[arrow] (s1) -- (s2);
+    \draw[arrow] (s2) -- (s3);
+    \draw[arrow] (s3) -- (s4);
+    \draw[arrow] (s4) -- (s5);
+
+    \node[note, right=8mm of s2] (plannernote) {same backbone question\\different planners};
+    \draw[diagline!55, densely dashed] (plannernote.west) -- (s2.east);
+    \draw[diagline!55, densely dashed] (plannernote.west) -- (s3.east);
+
+    \node[note, right=8mm of s4] (mechnote) {explains, does not replace,\\the empirical result};
+    \draw[diagline!55, densely dashed] (mechnote.west) -- (s4.east);
+\end{tikzpicture}}
+\caption[Thesis study map.]{Study map of the thesis. The project progresses from a lightweight planner probe, to city-disjoint evaluation under TransFuser and Latent TransFuser, to a generative-planner robustness test, and finally to a mechanistic analysis that interprets the transfer differences.}
+\label{fig:intro-study-map}
+\end{figure}
 
 % ============================================================================
 \section{Thesis Organization}
@@ -91,7 +130,7 @@ The remainder of the thesis is organised as follows.
 \begin{itemize}
     \item \textbf{Chapter~\ref{chap:background}} covers the technical background needed to read the experiments: end-to-end driving, NAVSIM, the self-supervised objectives evaluated (I-JEPA, DINOv2, MAE), and the planner families used later in the thesis.
     \item \textbf{Chapter~\ref{chap:relatedwork}} reviews the surrounding literature in self-supervised learning for driving, cross-city generalisation, and diffusion-based planning, and explains why Drive-JEPA moved pooled NAVSIM performance out of the center of the thesis question.
-    \item \textbf{Chapter~\ref{chap:methodology}} follows the study sequence used in the defense: first the lightweight-head regime, then the TransFuser / Latent TransFuser cross-city benchmark, then DiffusionDrive as a second anchor planner, and finally the mechanistic tools used to interpret the gains.
+    \item \textbf{Chapter~\ref{chap:methodology}} follows the study sequence in \reffig{fig:intro-study-map}: first the lightweight-head regime, then the TransFuser / Latent TransFuser cross-city benchmark, then DiffusionDrive as a second anchor planner, and finally the mechanistic tools used to interpret the gains.
     \item \textbf{Chapter~\ref{chap:experiments}} reports the results in the same order: lightweight-head results, TransFuser / Latent TransFuser cross-city results, DiffusionDrive results, mechanistic evaluation, and a discussion section that interprets the practical implications.
     \item \textbf{Chapter~\ref{chap:conclusions}} closes with the thesis contributions, key findings, industrial implications, limitations, and future work.
 \end{itemize}

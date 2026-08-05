@@ -55,14 +55,14 @@ NAVSIM supports two evaluation modes. In the non-reactive mode used for the defa
     \centering
     \resizebox{\linewidth}{!}{%
     \begin{tikzpicture}[
-        obs/.style    = {draw, rounded corners=2pt, minimum height=6mm, minimum width=18mm, align=center, font=\scriptsize, fill=black!3, inner sep=2pt},
-        agent/.style  = {draw, rounded corners=2pt, minimum height=34mm, minimum width=16mm, align=center, font=\scriptsize, fill=black!7, inner sep=2pt},
-        trjbox/.style = {draw, rounded corners=2pt, minimum height=8mm, minimum width=16mm, align=center, font=\scriptsize, inner sep=2pt},
-        sim/.style    = {draw, rounded corners=2pt, minimum height=34mm, minimum width=22mm, align=center, font=\scriptsize, inner sep=2pt},
-        score/.style  = {draw, rounded corners=2pt, minimum height=5mm, minimum width=15mm, align=center, font=\scriptsize, fill=black!5, inner sep=2pt},
-        final/.style  = {draw, ellipse, minimum height=12mm, minimum width=16mm, align=center, font=\small, fill=black!10, inner sep=2pt},
-        arrow/.style  = {-{Stealth[length=2mm]}, thin},
-        stub/.style   = {thin},
+        obs/.style    = {draw=diagline, rounded corners=3pt, minimum height=6mm, minimum width=18mm, align=center, font=\scriptsize, fill=diagsky, inner sep=2pt},
+        agent/.style  = {draw=diagline, rounded corners=3pt, minimum height=34mm, minimum width=16mm, align=center, font=\scriptsize, fill=diaglavender, inner sep=2pt},
+        trjbox/.style = {draw=diagline, rounded corners=3pt, minimum height=8mm, minimum width=16mm, align=center, font=\scriptsize, fill=diagcream, inner sep=2pt},
+        sim/.style    = {draw=diagline, rounded corners=3pt, minimum height=34mm, minimum width=22mm, align=center, font=\scriptsize, fill=diagsage, inner sep=2pt},
+        score/.style  = {draw=diagline, rounded corners=3pt, minimum height=5mm, minimum width=15mm, align=center, font=\scriptsize, fill=diagsage, inner sep=2pt},
+        final/.style  = {draw=diagline, ellipse, minimum height=12mm, minimum width=16mm, align=center, font=\small, fill=diagrose, inner sep=2pt},
+        arrow/.style  = {-{Stealth[length=2mm]}, semithick, draw=diagline},
+        stub/.style   = {semithick, draw=diagline!75},
     ]
         % -------- Column 1: inputs (stacked) --------
         \node[obs] (cam)   {cameras (8)};
@@ -135,7 +135,7 @@ NAVSIM supports two evaluation modes. In the non-reactive mode used for the defa
         \draw[stub] (pdms-rail-top) -- (pdms-rail-bot);
         \draw[arrow] (pdms-rail |- pdms.west) -- (pdms.west);
     \end{tikzpicture}}
-    \caption{NAVSIM evaluation pipeline. The planner receives sensor, ego, and route inputs and emits a predicted trajectory $\hat\tau_{t:t+H}$ of eight waypoints at 2\,Hz over a four-second horizon. The simulator rolls this trajectory either against log-replay agents (non-reactive, \texttt{navtest}) or against IDM-driven reactive agents (two-stage, \texttt{navhard\_two\_stage}), then computes the PDMS sub-scores of Equation~\ref{eq:pdms}. NC and DAC enter multiplicatively, so any at-fault collision or drivable-area violation zeroes the score on that scenario~\cite{dauner-navsim-2024,dauner-pdm-2023}.}
+    \caption[NAVSIM evaluation pipeline.]{NAVSIM evaluation pipeline. The planner receives sensor, ego, and route inputs and emits eight future waypoints. The simulator rolls out the trajectory and computes the PDMS sub-scores in Equation~\ref{eq:pdms}.}
     \label{fig:bg-navsim-pipeline}
 \end{figure}
 
@@ -165,11 +165,11 @@ Figure~\ref{fig:bg-vit} shows the pipeline.
     \centering
     \begin{tikzpicture}[
         node distance = 4mm and 6mm,
-        patch/.style = {draw, rectangle, minimum width=6mm, minimum height=6mm, fill=black!5, font=\tiny},
-        tok/.style   = {draw, rectangle, minimum width=6mm, minimum height=8mm, fill=black!10, font=\tiny},
-        block/.style = {draw, rounded corners=2pt, minimum height=9mm, minimum width=16mm, align=center, font=\scriptsize},
-        outnode/.style = {draw, ellipse, minimum height=7mm, minimum width=18mm, align=center, font=\scriptsize, fill=black!5},
-        arrow/.style = {-{Stealth[length=1.5mm]}, thin},
+        patch/.style = {draw=diagblue!70, rectangle, minimum width=6mm, minimum height=6mm, fill=diagsky, font=\tiny},
+        tok/.style   = {draw=diaggreen!70, rectangle, minimum width=6mm, minimum height=8mm, fill=diagsage, font=\tiny},
+        block/.style = {draw=diagline, rounded corners=3pt, minimum height=9mm, minimum width=16mm, align=center, font=\scriptsize, fill=diaglavender},
+        outnode/.style = {draw=diagline, ellipse, minimum height=7mm, minimum width=18mm, align=center, font=\scriptsize, fill=diagcream},
+        arrow/.style = {-{Stealth[length=1.5mm]}, semithick, draw=diagline},
     ]
         \node[patch] (p1) {};
         \node[patch, right=0.5mm of p1] (p2) {};
@@ -195,7 +195,7 @@ Figure~\ref{fig:bg-vit} shows the pipeline.
         \draw[arrow] (t2.south) -- (enc.north);
         \draw[arrow] (enc.south) -- (feat.north);
     \end{tikzpicture}
-    \caption{Vision Transformer \cite{dosovitskiy-vit-2021}. An image is split into a grid of patches which are linearly projected to $D$-dimensional tokens and combined with positional encodings. A special \texttt{CLS} token is prepended and the full sequence is passed through $L$ stacked self-attention blocks. The final representation is obtained either from the \texttt{CLS} token or by mean-pooling the spatial tokens.}
+    \caption[Vision Transformer schematic.]{Vision Transformer schematic~\cite{dosovitskiy-vit-2021}. An image is split into patches, projected to tokens, combined with positional encodings, and passed through stacked self-attention blocks. The final representation comes from the \texttt{CLS} token or pooled spatial tokens.}
     \label{fig:bg-vit}
 \end{figure}
 
@@ -221,11 +221,11 @@ where $x_c$ is the context, $x_{t_i}$ the $i$-th target block, $p_i$ its spatial
     \centering
     \begin{tikzpicture}[
         node distance = 4mm and 7mm,
-        img/.style   = {draw, rectangle, minimum width=16mm, minimum height=16mm, font=\tiny, align=center, fill=black!5},
-        enc/.style   = {draw, rounded corners=2pt, minimum height=8mm, minimum width=22mm, align=center, font=\small},
-        pred/.style  = {draw, rounded corners=2pt, minimum height=8mm, minimum width=22mm, align=center, font=\small, fill=black!5},
-        loss/.style  = {draw, ellipse, minimum height=8mm, minimum width=20mm, align=center, font=\small},
-        arrow/.style = {-{Stealth[length=1.8mm]}, thin},
+        img/.style   = {draw=diagblue!70, rectangle, minimum width=16mm, minimum height=16mm, font=\tiny, align=center, fill=diagsky},
+        enc/.style   = {draw=diagline, rounded corners=3pt, minimum height=8mm, minimum width=22mm, align=center, font=\small, fill=diaglavender},
+        pred/.style  = {draw=diagline, rounded corners=3pt, minimum height=8mm, minimum width=22mm, align=center, font=\small, fill=diagcream},
+        loss/.style  = {draw=diagline, ellipse, minimum height=8mm, minimum width=20mm, align=center, font=\small, fill=diagrose},
+        arrow/.style = {-{Stealth[length=1.8mm]}, semithick, draw=diagline},
     ]
         \node[img] (xc) {context $x_c$};
         \node[img, right=22mm of xc] (xt) {targets $x_{t_i}$};
@@ -246,7 +246,7 @@ where $x_c$ is the context, $x_{t_i}$ the $i$-th target block, $p_i$ its spatial
 
         \node[font=\scriptsize, right=2mm of L] {stop-grad};
     \end{tikzpicture}
-    \caption{Image Joint-Embedding Predictive Architecture (I-JEPA) \cite{assran-ijepa-2023}. The context encoder $f_\theta$ processes the visible patches $x_c$. The target encoder $f_{\bar\theta}$, updated as an exponential moving average of $f_\theta$, processes masked target blocks $x_{t_i}$. The predictor $g_\phi$ maps context features to target features using the target position as a query, and the loss is the mean squared error in latent space, with a stop-gradient on the target branch.}
+    \caption[I-JEPA schematic.]{Image Joint-Embedding Predictive Architecture (I-JEPA) schematic~\cite{assran-ijepa-2023}. The context encoder processes visible patches, while the target encoder processes masked target blocks. The predictor maps context features to target features, with the loss applied in latent space.}
     \label{fig:bg-ijepa}
 \end{figure}
 
@@ -272,11 +272,11 @@ The three objectives encourage different invariances. I-JEPA supervises in laten
     \resizebox{\linewidth}{!}{%
     \begin{tikzpicture}[
         node distance = 4mm and 6mm,
-        img/.style  = {draw, rectangle, minimum width=13mm, minimum height=10mm, fill=black!5, font=\scriptsize, align=center},
-        enc/.style  = {draw, rounded corners=2pt, minimum height=7mm, minimum width=21mm, align=center, font=\scriptsize},
-        pred/.style = {draw, rounded corners=2pt, minimum height=7mm, minimum width=22mm, align=center, font=\scriptsize, fill=black!3},
-        loss/.style = {draw, ellipse, minimum height=8mm, minimum width=28mm, align=center, font=\scriptsize},
-        arrow/.style = {-{Stealth[length=1.6mm]}, thin},
+        img/.style  = {draw=diagblue!70, rectangle, minimum width=13mm, minimum height=10mm, fill=diagsky, font=\scriptsize, align=center},
+        enc/.style  = {draw=diagline, rounded corners=3pt, minimum height=7mm, minimum width=21mm, align=center, font=\scriptsize, fill=diaglavender},
+        pred/.style = {draw=diagline, rounded corners=3pt, minimum height=7mm, minimum width=22mm, align=center, font=\scriptsize, fill=diagcream},
+        loss/.style = {draw=diagline, ellipse, minimum height=8mm, minimum width=28mm, align=center, font=\scriptsize, fill=diagrose},
+        arrow/.style = {-{Stealth[length=1.6mm]}, semithick, draw=diagline},
     ]
         %---- I-JEPA panel ----
         \node[font=\scriptsize\bfseries] at (0,0.25) {I-JEPA};
@@ -317,7 +317,7 @@ The three objectives encourage different invariances. I-JEPA supervises in laten
         \draw[arrow] (mad) -- (mal);
         \end{scope}
     \end{tikzpicture}}
-    \caption{The three SSL objectives compared in this thesis. \textbf{I-JEPA} (left): context and target encoders extract features, a predictor maps context latents to target latents, and the loss is in representation space \cite{assran-ijepa-2023}. \textbf{DINOv2} (middle): a student and a momentum teacher process augmented views of the same image, and the student is trained to match the teacher's softmax output \cite{oquab-dinov2-2024,caron-dino-2021}. \textbf{MAE} (right): a large fraction of image patches is masked and a lightweight decoder reconstructs the masked pixels from the encoded visible patches \cite{he-mae-2022}. The three objectives encourage different invariances, which is the central variable varied under cross-city transfer in the mechanistic analysis (Section~\ref{sec:exp-why-ssl}).}
+    \caption[Self-supervised objective schematics.]{Self-supervised objective schematics compared in this thesis. I-JEPA predicts target features in latent space, DINOv2 matches student and momentum-teacher outputs across views, and MAE reconstructs masked pixels from visible patches~\cite{assran-ijepa-2023,oquab-dinov2-2024,caron-dino-2021,he-mae-2022}.}
     \label{fig:bg-ssl-family}
 \end{figure}
 
@@ -336,17 +336,20 @@ TransFuser~\cite{chitta-transfuser-2023,prakash-transfuser-2021} fuses camera an
     \centering
     \begin{tikzpicture}[
         node distance = 6mm and 7mm,
-        box/.style  = {draw, rounded corners=2pt, minimum height=8mm, minimum width=18mm, align=center, font=\small},
-        wide/.style = {draw, rounded corners=2pt, minimum height=8mm, minimum width=26mm, align=center, font=\small},
-        arrow/.style = {-{Stealth[length=2mm]}, thick},
+        box/.style  = {draw=diagline, rounded corners=3pt, minimum height=8mm, minimum width=18mm, align=center, font=\small, fill=diagsky},
+        lidar/.style = {fill=diagsage},
+        wide/.style = {draw=diagline, rounded corners=3pt, minimum height=8mm, minimum width=26mm, align=center, font=\small, fill=diaglavender},
+        headblk/.style = {fill=diagcream},
+        outblk/.style = {fill=diagrose},
+        arrow/.style = {-{Stealth[length=2mm]}, semithick, draw=diagline},
     ]
         \node[box] (cam)   {Cameras};
-        \node[box, below=of cam] (lid) {LiDAR BEV};
+        \node[box, lidar, below=of cam] (lid) {LiDAR BEV};
         \node[box, right=of cam] (venc) {Image enc.};
-        \node[box, right=of lid] (lenc) {LiDAR enc.};
+        \node[box, lidar, right=of lid] (lenc) {LiDAR enc.};
         \node[wide, right=11mm of venc, yshift=-4mm] (fuse) {Attention\\fusion};
-        \node[wide, right=of fuse] (head) {GRU\\waypoint\\head};
-        \node[box, right=of head] (out)  {Trajectory};
+        \node[wide, headblk, right=of fuse] (head) {GRU\\waypoint\\head};
+        \node[box, outblk, right=of head] (out)  {Trajectory};
         \draw[arrow] (cam) -- (venc);
         \draw[arrow] (lid) -- (lenc);
         \draw[arrow] (venc.east) -- ++(4mm,0) |- ([yshift=2mm]fuse.west);
@@ -354,7 +357,7 @@ TransFuser~\cite{chitta-transfuser-2023,prakash-transfuser-2021} fuses camera an
         \draw[arrow] (fuse) -- (head);
         \draw[arrow] (head) -- (out);
     \end{tikzpicture}
-    \caption{TransFuser schematic adapted from Chitta et al. \cite{chitta-transfuser-2023}. Camera and LiDAR streams are encoded independently, fused through repeated cross-modal attention, and decoded into a waypoint sequence by a GRU head conditioned on ego status and driving command. This thesis varies only the Image encoder block; the fusion stack and GRU head are held fixed.}
+    \caption[TransFuser schematic.]{TransFuser schematic adapted from Chitta et al.~\cite{chitta-transfuser-2023}. Camera and LiDAR streams are encoded separately, fused through cross-modal attention, and decoded into waypoints. This thesis varies only the image encoder block.}
     \label{fig:bg-transfuser}
 \end{figure}
 
@@ -374,17 +377,20 @@ LAW is an external open-loop planner~\cite{li-law-2024}, used in this thesis as 
     \centering
     \begin{tikzpicture}[
         node distance = 6mm and 8mm,
-        box/.style  = {draw, rounded corners=2pt, minimum height=8mm, minimum width=20mm, align=center, font=\small},
-        pill/.style = {draw, rounded corners=4pt, minimum height=8mm, minimum width=24mm, align=center, font=\small, fill=black!5},
-        arrow/.style = {-{Stealth[length=2mm]}, thick},
+        box/.style  = {draw=diagline, rounded corners=3pt, minimum height=8mm, minimum width=20mm, align=center, font=\small, fill=diagsky},
+        model/.style = {fill=diaglavender},
+        headblk/.style = {fill=diagcream},
+        outblk/.style = {fill=diagrose},
+        pill/.style = {draw=diagline, rounded corners=5pt, minimum height=8mm, minimum width=24mm, align=center, font=\small, fill=diagsage},
+        arrow/.style = {-{Stealth[length=2mm]}, semithick, draw=diagline},
     ]
         \node[box] (img) {Image $o_t$};
-        \node[box, right=of img] (enc) {Encoder\\(Swin-T / ViT)};
+        \node[box, model, right=of img] (enc) {Encoder\\(Swin-T / ViT)};
         \node[pill, right=of enc] (lat) {Latent $z_t$};
-        \node[box, right=of lat] (pred) {World-model\\predictor};
+        \node[box, model, right=of lat] (pred) {World-model\\predictor};
         \node[pill, right=of pred] (latp) {$\hat z_{t+1}$};
-        \node[box, below=8mm of lat] (plan) {Planner head};
-        \node[box, right=of plan, xshift=18mm] (act) {Trajectory $\hat\tau_{t:t+H}$};
+        \node[box, headblk, below=8mm of lat] (plan) {Planner head};
+        \node[box, outblk, right=of plan, xshift=18mm] (act) {Trajectory $\hat\tau_{t:t+H}$};
         \draw[arrow] (img) -- (enc);
         \draw[arrow] (enc) -- (lat);
         \draw[arrow] (lat) -- (pred);
@@ -392,7 +398,7 @@ LAW is an external open-loop planner~\cite{li-law-2024}, used in this thesis as 
         \draw[arrow] (lat.south) -- (plan.north);
         \draw[arrow] (plan) -- (act);
     \end{tikzpicture}
-    \caption{LAW schematic adapted from Li et al. \cite{li-law-2024}. The encoder produces a latent $z_t$ from the current observation. A world-model predictor forecasts the next-step latent $\hat z_{t+1}$, while the planner head regresses a waypoint sequence from the same $z_t$. The default encoder is Swin-Transformer-Tiny pretrained on ImageNet; the SSL variants of this thesis substitute it with a pretrained ViT. In both cases the predictor and planner head are held fixed across backbones.}
+    \caption[LAW schematic.]{LAW schematic adapted from Li et al.~\cite{li-law-2024}. The encoder produces a latent state, the world model predicts the next latent state, and the planner head regresses waypoints. The SSL variants substitute only the image encoder.}
     \label{fig:bg-law}
 \end{figure}
 
@@ -405,26 +411,29 @@ DiffusionDrive~\cite{jia-diffusiondrive-2025} belongs to a different planning fa
     \centering
     \begin{tikzpicture}[
         node distance = 6mm and 7mm,
-        box/.style  = {draw, rounded corners=2pt, minimum height=8mm, minimum width=20mm, align=center, font=\small},
-        trajanchor/.style = {draw, circle, minimum size=5mm, inner sep=0, fill=black!10, font=\scriptsize},
-        arrow/.style = {-{Stealth[length=2mm]}, thick},
+        box/.style  = {draw=diagline, rounded corners=3pt, minimum height=8mm, minimum width=20mm, align=center, font=\small, fill=diagsky},
+        cond/.style = {fill=diaglavender},
+        denoise/.style = {fill=diagsage},
+        outblk/.style = {fill=diagrose},
+        trajanchor/.style = {draw=diagamber!80, circle, minimum size=5mm, inner sep=0, fill=diagcream, font=\scriptsize},
+        arrow/.style = {-{Stealth[length=2mm]}, semithick, draw=diagline},
     ]
         \node[box] (scene) {Scene feats};
-        \node[box, right=of scene] (enc) {Cross-attn.\\conditioner};
+        \node[box, cond, right=of scene] (enc) {Cross-attn.\\conditioner};
         \node[trajanchor, below=8mm of enc] (a1) {$\tau_1$};
         \node[trajanchor, right=2mm of a1] (a2) {$\tau_2$};
         \node[trajanchor, right=2mm of a2] (a3) {$\ldots$};
         \node[trajanchor, right=2mm of a3] (aK) {$\tau_K$};
-        \node[box, right=18mm of enc] (den1) {Denoise\\step 1};
-        \node[box, right=of den1] (den2) {Denoise\\step 2};
-        \node[box, right=of den2] (out) {Trajectory};
+        \node[box, denoise, right=18mm of enc] (den1) {Denoise\\step 1};
+        \node[box, denoise, right=of den1] (den2) {Denoise\\step 2};
+        \node[box, outblk, right=of den2] (out) {Trajectory};
         \draw[arrow] (scene) -- (enc);
         \draw[arrow] (enc) -- (den1);
         \draw[arrow] (a1.north) -- ++(0,3mm) -| (den1.south);
         \draw[arrow] (den1) -- (den2);
         \draw[arrow] (den2) -- (out);
     \end{tikzpicture}
-    \caption{Truncated DiffusionDrive schematic adapted from Jia et al. \cite{jia-diffusiondrive-2025}. A $K$-means anchor bank $\{\tau_k\}_{k=1}^{K}$ replaces the usual Gaussian noise initialization, and only two denoising steps are used at inference, giving real-time throughput while retaining the multi-modality of diffusion planning. The SSL variants in this thesis substitute the Scene-feats block with a frozen ViT encoder and its ViT-to-CNN adapter.}
+    \caption[DiffusionDrive schematic.]{Truncated DiffusionDrive schematic adapted from Jia et al.~\cite{jia-diffusiondrive-2025}. A $K$-means anchor bank initializes the trajectory, and two denoising steps refine it at inference. The SSL variants substitute the scene-feature encoder with a frozen ViT and adapter.}
     \label{fig:bg-diffusiondrive}
 \end{figure}
 
